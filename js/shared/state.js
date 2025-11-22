@@ -15,6 +15,7 @@ export const state = {
     pivot: new THREE.Object3D(),
     cubeSize: 3,
     cubeDimensions: { x: 3, y: 3, z: 3 },
+    activeDimensions: { x: 3, y: 3, z: 3 },
     showMirrors: true,
 
     // Interaction State

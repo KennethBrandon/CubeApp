@@ -1,8 +1,8 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, collection, addDoc, onSnapshot } from 'firebase/firestore';
-import { state } from './state.js';
-import { renderLeaderboardUI } from './ui.js';
+import { state } from '../shared/state.js';
+import { renderLeaderboardUI } from '../ui/ui.js';
 
 // --- Firebase Setup ---
 // We need to access the global config which is injected in index.html

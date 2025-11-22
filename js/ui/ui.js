@@ -1,4 +1,4 @@
-import { state } from './state.js';
+import { state } from '../shared/state.js';
 
 export function togglePanel(contentId, headerElement) {
     const content = document.getElementById(contentId);
