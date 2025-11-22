@@ -1,0 +1,115 @@
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #1a1a1a;
+            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            touch-action: none;
+        }
+
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* Scrollbar for history */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #333;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #666;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #888;
+        }
+
+        /* History Layout */
+        #history-log {
+            display: flex;
+            flex-wrap: wrap;
+            align-content: flex-start;
+            gap: 6px;
+        }
+
+        .move-card {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: #333;
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-weight: bold;
+            font-size: 1rem;
+            min-width: 32px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Smooth collapse transition */
+        .panel-content {
+            transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out;
+            max-height: 500px;
+            /* Arbitrary large value */
+            opacity: 1;
+            overflow: hidden;
+        }
+
+        /* Logic for expanding UPWARDS */
+        .panel-container {
+            display: flex;
+            flex-direction: column-reverse;
+            /* Header at bottom */
+            align-items: flex-start;
+        }
+
+        .panel-container.right-aligned {
+            align-items: flex-end;
+        }
+
+        .panel-content.collapsed {
+            max-height: 0;
+            opacity: 0;
+            padding: 0;
+            margin: 0;
+            border-width: 0;
+        }
+
+        .chevron {
+            transition: transform 0.3s;
+        }
+
+        .collapsed .chevron {
+            transform: rotate(180deg);
+            /* Flip for upward expansion logic */
+        }
+
+        /* Leaderboard Row Hover */
+        .leaderboard-row:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            cursor: pointer;
+        }
+
+        /* Puzzle Tab Styles */
+        .puzzle-tab {
+            background-color: rgba(75, 85, 99, 0.3);
+            color: rgb(156, 163, 175);
+            transition: all 0.2s;
+        }
+
+        .puzzle-tab:hover {
+            background-color: rgba(75, 85, 99, 0.5);
+            color: rgb(209, 213, 219);
+        }
+
+        .puzzle-tab.active {
+            background-color: rgb(59, 130, 246);
+            color: white;
+            font-weight: bold;
+        }
