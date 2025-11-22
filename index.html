@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Rubik's Cube Web App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="style.css">
+    <!-- Import Map for Three.js -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+                "firebase/app": "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js",
+                "firebase/auth": "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js",
+                "firebase/firestore": "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js"
+            }
+        }
+    </script>
+</head>
+
+<body>
+
+    <!-- Top Bar: Unified Controls (Title, Timer, Buttons) -->
+    <div class="absolute top-0 left-0 w-full z-30 pointer-events-none p-2 sm:p-4">
+        <div
+            class="pointer-events-auto bg-gray-900/90 backdrop-blur-md rounded-xl border border-gray-700 shadow-2xl p-3 flex flex-wrap items-center justify-between gap-3 mx-auto max-w-4xl">
+
+            <!-- Left: Title & Timer -->
+            <div class="flex items-center gap-4">
+                <select id="puzzle-select"
+                    class="bg-gray-800 text-blue-400 font-bold text-lg border border-gray-600 rounded px-2 py-1 focus:outline-none focus:border-blue-500">
+                    <option value="3">Rubik's Cube</option>
+                    <option value="2x2x3">2x2x3 Cube</option>
+                    <option value="2">2x2 Cube</option>
+                    <option value="4">4x4 Cube</option>
+                    <option value="5">5x5 Cube</option>
+                    <option value="6">6x6 Cube</option>
+                    <option value="7">7x7 Cube</option>
+                    <option value="8">8x8 Cube</option>
+                    <option value="9">9x9 Cube</option>
+                    <option value="10">10x10 Cube</option>
+                    <option value="11">11x11 Cube</option>
+                    <option value="12">12x12 Cube</option>
+                    <option value="13">13x13 Cube</option>
+                    <option value="14">14x14 Cube</option>
+                    <option value="15">15x15 Cube</option>
+                    <option value="16">16x16 Cube</option>
+                    <option value="17">17x17 Cube</option>
+                </select>
+                <div class="bg-black/50 px-3 py-1 rounded-lg border border-gray-600">
+                    <div class="text-gray-500 text-[10px] uppercase tracking-wider leading-none mb-1" id="timer-label">
+                        Time</div>
+                    <div id="timer" class="text-2xl sm:text-3xl font-mono text-green-400 leading-none">00:00.00</div>
+                </div>
+            </div>
+
+            <!-- Right: Actions -->
+            <div class="flex gap-2">
+                <button id="btn-toggle-mirrors"
+                    class="bg-blue-700 hover:bg-blue-600 text-white p-2 rounded transition shadow-lg active:transform active:scale-95"
+                    title="Toggle Mirrors">
+                    <span class="text-lg">🪞</span>
+                </button>
+                <button id="btn-leaderboard"
+                    class="bg-purple-700 hover:bg-purple-600 text-white p-2 rounded transition shadow-lg active:transform active:scale-95"
+                    title="Leaderboard">
+                    <span class="text-lg">🏆</span>
+                </button>
+                <div class="w-px bg-gray-600 mx-1"></div>
+                <button id="btn-scramble"
+                    class="bg-yellow-600 hover:bg-yellow-500 text-white text-sm font-bold py-2 px-4 rounded transition shadow-lg active:transform active:scale-95">
+                    Scramble
+                </button>
+                <button id="btn-reset"
+                    class="bg-red-600 hover:bg-red-500 text-white text-sm font-bold py-2 px-4 rounded transition shadow-lg active:transform active:scale-95">
+                    Reset
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Left: History Panel (Expands Upwards) -->
+    <div class="absolute bottom-4 left-4 z-20 pointer-events-none">
+        <div class="panel-container">
+            <!-- Header (Always Visible Button) -->
+            <div class="pointer-events-auto bg-gray-900/90 backdrop-blur-md rounded-lg border border-gray-700 shadow-xl p-3 cursor-pointer hover:bg-gray-800 transition flex items-center gap-2 collapsed"
+                onclick="togglePanel('history-content', this)">
+                <span class="text-purple-400 font-bold text-sm">History</span>
+                <svg class="chevron w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+            </div>
+
+            <!-- Content (Expands Up) -->
+            <div id="history-content"
+                class="pointer-events-auto panel-content collapsed bg-gray-900/90 backdrop-blur-md rounded-lg border border-gray-700 shadow-xl mb-2 w-64">
+                <div class="h-48 flex flex-col">
+                    <div id="history-log" class="flex-1 overflow-y-auto content-start p-3">
+                        <div class="text-gray-500 text-xs italic w-full text-center" id="empty-msg">Moves will appear
+                            here...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Right: Controls Legend (Expands Upwards) -->
+    <div class="absolute bottom-4 right-4 z-20 pointer-events-none">
+        <div class="panel-container right-aligned">
+            <!-- Header (Always Visible Button) -->
+            <div class="pointer-events-auto bg-gray-900/90 backdrop-blur-md rounded-lg border border-gray-700 shadow-xl p-3 cursor-pointer hover:bg-gray-800 transition flex items-center gap-2 collapsed"
+                onclick="togglePanel('controls-content', this)">
+                <span class="text-blue-400 font-bold text-sm">Controls</span>
+                <svg class="chevron w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+            </div>
+
+            <!-- Content (Expands Up) -->
+            <div id="controls-content"
+                class="pointer-events-auto panel-content collapsed bg-gray-900/90 backdrop-blur-md rounded-lg border border-gray-700 shadow-xl mb-2 w-72">
+                <div class="p-4 text-sm text-gray-300">
+                    <p class="text-xs text-blue-400 mb-2">🖱️ Drag <b>Pieces</b> to Move Layers</p>
+                    <p class="text-xs text-gray-400 mb-2">🖱️ Drag <b>Background</b> to Rotate Cube</p>
+                    <p class="text-xs text-gray-500 mb-3">🖱️ Scroll to <b>Zoom</b></p>
+                    <div class="grid grid-cols-2 gap-x-2 gap-y-1 text-xs font-mono">
+                        <span>R / Shift+R</span> <span class="text-right text-gray-500">Right</span>
+                        <span>L / Shift+L</span> <span class="text-right text-gray-500">Left</span>
+                        <span>U / Shift+U</span> <span class="text-right text-gray-500">Up</span>
+                        <span>D / Shift+D</span> <span class="text-right text-gray-500">Down</span>
+                        <span>F / Shift+F</span> <span class="text-right text-gray-500">Front</span>
+                        <span>B / Shift+B</span> <span class="text-right text-gray-500">Back</span>
+                        <span
+                            class="col-span-2 mt-1 pt-1 border-t border-gray-700 text-yellow-500 cursor-pointer hover:text-yellow-400"
+                            onclick="event.stopPropagation(); document.getElementById('debug-modal').classList.remove('hidden')">Arrows
+                            to Rotate
+                            View</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Solved / Submit Score Modal -->
+    <div id="solved-modal"
+        class="hidden opacity-0 transition-opacity duration-500 absolute inset-0 z-40 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+        <div
+            class="bg-gray-800 p-6 sm:p-8 rounded-2xl border-2 border-green-500 text-center shadow-2xl max-w-md w-full transform transition-all scale-100">
+            <div class="text-6xl mb-4 animate-bounce">🎉</div>
+            <h2 class="text-3xl sm:text-4xl font-bold text-white mb-2">SOLVED!</h2>
+            <p class="text-gray-300 mb-2">Time: <span id="final-time"
+                    class="text-green-400 font-mono font-bold text-xl"></span></p>
+
+            <div class="bg-black/30 p-4 rounded-xl mb-4 border border-gray-700">
+                <label class="block text-left text-xs text-gray-400 mb-1 uppercase font-bold">Enter Name for
+                    Leaderboard</label>
+                <div class="flex gap-2">
+                    <input type="text" id="player-name"
+                        class="flex-1 bg-gray-700 text-white px-3 py-2 rounded border border-gray-600 focus:outline-none focus:border-blue-500"
+                        placeholder="Your Name" maxlength="15">
+                    <button id="btn-submit-score"
+                        class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-4 py-2 rounded transition">
+                        Submit
+                    </button>
+                </div>
+            </div>
+
+            <div class="text-left bg-black/30 p-3 rounded mb-4 text-xs font-mono text-gray-400">
+                <p class="font-bold text-gray-500 mb-1 uppercase">Scramble:</p>
+                <p id="scramble-text" class="break-words tracking-wider leading-relaxed text-yellow-500/80"></p>
+            </div>
+
+            <div class="text-left bg-black/30 p-3 rounded mb-4 text-xs font-mono text-gray-400" id="final-solution">
+                <!-- Solution injected by JS -->
+            </div>
+
+            <div class="flex gap-2">
+                <button id="btn-close-modal"
+                    class="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 rounded-full transition transform hover:scale-105">
+                    Close
+                </button>
+                <button id="btn-play-again"
+                    class="flex-1 bg-green-600 hover:bg-green-500 text-white font-bold py-3 rounded-full transition transform hover:scale-105 shadow-lg">
+                    Play Again
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaderboard Modal -->
+    <div id="leaderboard-modal"
+        class="hidden absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+        <div
+            class="bg-gray-800 rounded-2xl border border-gray-700 shadow-2xl max-w-md w-full flex flex-col max-h-[80vh]">
+            <div class="p-4 border-b border-gray-700 flex justify-between items-center bg-gray-900/50 rounded-t-2xl">
+                <h2 class="text-xl font-bold text-yellow-500 flex items-center gap-2">
+                    <span>🏆</span> <span id="leaderboard-title">Top Solvers</span>
+                </h2>
+                <button id="btn-close-leaderboard" class="text-gray-400 hover:text-white">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                        </path>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Puzzle Selector Tabs -->
+            <div class="p-2 border-b border-gray-700 bg-gray-900/30 overflow-x-auto">
+                <div id="puzzle-tabs" class="flex gap-1 min-w-max">
+                    <button class="puzzle-tab px-3 py-1 rounded text-xs font-medium transition"
+                        data-puzzle="2">2x2</button>
+                    <button class="puzzle-tab px-3 py-1 rounded text-xs font-medium transition active"
+                        data-puzzle="3">3x3</button>
+                    <button class="puzzle-tab px-3 py-1 rounded text-xs font-medium transition"
+                        data-puzzle="4">4x4</button>
+                    <button class="puzzle-tab px-3 py-1 rounded text-xs font-medium transition"
+                        data-puzzle="5">5x5</button>
+                    <button class="puzzle-tab px-3 py-1 rounded text-xs font-medium transition"
+                        data-puzzle="6">6x6</button>
+                    <button class="puzzle-tab px-3 py-1 rounded text-xs font-medium transition"
+                        data-puzzle="7">7x7</button>
+                    <button class="puzzle-tab px-3 py-1 rounded text-xs font-medium transition"
+                        data-puzzle="2x2x3">2x2x3</button>
+                </div>
+            </div>
+
+            <div class="overflow-y-auto flex-1 p-2">
+                <table class="w-full text-left text-sm">
+                    <thead class="text-xs text-gray-500 uppercase bg-gray-900/30">
+                        <tr>
+                            <th class="p-2 rounded-l">#</th>
+                            <th class="p-2">Name</th>
+                            <th class="p-2 text-right rounded-r">Time</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaderboard-body">
+                        <!-- Rows injected by JS -->
+                    </tbody>
+                </table>
+                <div id="leaderboard-loading" class="text-center text-gray-500 py-4">Loading...</div>
+            </div>
+            <div class="p-2 text-center text-xs text-gray-600 border-t border-gray-700">
+                Tap a row to see solution details
+            </div>
+        </div>
+    </div>
+
+    <!-- Detail View Modal (For a specific score) -->
+    <div id="detail-modal" class="hidden absolute inset-0 z-[60] flex items-center justify-center bg-black/90 p-4">
+        <div class="bg-gray-900 border border-gray-600 p-6 rounded-xl max-w-sm w-full relative">
+            <button id="btn-close-detail" class="absolute top-2 right-2 text-gray-400 hover:text-white">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                    </path>
+                </svg>
+            </button>
+            <h3 class="text-lg font-bold text-blue-400 mb-4" id="detail-name">Player Details</h3>
+
+            <div class="mb-4">
+                <p class="text-xs text-gray-500 uppercase font-bold">Scramble</p>
+                <p class="text-sm text-yellow-500 font-mono break-words bg-black/40 p-2 rounded" id="detail-scramble">
+                </p>
+            </div>
+
+            <div class="mb-4">
+                <p class="text-xs text-gray-500 uppercase font-bold">Solution</p>
+                <div class="text-sm text-green-400 font-mono break-words bg-black/40 p-2 rounded max-h-32 overflow-y-auto"
+                    id="detail-solution"></div>
+            </div>
+
+            <div class="text-right text-gray-500 text-xs" id="detail-date"></div>
+        </div>
+    </div>
+
+    <!-- Debug Modal -->
+    <div id="debug-modal"
+        class="hidden absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+        <div class="bg-gray-800 p-6 rounded-2xl border border-gray-700 text-center shadow-2xl max-w-md w-full">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold text-white">Debug Menu</h2>
+                <button id="btn-close-debug" class="text-gray-400 hover:text-white">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                        </path>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="text-left space-y-3">
+                <div class="flex items-center justify-between p-3 bg-gray-900/50 rounded-lg">
+                    <span class="text-gray-300">Show FPS</span>
+                    <label class="relative inline-block w-12 h-6">
+                        <input type="checkbox" id="toggle-fps" class="sr-only peer">
+                        <div
+                            class="w-12 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-6 peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600">
+                        </div>
+                    </label>
+                </div>
+                <div class="flex items-center justify-between p-3 bg-gray-900/50 rounded-lg">
+                    <span class="text-gray-300">Show Zoom Bar</span>
+                    <label class="relative inline-block w-12 h-6">
+                        <input type="checkbox" id="toggle-zoom-bar" class="sr-only peer">
+                        <div
+                            class="w-12 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-6 peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600">
+                        </div>
+                    </label>
+                </div>
+                <div class="flex items-center justify-between p-3 bg-gray-900/50 rounded-lg">
+                    <span class="text-gray-300">Test Victory</span>
+                    <button id="btn-test-victory"
+                        class="bg-green-600 hover:bg-green-500 text-white text-xs font-bold py-1 px-3 rounded transition">
+                        Play
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FPS Counter (Top Right) -->
+    <div id="fps-counter"
+        class="hidden absolute top-32 right-4 z-10 bg-black/70 backdrop-blur-md border border-gray-700 rounded-lg px-3 py-2 text-white font-mono text-sm pointer-events-none">
+        FPS: <span id="fps-value" class="text-green-400 font-bold">60</span>
+    </div>
+
+    <!-- Zoom Bar (Below Title Bar) -->
+    <div id="zoom-bar"
+        class="hidden absolute top-32 left-1/2 transform -translate-x-1/2 z-10 bg-black/70 backdrop-blur-md border border-gray-700 rounded-lg px-4 py-3 flex items-center gap-4">
+        <label class="text-white text-sm font-medium">Zoom:</label>
+        <input type="range" id="zoom-slider" min="3" max="20" step="0.1" value="12"
+            class="w-64 h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-500">
+        <input type="text" id="zoom-value-input" value="12.0"
+            class="w-20 bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white text-sm font-mono text-center">
+    </div>
+
+    <div id="canvas-container"></div>
+
+    <script>
+        (function (firebaseConfig, initialAuthToken, appId) {
+            window.__firebase_config = firebaseConfig;
+            window.__initial_auth_token = initialAuthToken;
+            window.__app_id = appId;
+        })(`{
+  "apiKey": "AIzaSyComkbqxc6zG22ungiEINKTFh9Dp1sxvfE",
+  "authDomain": "puzzler-c6048.firebaseapp.com",
+  "projectId": "puzzler-c6048",
+  "storageBucket": "puzzler-c6048.firebasestorage.app",
+  "messagingSenderId": "1026414975386",
+  "appId": "1:1026414975386:web:647d4086d2dd512ae20223"
+}`, null, "rubiks-cube-app");
+    </script>
+
+    <script type="module" src="js/main.js"></script>
+</body>
+
+</html>
