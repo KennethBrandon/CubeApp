@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { Reflector } from 'three/addons/objects/Reflector.js';
-import { state } from './state.js';
+import { state } from '../shared/state.js';
 
 export function createEnvironment() {
     // Remove old environment objects if any
