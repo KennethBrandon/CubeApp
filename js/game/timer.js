@@ -9,6 +9,7 @@ export function startInspection() {
     state.isInspection = true;
     state.inspectionTimeLeft = 15;
     state.lastInspectionBeep = 16; // Reset beep tracker
+    state.inspectionStartTime = Date.now(); // Use real time
 
     const timerLabel = document.getElementById('timer-label');
     const timerDisplay = document.getElementById('timer');
@@ -22,27 +23,61 @@ export function startInspection() {
         timerDisplay.className = "text-2xl sm:text-3xl font-mono text-orange-500 leading-none";
     }
 
+    // Run interval frequently for smooth decimal updates
     state.inspectionInterval = setInterval(() => {
-        state.inspectionTimeLeft--;
-        const secondsLeft = state.inspectionTimeLeft;
+        const elapsed = (Date.now() - state.inspectionStartTime) / 1000;
+        const remaining = Math.max(0, 15 - elapsed);
+        state.inspectionTimeLeft = remaining;
 
-        // Sound logic for countdown
-        if (secondsLeft <= 3 && secondsLeft > 0) {
-            const lastBeep = state.lastInspectionBeep || 16;
-            if (secondsLeft < lastBeep) {
+        // Sound logic for countdown (check integer thresholds)
+        // We use Ceil for display/logic to match standard inspection (15...14... etc)
+        // But for beeps we want to trigger when we cross the integer boundary downwards
+        const currentCeil = Math.ceil(remaining);
+
+        // Logic: if we are at 3.00 -> that's "3". 
+        // Beep at 3, 2, 1.
+        // 3 starts at 3.00. 
+        // Let's just use the integer part for the beep logic to be simple and robust
+        // If we just crossed a boundary:
+
+        if (remaining <= 3 && remaining > 0) {
+            // Check if we crossed an integer boundary since last check? 
+            // Actually, let's just track the last beeped integer.
+            // If remaining is 2.9, and last beep was 4 (or 16), we beep for 3.
+            // Wait, standard is: 
+            // 3 seconds left -> Beep
+            // 2 seconds left -> Beep
+            // 1 second left -> Beep
+            // 0 -> Go
+
+            // If we use Math.ceil(remaining), 2.9 is 3. 
+            // So if we are <= 3.0, we should have beeped for 3?
+            // Let's say we beep when we ENTER the second.
+            // 3.00 -> Enter 3rd second (meaning 3 seconds remaining).
+
+            const secondsInt = Math.ceil(remaining);
+            if (secondsInt <= 3 && secondsInt < state.lastInspectionBeep) {
                 soundManager.playCountdownBeep(false);
-                state.lastInspectionBeep = secondsLeft;
+                state.lastInspectionBeep = secondsInt;
             }
-        } else if (secondsLeft === 0) {
-            soundManager.playCountdownBeep(true); // Final beep
+        } else if (remaining === 0) {
+            if (state.lastInspectionBeep > 0) {
+                soundManager.playCountdownBeep(true); // Final beep
+                state.lastInspectionBeep = 0;
+            }
         }
 
-        if (state.inspectionTimeLeft > 0) {
-            if (timerDisplay) timerDisplay.textContent = state.inspectionTimeLeft;
+        if (remaining > 0) {
+            if (timerDisplay) {
+                // Format: 00:SS.ms (e.g. 00:14.23)
+                const sec = Math.floor(remaining);
+                const ms = Math.floor((remaining - sec) * 100);
+                timerDisplay.textContent = `00:${sec.toString().padStart(2, '0')}.${ms.toString().padStart(2, '0')}`;
+            }
         } else {
             startTimer();
         }
-    }, 1000);
+    }, 10); // Update every 10ms
 }
 
 export function startTimer() {

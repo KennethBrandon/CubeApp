@@ -66,9 +66,8 @@ export function onMouseMove(event) {
         if (state.dragAxis) {
             attachSliceToPivot();
             if (!state.isScrambling && !state.isAutoSolving && !state.isBackgroundDrag) {
-                state.isGameActive = true;
-                // Only start timer if the cube is NOT solved (i.e. it has been scrambled)
-                if (!state.timerRunning && !state.isSolved) {
+                // Only start timer if game is active AND puzzle has been scrambled
+                if (!state.timerRunning && state.isGameActive && state.hasBeenScrambled) {
                     startTimer();
                 }
             }

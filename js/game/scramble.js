@@ -93,6 +93,7 @@ export function startScramble() {
     const checkInterval = setInterval(() => {
         if (state.moveQueue.length === 0 && !state.isAnimating) {
             state.isScrambling = false;
+            state.isSolved = false; // Explicitly mark as not solved
             startInspection();
             clearInterval(checkInterval);
         }

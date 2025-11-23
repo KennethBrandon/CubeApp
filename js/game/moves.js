@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { state } from '../shared/state.js';
 import { ANIMATION_SPEED, SNAP_SPEED, CUBE_SIZE, SPACING } from '../shared/constants.js';
 import { addToHistory } from '../ui/ui.js';
-import { checkSolved } from './timer.js';
+import { checkSolved, startTimer } from './timer.js';
 import { getCubiesInSlice } from '../core/cube.js';
 import { soundManager } from '../core/sound.js';
 
@@ -42,25 +42,18 @@ export function performMove(axisStr, direction, duration, sliceVal = null) {
         else if (axisStr === 'U' || axisStr === 'D') axisVector.set(0, 1, 0);
         else if (axisStr === 'F' || axisStr === 'B') axisVector.set(0, 0, 1);
 
-        // Adjust direction for standard notation
-        // R, U, F are clockwise (dir=1)
-        // L, D, B are clockwise (dir=1)
-        // But in our coordinate system:
-        // R (positive X) clockwise is negative rotation?
-        // Let's stick to the logic from main.js
-
-        // From main.js logic:
-        // If sliceVal > 0 (R, U, F), we negate axisVector to match standard rotation?
-        // Actually, let's look at the generic block below.
-
-        // We just set sliceVal and axisVector here.
-        // We let the generic block handle the rotation logic.
-
         // Add to history
         let notation = axisStr;
         if (direction === -1) notation += "'";
         else if (direction === 2) notation += "2";
         addToHistory(notation, false);
+
+        // Start timer if not scrambling/auto-solving and not already running
+        if (!state.isScrambling && !state.isAutoSolving) {
+            if (!state.timerRunning && state.isGameActive && state.hasBeenScrambled) {
+                startTimer();
+            }
+        }
     }
 
     // Generic slice selection
