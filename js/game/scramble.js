@@ -12,6 +12,7 @@ export function startScramble() {
     hardReset(true); // Keep camera on scramble
     state.isScrambling = true;
     state.scrambleSequence = [];
+    state.hasBeenScrambled = true;
 
     let scrambleMoves = [];
     const axes = ['x', 'y', 'z'];
@@ -20,7 +21,14 @@ export function startScramble() {
     let lastAxis = '';
     let lastLayer = -999;
 
-    for (let i = 0; i < SCRAMBLE_MOVES; i++) {
+    // Determine scramble length based on cube size
+    let numMoves = SCRAMBLE_MOVES; // Default 25
+    if (state.cubeSize === 2) numMoves = 15;
+    else if (state.cubeSize === 3) numMoves = 25;
+    else if (state.cubeSize === 4) numMoves = 40;
+    else if (state.cubeSize >= 5) numMoves = 60;
+
+    for (let i = 0; i < numMoves; i++) {
         let axis, layerNum, sliceVal;
 
         // Avoid undoing previous move (same axis, same layer)
@@ -100,21 +108,67 @@ function getScrambleNotation(axis, sliceVal, dir) {
     let turns = dir;
 
     if (axis === 'x') {
-        if (Math.abs(index - maxIndex) < epsilon) { char = 'R'; turns *= -1; }
-        else if (Math.abs(index + maxIndex) < epsilon) { char = 'L'; }
-        else char = 'M'; // Simplified
+        if (Math.abs(index - maxIndex) < epsilon) {
+            char = 'R';
+            turns *= -1;
+        } else if (Math.abs(index + maxIndex) < epsilon) {
+            char = 'L';
+        } else {
+            if (state.cubeSize % 2 !== 0 && Math.abs(index) < epsilon) {
+                char = 'M';
+            } else {
+                if (index > 0) {
+                    let depth = Math.round(maxIndex - index + 1);
+                    char = depth + 'R';
+                    turns *= -1;
+                } else {
+                    let depth = Math.round(maxIndex - Math.abs(index) + 1);
+                    char = depth + 'L';
+                }
+            }
+        }
     } else if (axis === 'y') {
-        if (Math.abs(index - maxIndex) < epsilon) { char = 'U'; turns *= -1; }
-        else if (Math.abs(index + maxIndex) < epsilon) { char = 'D'; }
-        else char = 'E';
+        if (Math.abs(index - maxIndex) < epsilon) {
+            char = 'U';
+            turns *= -1;
+        } else if (Math.abs(index + maxIndex) < epsilon) {
+            char = 'D';
+        } else {
+            if (state.cubeSize % 2 !== 0 && Math.abs(index) < epsilon) {
+                char = 'E';
+            } else {
+                if (index > 0) {
+                    let depth = Math.round(maxIndex - index + 1);
+                    char = depth + 'U';
+                    turns *= -1;
+                } else {
+                    let depth = Math.round(maxIndex - Math.abs(index) + 1);
+                    char = depth + 'D';
+                }
+            }
+        }
     } else if (axis === 'z') {
-        if (Math.abs(index - maxIndex) < epsilon) { char = 'F'; turns *= -1; }
-        else if (Math.abs(index + maxIndex) < epsilon) { char = 'B'; }
-        else char = 'S';
+        if (Math.abs(index - maxIndex) < epsilon) {
+            char = 'F';
+            turns *= -1;
+        } else if (Math.abs(index + maxIndex) < epsilon) {
+            char = 'B';
+        } else {
+            if (state.cubeSize % 2 !== 0 && Math.abs(index) < epsilon) {
+                char = 'S';
+                turns *= -1;
+            } else {
+                if (index > 0) {
+                    let depth = Math.round(maxIndex - index + 1);
+                    char = depth + 'F';
+                    turns *= -1;
+                } else {
+                    let depth = Math.round(maxIndex - Math.abs(index) + 1);
+                    char = depth + 'B';
+                }
+            }
+        }
     }
-
-    // For larger cubes, just use coordinate? Or skip.
-    // The user only sees this on the win screen.
 
     let suffix = '';
     if (Math.abs(turns) === 2) suffix = '2';
@@ -250,6 +304,7 @@ export function hardReset(keepCamera = false) {
     state.isAutoSolving = false;
     state.moveHistory = [];
     state.scrambleSequence = [];
+    state.hasBeenScrambled = false;
     updateHistoryUI();
 
     state.pivot.rotation.set(0, 0, 0);
