@@ -222,15 +222,18 @@ export function logMove(axis, sliceVal, turns) {
     // turns: number of 90 deg turns (1, -1, 2)
 
     const S = CUBE_SIZE + SPACING;
-    const maxIndex = (state.cubeSize - 1) / 2;
     const epsilon = 0.1;
+
+    // Use activeDimensions to get the correct dimension for this axis
+    const dims = state.activeDimensions || state.cubeDimensions;
+    const axisDim = dims[axis];
+    const maxIndex = (axisDim - 1) / 2;
 
     let char = '';
     let notationTurns = turns;
 
     // Determine layer index
     // sliceVal ranges from -maxIndex*S to +maxIndex*S
-    // Don't round here - keep decimal precision for epsilon comparisons
     let index = sliceVal / S;
 
     if (state.isBackgroundDrag) {
@@ -246,30 +249,12 @@ export function logMove(axis, sliceVal, turns) {
                 notationTurns *= -1; // R is -X rotation
             } else if (Math.abs(index + maxIndex) < epsilon) {
                 char = 'L';
-                // L is +X rotation, so turns is correct
             } else {
                 // Inner slice
-                if (state.cubeSize % 2 !== 0 && Math.abs(index) < epsilon) {
+                if (axisDim % 2 !== 0 && Math.abs(index) < epsilon) {
                     char = 'M'; // True middle
-                    // M follows L direction (L is +X)
-                    // If we rotate +X (turns=1), M is M' (down)? No, M follows L.
-                    // Standard: M is same direction as L.
-                    // L is +X. So +X rotation is L.
-                    // So +X rotation is M.
-                    // Wait, standard M is defined as following L?
-                    // WCA: M follows L.
-                    // L is +X (in our system, L face is -X, looking at it, CW is +X rotation).
-                    // So M (CW) is +X rotation.
-                    // Our turns=1 is +X rotation.
-                    // So turns is correct for M.
                 } else {
                     // Numbered slice
-                    // If index > 0, it's on R side. Depth = maxIndex - index + 1.
-                    // If index < 0, it's on L side. Depth = maxIndex - |index| + 1.
-                    // Actually, standard notation usually counts from the nearest face.
-                    // 2R is the slice adjacent to R.
-                    // 2L is the slice adjacent to L.
-
                     if (index > 0) {
                         // Closer to R
                         let depth = Math.round(maxIndex - index + 1);
@@ -279,7 +264,6 @@ export function logMove(axis, sliceVal, turns) {
                         // Closer to L
                         let depth = Math.round(maxIndex - Math.abs(index) + 1);
                         char = depth + 'L';
-                        // Follows L direction (turns is correct)
                     }
                 }
             }
@@ -289,15 +273,9 @@ export function logMove(axis, sliceVal, turns) {
                 notationTurns *= -1; // U is -Y rotation
             } else if (Math.abs(index + maxIndex) < epsilon) {
                 char = 'D';
-                // D is +Y rotation
             } else {
-                if (state.cubeSize % 2 !== 0 && Math.abs(index) < epsilon) {
+                if (axisDim % 2 !== 0 && Math.abs(index) < epsilon) {
                     char = 'E';
-                    // E follows D direction?
-                    // WCA: E follows D.
-                    // D is +Y. So +Y is E.
-                    // Our turns=1 is +Y.
-                    // So turns is correct.
                 } else {
                     if (index > 0) {
                         // Closer to U
@@ -317,14 +295,9 @@ export function logMove(axis, sliceVal, turns) {
                 notationTurns *= -1; // F is -Z rotation
             } else if (Math.abs(index + maxIndex) < epsilon) {
                 char = 'B';
-                // B is +Z rotation
             } else {
-                if (state.cubeSize % 2 !== 0 && Math.abs(index) < epsilon) {
+                if (axisDim % 2 !== 0 && Math.abs(index) < epsilon) {
                     char = 'S';
-                    // S follows F direction.
-                    // F is -Z.
-                    // Our turns=1 is +Z.
-                    // So we need to invert turns for S.
                     notationTurns *= -1;
                 } else {
                     if (index > 0) {
