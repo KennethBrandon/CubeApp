@@ -230,7 +230,8 @@ export function logMove(axis, sliceVal, turns) {
 
     // Determine layer index
     // sliceVal ranges from -maxIndex*S to +maxIndex*S
-    let index = Math.round(sliceVal / S);
+    // Don't round here - keep decimal precision for epsilon comparisons
+    let index = sliceVal / S;
 
     if (state.isBackgroundDrag) {
         // Whole cube rotations
