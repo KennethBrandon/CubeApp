@@ -6,6 +6,7 @@ import { createCube } from '../core/cube.js';
 import { adjustCameraForCubeSize } from '../core/controls.js';
 import { createEnvironment, createMirrors } from '../core/environment.js';
 import { updateHistoryUI } from '../ui/ui.js';
+import { soundManager } from '../core/sound.js';
 
 export function startScramble() {
     if (state.isAnimating) return;
@@ -179,6 +180,7 @@ function getScrambleNotation(axis, sliceVal, dir) {
 
 export function handleResetClick() {
     if (state.isAutoSolving || state.isScrambling || (state.moveHistory.length === 0 && state.scrambleSequence.length === 0)) {
+        soundManager.playResetSound();
         hardReset(true); // Keep camera on manual reset
     } else {
         startReverseSolve();

@@ -2,11 +2,13 @@ import * as THREE from 'three';
 import { state } from '../shared/state.js';
 import { CUBE_SIZE, SPACING } from '../shared/constants.js';
 import { animateVictory } from '../animations/victory.js';
+import { soundManager } from '../core/sound.js';
 
 export function startInspection() {
     state.isGameActive = true;
     state.isInspection = true;
     state.inspectionTimeLeft = 15;
+    state.lastInspectionBeep = 16; // Reset beep tracker
 
     const timerLabel = document.getElementById('timer-label');
     const timerDisplay = document.getElementById('timer');
@@ -22,6 +24,19 @@ export function startInspection() {
 
     state.inspectionInterval = setInterval(() => {
         state.inspectionTimeLeft--;
+        const secondsLeft = state.inspectionTimeLeft;
+
+        // Sound logic for countdown
+        if (secondsLeft <= 3 && secondsLeft > 0) {
+            const lastBeep = state.lastInspectionBeep || 16;
+            if (secondsLeft < lastBeep) {
+                soundManager.playCountdownBeep(false);
+                state.lastInspectionBeep = secondsLeft;
+            }
+        } else if (secondsLeft === 0) {
+            soundManager.playCountdownBeep(true); // Final beep
+        }
+
         if (state.inspectionTimeLeft > 0) {
             if (timerDisplay) timerDisplay.textContent = state.inspectionTimeLeft;
         } else {

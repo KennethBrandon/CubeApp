@@ -4,6 +4,7 @@ import { ANIMATION_SPEED, SNAP_SPEED, CUBE_SIZE, SPACING } from '../shared/const
 import { addToHistory } from '../ui/ui.js';
 import { checkSolved } from './timer.js';
 import { getCubiesInSlice } from '../core/cube.js';
+import { soundManager } from '../core/sound.js';
 
 export function queueMove(axis, direction, duration = ANIMATION_SPEED, sliceVal = null) {
     state.moveQueue.push({ axis, direction, duration, sliceVal });
@@ -140,6 +141,8 @@ export function finishMove(turns, axisVectorOrAxis, sliceVal) {
 
     state.pivot.rotation.set(0, 0, 0);
     state.isAnimating = false;
+
+    soundManager.playMoveSound();
 
     // Log move if it was a manual drag (turns is number of turns)
     // If it came from performMove, it's already logged or part of a sequence
