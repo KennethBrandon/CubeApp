@@ -18,6 +18,7 @@ export const state = {
     cubeDimensions: { x: 3, y: 3, z: 3 },
     activeDimensions: { x: 3, y: 3, z: 3 },
     showMirrors: false,
+    backMirrorHeightOffset: 1.7,
 
     // Interaction State
     raycaster: new THREE.Raycaster(),

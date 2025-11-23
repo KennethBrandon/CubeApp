@@ -158,15 +158,15 @@ export function createMirrors() {
     const baseDistance = 3;
     const mirrorDistance = baseDistance * (state.cubeSize / 3);
 
-    mirrorBackRight.position.set(-mirrorDistance, 0, -mirrorDistance);
-    mirrorBackRight.lookAt(0, 0, 0);
+    mirrorBackRight.position.set(-mirrorDistance, state.backMirrorHeightOffset, -mirrorDistance);
+    mirrorBackRight.lookAt(0, state.backMirrorHeightOffset, 0);
     mirrorBackRight.userData.isMirror = true;
     mirrorBackRight.visible = state.showMirrors;
     state.scene.add(mirrorBackRight);
 
     const frameBackRight = new THREE.Mesh(frameGeometry, frameMaterial);
     frameBackRight.position.copy(mirrorBackRight.position);
-    frameBackRight.rotation.copy(mirrorBackRight.rotation);
+    frameBackRight.lookAt(0, state.backMirrorHeightOffset, 0);
     frameBackRight.userData.isMirror = true;
     frameBackRight.visible = state.showMirrors;
     state.scene.add(frameBackRight);
@@ -219,5 +219,35 @@ function updateMirrorButtonState() {
             btn.classList.remove('bg-blue-700', 'hover:bg-blue-600');
             btn.classList.add('bg-gray-600', 'hover:bg-gray-500');
         }
+    }
+}
+
+export function updateBackMirrorHeight(offset) {
+    state.backMirrorHeightOffset = offset;
+    state.scene.traverse(obj => {
+        if (obj.userData.isMirror && obj.position.x < 0 && obj.position.z < 0) { // Identify back mirror by position
+            // We need to be careful not to move the bottom mirror which is at 0, y, 0
+            // Back mirror is at -dist, y, -dist
+            if (Math.abs(obj.position.x) > 0.1 && Math.abs(obj.position.z) > 0.1) {
+                obj.position.y = offset;
+                obj.lookAt(0, offset, 0);
+            }
+        }
+    });
+}
+
+export function getMirrorHeight(size) {
+    // 2x2 -> 1.0
+    // 3x3 -> 1.7
+    // 17x17 -> 5.0
+
+    if (size <= 3) {
+        // Interpolate between 2 (1.0) and 3 (1.7)
+        const t = (size - 2) / (3 - 2);
+        return 1.0 + t * (1.7 - 1.0);
+    } else {
+        // Interpolate between 3 (1.7) and 17 (5.0)
+        const t = (size - 3) / (17 - 3);
+        return 1.7 + t * (5.0 - 1.7);
     }
 }
