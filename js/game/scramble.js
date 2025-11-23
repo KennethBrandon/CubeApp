@@ -33,31 +33,31 @@ export function startScramble() {
         let axis, layerNum, sliceVal;
 
         // Avoid undoing previous move (same axis, same layer)
-        // Also avoid 3 moves on same axis/layer (redundant)
-        // Simple logic: just ensure different axis or different layer than last move
-
         do {
-            axis = axes[Math.floor(Math.random() * axes.length)];
-            const dim = state.cubeDimensions[axis];
-            const maxLayer = Math.floor((dim - 1) / 2);
-            // Random layer between -maxLayer and maxLayer
-            // But we need integer steps
-            // range: -maxLayer to maxLayer
-            const range = maxLayer * 2 + 1;
-            // Actually, layers are indices.
-            // If dim=3, indices: -1, 0, 1.
-            // If dim=2, indices: -0.5, 0.5? No, our loop uses offsets.
-            // In createCube:
-            // dim=3 -> offsetX=1. x loops -1, 0, 1.
-            // dim=2 -> offsetX=0.5. x loops -0.5, 0.5.
+            // Weight axis selection by number of layers to ensure uniform distribution
+            // For a 2x2x3, we want each layer to have equal probability of being selected
+            const totalLayers = state.cubeDimensions.x + state.cubeDimensions.y + state.cubeDimensions.z;
+            const rand = Math.random() * totalLayers;
 
-            // So we need to pick a valid coordinate.
-            // Let's pick a random index from 0 to dim-1.
-            const rawIndex = Math.floor(Math.random() * dim);
-            // Convert to coordinate
-            // coord = rawIndex - (dim-1)/2
-            sliceVal = (rawIndex - (dim - 1) / 2) * S;
-            layerNum = rawIndex;
+            if (rand < state.cubeDimensions.x) {
+                axis = 'x';
+                const dim = state.cubeDimensions.x;
+                const rawIndex = Math.floor(Math.random() * dim);
+                sliceVal = (rawIndex - (dim - 1) / 2) * S;
+                layerNum = rawIndex;
+            } else if (rand < state.cubeDimensions.x + state.cubeDimensions.y) {
+                axis = 'y';
+                const dim = state.cubeDimensions.y;
+                const rawIndex = Math.floor(Math.random() * dim);
+                sliceVal = (rawIndex - (dim - 1) / 2) * S;
+                layerNum = rawIndex;
+            } else {
+                axis = 'z';
+                const dim = state.cubeDimensions.z;
+                const rawIndex = Math.floor(Math.random() * dim);
+                sliceVal = (rawIndex - (dim - 1) / 2) * S;
+                layerNum = rawIndex;
+            }
 
         } while (axis === lastAxis && layerNum === lastLayer);
 

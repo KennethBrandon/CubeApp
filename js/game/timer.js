@@ -119,41 +119,56 @@ export function stopTimer() {
 export function checkSolved() {
     if (!state.isGameActive || state.isScrambling || state.moveHistory.length === 0 || state.isInspection || state.isAutoSolving || !state.hasBeenScrambled) return;
 
+    // Check all 6 directions for uniform colors
+    // This is rotation-invariant - it checks sticker orientations, not world positions
     const directions = [
-        { dir: new THREE.Vector3(1, 0, 0), axis: 'x', val: (state.cubeDimensions.x - 1) / 2 },
-        { dir: new THREE.Vector3(-1, 0, 0), axis: 'x', val: -(state.cubeDimensions.x - 1) / 2 },
-        { dir: new THREE.Vector3(0, 1, 0), axis: 'y', val: (state.cubeDimensions.y - 1) / 2 },
-        { dir: new THREE.Vector3(0, -1, 0), axis: 'y', val: -(state.cubeDimensions.y - 1) / 2 },
-        { dir: new THREE.Vector3(0, 0, 1), axis: 'z', val: (state.cubeDimensions.z - 1) / 2 },
-        { dir: new THREE.Vector3(0, 0, -1), axis: 'z', val: -(state.cubeDimensions.z - 1) / 2 }
+        new THREE.Vector3(1, 0, 0),   // Right
+        new THREE.Vector3(-1, 0, 0),  // Left
+        new THREE.Vector3(0, 1, 0),   // Top
+        new THREE.Vector3(0, -1, 0),  // Bottom
+        new THREE.Vector3(0, 0, 1),   // Front
+        new THREE.Vector3(0, 0, -1)   // Back
     ];
 
-    const epsilon = 0.5;
     let isAllSolved = true;
 
-    for (const face of directions) {
-        const faceCubies = state.allCubies.filter(c => Math.abs(c.position[face.axis] - (face.val * (CUBE_SIZE + SPACING))) < epsilon);
+    for (const faceDir of directions) {
         let faceColorHex = null;
-        for (const group of faceCubies) {
-            let stickerColor = null;
+        let stickerCount = 0;
+
+        // Check all cubies for stickers facing this direction
+        for (const group of state.allCubies) {
             for (const child of group.children) {
                 if (child.userData.isSticker) {
+                    // Calculate the sticker's world-space normal
                     const normal = new THREE.Vector3(0, 0, 1);
                     normal.applyQuaternion(child.quaternion);
                     normal.applyQuaternion(group.quaternion);
-                    if (normal.dot(face.dir) > 0.9) {
-                        stickerColor = child.material.uniforms.color.value.getHex();
-                        break;
+
+                    // Check if this sticker is facing the current direction
+                    const dotProduct = normal.dot(faceDir);
+                    if (dotProduct > 0.9) {
+                        const stickerColor = child.material.uniforms.color.value.getHex();
+                        stickerCount++;
+
+                        if (faceColorHex === null) {
+                            faceColorHex = stickerColor;
+                        } else if (faceColorHex !== stickerColor) {
+                            // Found a sticker facing this direction with a different color
+                            isAllSolved = false;
+                            break;
+                        }
                     }
                 }
             }
-            if (stickerColor === null) continue;
-            if (faceColorHex === null) faceColorHex = stickerColor;
-            else if (faceColorHex !== stickerColor) {
-                isAllSolved = false;
-                break;
-            }
+            if (!isAllSolved) break;
         }
+
+        // Each face must have at least one sticker
+        if (stickerCount === 0) {
+            isAllSolved = false;
+        }
+
         if (!isAllSolved) break;
     }
 
