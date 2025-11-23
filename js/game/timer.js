@@ -67,7 +67,7 @@ export function stopTimer() {
 }
 
 export function checkSolved() {
-    if (!state.isGameActive || state.isScrambling || state.moveHistory.length === 0 || state.isInspection || state.isAutoSolving) return;
+    if (!state.isGameActive || state.isScrambling || state.moveHistory.length === 0 || state.isInspection || state.isAutoSolving || !state.hasBeenScrambled) return;
 
     const directions = [
         { dir: new THREE.Vector3(1, 0, 0), axis: 'x', val: (state.cubeDimensions.x - 1) / 2 },
