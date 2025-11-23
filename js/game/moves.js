@@ -135,7 +135,9 @@ export function finishMove(turns, axisVectorOrAxis, sliceVal) {
     state.pivot.rotation.set(0, 0, 0);
     state.isAnimating = false;
 
-    soundManager.playMoveSound();
+    if (sliceVal !== Infinity) {
+        soundManager.playMoveSound();
+    }
 
     // Log move if it was a manual drag (turns is number of turns)
     // If it came from performMove, it's already logged or part of a sequence
