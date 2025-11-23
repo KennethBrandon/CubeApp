@@ -29,9 +29,7 @@ A beautiful, interactive 3D Rubik's Cube puzzle game built with Three.js and Fir
 
 ## Live Demo
 
-🎮 **[Play Now on GitHub Pages](https://[your-username].github.io/CubeApp/)**
-
-*(Update the URL above after deploying to GitHub Pages)*
+🎮 **[Play Now on GitHub Pages](https://kennethbrandon.github.io/CubeApp/)**
 
 ## Deployment to GitHub Pages
 
