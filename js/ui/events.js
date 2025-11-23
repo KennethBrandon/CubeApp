@@ -8,6 +8,7 @@ import { playCubeAnimation } from '../animations/transitions.js';
 import { adjustCameraForCubeSize } from '../core/controls.js';
 import { onWindowResize, updateZoomDisplay } from '../core/scene.js';
 import { onKeyDown } from '../game/moves.js';
+import { soundManager } from '../core/sound.js';
 
 export function setupUIEventListeners() {
     window.addEventListener('resize', onWindowResize);
@@ -32,6 +33,30 @@ export function setupUIEventListeners() {
             hardReset(true);
         }, 500);
     });
+
+    const btnToggleSound = document.getElementById('btn-toggle-sound');
+    if (btnToggleSound) {
+        // Set initial state
+        updateSoundButton(btnToggleSound);
+
+        btnToggleSound.addEventListener('click', () => {
+            soundManager.toggleMute();
+            updateSoundButton(btnToggleSound);
+            // Also init on click if not already
+            soundManager.init();
+        });
+    }
+
+    // Initialize audio context on first interaction
+    const initAudio = () => {
+        soundManager.init();
+        window.removeEventListener('click', initAudio);
+        window.removeEventListener('keydown', initAudio);
+        window.removeEventListener('touchstart', initAudio);
+    };
+    window.addEventListener('click', initAudio);
+    window.addEventListener('keydown', initAudio);
+    window.addEventListener('touchstart', initAudio);
 
     // Leaderboard Listeners
     document.getElementById('btn-leaderboard').addEventListener('click', () => {
@@ -208,6 +233,18 @@ export function setupUIEventListeners() {
 
         submitScore(name, state.finalTimeMs, timeStr, scramble, solution);
     });
+}
+
+function updateSoundButton(btn) {
+    if (soundManager.isMuted) {
+        btn.innerHTML = '<span class="text-lg">🔇</span>';
+        btn.classList.remove('bg-green-700', 'hover:bg-green-600');
+        btn.classList.add('bg-gray-600', 'hover:bg-gray-500');
+    } else {
+        btn.innerHTML = '<span class="text-lg">🔊</span>';
+        btn.classList.remove('bg-gray-600', 'hover:bg-gray-500');
+        btn.classList.add('bg-green-700', 'hover:bg-green-600');
+    }
 }
 
 function updateActivePuzzleTab(puzzleSize) {

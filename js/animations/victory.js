@@ -2,8 +2,10 @@ import { state } from '../shared/state.js';
 import { triggerConfetti } from './confetti.js';
 import { showWinModal } from '../ui/ui.js';
 import { performMove } from '../game/moves.js';
+import { soundManager } from '../core/sound.js';
 
 export function animateVictory() {
+    soundManager.playVictorySound();
     triggerConfetti();
     playSolveAnimation(() => {
         setTimeout(() => {
