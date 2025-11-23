@@ -1,6 +1,6 @@
 import { state } from '../shared/state.js';
 import { startScramble, handleResetClick, hardReset } from '../game/scramble.js';
-import { toggleMirrors } from '../core/environment.js';
+import { toggleMirrors, updateBackMirrorHeight, getMirrorHeight } from '../core/environment.js';
 import { playSolveAnimation, animateVictory } from '../animations/victory.js';
 import { showWinModal, togglePanel, openDetailModal, updateHistoryUI } from './ui.js';
 import { submitScore, fetchLeaderboard } from '../leaderboard/firebase.js';
@@ -93,6 +93,17 @@ export function setupUIEventListeners() {
         playCubeAnimation(false, () => {
             state.cubeSize = newSize;
             state.cubeDimensions = newDims;
+
+            // Update mirror height based on new size
+            const newHeight = getMirrorHeight(newSize);
+            state.backMirrorHeightOffset = newHeight;
+
+            // Update UI controls
+            const slider = document.getElementById('mirror-height-slider');
+            const input = document.getElementById('mirror-height-value');
+            if (slider) slider.value = newHeight;
+            if (input) input.value = newHeight.toFixed(1);
+
             hardReset(true);
             adjustCameraForCubeSize(zoomRatio);
             playCubeAnimation(true);
@@ -116,15 +127,33 @@ export function setupUIEventListeners() {
         }
     });
 
-    document.getElementById('toggle-zoom-bar').addEventListener('change', (e) => {
-        const zoomBar = document.getElementById('zoom-bar');
-        if (e.target.checked) {
-            zoomBar.classList.remove('hidden');
+    const updateFloatingControlsVisibility = () => {
+        const zoomVisible = document.getElementById('toggle-zoom-bar').checked;
+        const mirrorVisible = document.getElementById('toggle-mirror-slider').checked;
+        const container = document.getElementById('floating-controls');
+
+        if (zoomVisible || mirrorVisible) {
+            container.classList.remove('hidden');
+        } else {
+            container.classList.add('hidden');
+        }
+
+        if (zoomVisible) {
+            document.getElementById('zoom-controls').classList.remove('hidden');
             updateZoomDisplay();
         } else {
-            zoomBar.classList.add('hidden');
+            document.getElementById('zoom-controls').classList.add('hidden');
         }
-    });
+
+        if (mirrorVisible) {
+            document.getElementById('mirror-controls').classList.remove('hidden');
+        } else {
+            document.getElementById('mirror-controls').classList.add('hidden');
+        }
+    };
+
+    document.getElementById('toggle-zoom-bar').addEventListener('change', updateFloatingControlsVisibility);
+    document.getElementById('toggle-mirror-slider').addEventListener('change', updateFloatingControlsVisibility);
 
     document.getElementById('btn-test-victory').addEventListener('click', () => {
         document.getElementById('debug-modal').classList.add('hidden');
@@ -149,6 +178,21 @@ export function setupUIEventListeners() {
         state.camera.position.copy(direction.multiplyScalar(value));
         document.getElementById('zoom-slider').value = value;
         updateZoomDisplay();
+    });
+
+    document.getElementById('mirror-height-slider').addEventListener('input', (e) => {
+        const value = parseFloat(e.target.value);
+        updateBackMirrorHeight(value);
+        document.getElementById('mirror-height-value').value = value.toFixed(1);
+    });
+
+    document.getElementById('mirror-height-value').addEventListener('change', (e) => {
+        let value = parseFloat(e.target.value);
+        if (isNaN(value)) value = 0;
+        value = Math.max(-10, Math.min(10, value)); // Clamp to slider range
+        updateBackMirrorHeight(value);
+        document.getElementById('mirror-height-slider').value = value;
+        e.target.value = value.toFixed(1);
     });
 
     document.getElementById('btn-submit-score').addEventListener('click', () => {

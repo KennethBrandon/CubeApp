@@ -309,6 +309,15 @@
                     </label>
                 </div>
                 <div class="flex items-center justify-between p-3 bg-gray-900/50 rounded-lg">
+                    <span class="text-gray-300">Show Mirror Slider</span>
+                    <label class="relative inline-block w-12 h-6">
+                        <input type="checkbox" id="toggle-mirror-slider" class="sr-only peer">
+                        <div
+                            class="w-12 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-6 peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600">
+                        </div>
+                    </label>
+                </div>
+                <div class="flex items-center justify-between p-3 bg-gray-900/50 rounded-lg">
                     <span class="text-gray-300">Test Victory</span>
                     <button id="btn-test-victory"
                         class="bg-green-600 hover:bg-green-500 text-white text-xs font-bold py-1 px-3 rounded transition">
@@ -325,14 +334,27 @@
         FPS: <span id="fps-value" class="text-green-400 font-bold">60</span>
     </div>
 
-    <!-- Zoom Bar (Below Title Bar) -->
-    <div id="zoom-bar"
-        class="hidden absolute top-32 left-1/2 transform -translate-x-1/2 z-10 bg-black/70 backdrop-blur-md border border-gray-700 rounded-lg px-4 py-3 flex items-center gap-4">
-        <label class="text-white text-sm font-medium">Zoom:</label>
-        <input type="range" id="zoom-slider" min="3" max="20" step="0.1" value="12"
-            class="w-64 h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-500">
-        <input type="text" id="zoom-value-input" value="12.0"
-            class="w-20 bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white text-sm font-mono text-center">
+    <!-- Floating Controls (Zoom & Mirror) -->
+    <div id="floating-controls"
+        class="hidden absolute top-32 left-1/2 transform -translate-x-1/2 z-10 bg-black/70 backdrop-blur-md border border-gray-700 rounded-lg px-4 py-3 flex flex-col gap-3 items-center">
+
+        <!-- Zoom Controls -->
+        <div id="zoom-controls" class="hidden flex items-center gap-4">
+            <label class="text-white text-sm font-medium w-12 text-right">Zoom:</label>
+            <input type="range" id="zoom-slider" min="3" max="20" step="0.1" value="12"
+                class="w-64 h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-500">
+            <input type="text" id="zoom-value-input" value="12.0"
+                class="w-20 bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white text-sm font-mono text-center">
+        </div>
+
+        <!-- Mirror Height Controls -->
+        <div id="mirror-controls" class="hidden flex items-center gap-4">
+            <label class="text-white text-sm font-medium w-12 text-right">Mirror:</label>
+            <input type="range" id="mirror-height-slider" min="-10" max="10" step="0.1" value="1.7"
+                class="w-64 h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-500">
+            <input type="text" id="mirror-height-value" value="1.7"
+                class="w-20 bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white text-sm font-mono text-center">
+        </div>
     </div>
 
     <div id="canvas-container"></div>
