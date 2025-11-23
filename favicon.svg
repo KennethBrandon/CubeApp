@@ -1,0 +1,17 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <g id="cube2x2">
+    <path d="M256 64L448 160L256 256L64 160L256 64Z" fill="#B71234"/>
+    <path d="M160 112L352 208" stroke="#000000" stroke-width="12"/>
+    <path d="M352 112L160 208" stroke="#000000" stroke-width="12"/>
+
+    <path d="M256 256L448 160V352L256 448V256Z" fill="#0046AD"/>
+    <path d="M352 208V400" stroke="#000000" stroke-width="12"/>
+    <path d="M256 352L448 256" stroke="#000000" stroke-width="12"/>
+
+    <path d="M256 256V448L64 352V160L256 256Z" fill="#FFD500"/>
+    <path d="M160 208V400" stroke="#000000" stroke-width="12"/>
+    <path d="M256 352L64 256" stroke="#000000" stroke-width="12"/>
+    
+    <path d="M256 64L448 160V352L256 448L64 352V160L256 64Z" stroke="black" stroke-width="8" stroke-linejoin="round" fill="none"/>
+  </g>
+</svg>
