@@ -323,6 +323,15 @@ export function logMove(axis, sliceVal, turns) {
 }
 
 export function onKeyDown(event) {
+    // Check if any modal is open
+    const modals = ['solved-modal', 'leaderboard-modal', 'detail-modal', 'debug-modal'];
+    const isModalOpen = modals.some(id => {
+        const el = document.getElementById(id);
+        return el && !el.classList.contains('hidden');
+    });
+
+    if (isModalOpen) return;
+
     if (state.isAnimating || state.isScrambling || state.isAutoSolving) return;
 
     const key = event.key.toUpperCase();
