@@ -14,8 +14,14 @@ export function setupUIEventListeners() {
     window.addEventListener('resize', onWindowResize);
     window.addEventListener('keydown', onKeyDown);
 
-    document.getElementById('btn-scramble').addEventListener('click', startScramble);
-    document.getElementById('btn-reset').addEventListener('click', handleResetClick);
+    document.getElementById('btn-scramble').addEventListener('click', () => {
+        gtag('event', 'scramble_click');
+        startScramble();
+    });
+    document.getElementById('btn-reset').addEventListener('click', () => {
+        gtag('event', 'reset_click');
+        handleResetClick();
+    });
 
     document.getElementById('btn-close-modal').addEventListener('click', () => {
         const modal = document.getElementById('solved-modal');
@@ -44,6 +50,7 @@ export function setupUIEventListeners() {
             updateSoundButton(btnToggleSound);
             // Also init on click if not already
             soundManager.init();
+            gtag('event', 'toggle_sound', { state: soundManager.isMuted ? 'off' : 'on' });
         });
     }
 
@@ -70,6 +77,7 @@ export function setupUIEventListeners() {
         fetchLeaderboard(state.selectedLeaderboardPuzzle);
         updateActivePuzzleTab(state.selectedLeaderboardPuzzle);
         document.getElementById('leaderboard-modal').classList.remove('hidden');
+        gtag('event', 'open_leaderboard', { puzzle: state.selectedLeaderboardPuzzle });
     });
 
     document.getElementById('btn-close-leaderboard').addEventListener('click', () => {
@@ -85,6 +93,7 @@ export function setupUIEventListeners() {
             state.selectedLeaderboardPuzzle = parsedPuzzle;
             fetchLeaderboard(parsedPuzzle);
             updateActivePuzzleTab(parsedPuzzle);
+            gtag('event', 'leaderboard_tab_click', { puzzle: parsedPuzzle });
         });
     });
 
@@ -133,10 +142,19 @@ export function setupUIEventListeners() {
             adjustCameraForCubeSize(zoomRatio);
             playCubeAnimation(true);
         });
+        gtag('event', 'puzzle_change', { puzzle_type: val });
     });
 
     document.getElementById('btn-toggle-mirrors').addEventListener('click', () => {
-        toggleMirrors(!state.showMirrors);
+        const newState = !state.showMirrors;
+        toggleMirrors(newState);
+        gtag('event', 'toggle_mirror', { state: newState ? 'on' : 'off' });
+    });
+
+    document.getElementById('btn-open-debug').addEventListener('click', (e) => {
+        e.stopPropagation();
+        document.getElementById('debug-modal').classList.remove('hidden');
+        gtag('event', 'open_debug');
     });
 
     document.getElementById('btn-close-debug').addEventListener('click', () => {
@@ -177,14 +195,21 @@ export function setupUIEventListeners() {
         }
     };
 
-    document.getElementById('toggle-zoom-bar').addEventListener('change', updateFloatingControlsVisibility);
-    document.getElementById('toggle-mirror-slider').addEventListener('change', updateFloatingControlsVisibility);
+    document.getElementById('toggle-zoom-bar').addEventListener('change', (e) => {
+        updateFloatingControlsVisibility();
+        gtag('event', 'toggle_controls_ui', { control: 'zoom', state: e.target.checked ? 'on' : 'off' });
+    });
+    document.getElementById('toggle-mirror-slider').addEventListener('change', (e) => {
+        updateFloatingControlsVisibility();
+        gtag('event', 'toggle_controls_ui', { control: 'mirror', state: e.target.checked ? 'on' : 'off' });
+    });
 
     document.getElementById('btn-test-victory').addEventListener('click', () => {
         document.getElementById('debug-modal').classList.add('hidden');
         setTimeout(() => {
             animateVictory();
         }, 1000);
+        gtag('event', 'test_victory');
     });
 
     document.getElementById('zoom-slider').addEventListener('input', (e) => {
