@@ -4,6 +4,7 @@ export function togglePanel(contentId, headerElement) {
     const content = document.getElementById(contentId);
     content.classList.toggle('collapsed');
     headerElement.classList.toggle('collapsed');
+    gtag('event', 'toggle_panel', { panel: contentId, state: content.classList.contains('collapsed') ? 'closed' : 'open' });
 }
 
 export function updateHistoryUI() {

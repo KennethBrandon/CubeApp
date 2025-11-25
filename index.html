@@ -8,6 +8,27 @@
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="assets/styles/main.css">
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-PBWS3T1BYZ"></script>
+    <script>
+        const prodDomains = ['kennethbrandon.github.io', 'cube.redkb.com'];
+        const isProd = prodDomains.includes(window.location.hostname);
+        const gaId = isProd ? 'G-PBWS3T1BYZ' : 'G-1L04D324RN';
+
+        // Load the correct script dynamically if not prod (since the default src above is prod)
+        if (!isProd) {
+            const script = document.querySelector('script[src*="googletagmanager.com"]');
+            if (script) script.src = `https://www.googletagmanager.com/gtag/js?id=${gaId}`;
+        }
+
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+
+        gtag('config', gaId);
+
+        console.log(`Analytics initialized in ${isProd ? 'PRODUCTION' : 'DEVELOPMENT'} mode with ID: ${gaId}`);
+    </script>
     <!-- Import Map for Three.js -->
     <script type="importmap">
         {
@@ -139,9 +160,8 @@
                         <span>D / Shift+D</span> <span class="text-right text-gray-500">Down</span>
                         <span>F / Shift+F</span> <span class="text-right text-gray-500">Front</span>
                         <span>B / Shift+B</span> <span class="text-right text-gray-500">Back</span>
-                        <span
-                            class="col-span-2 mt-1 pt-1 border-t border-gray-700 text-yellow-500 cursor-pointer hover:text-yellow-400"
-                            onclick="event.stopPropagation(); document.getElementById('debug-modal').classList.remove('hidden')">Arrows
+                        <span id="btn-open-debug"
+                            class="col-span-2 mt-1 pt-1 border-t border-gray-700 text-yellow-500 cursor-pointer hover:text-yellow-400">Arrows
                             to Rotate
                             View</span>
                     </div>
