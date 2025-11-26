@@ -71,9 +71,15 @@ export async function submitScore(name, timeMs, timeString, scramble, solution) 
     if (!state.currentUser || !name) return;
 
     // Determine puzzle type for this score
-    const puzzleSize = state.cubeDimensions.x === state.cubeDimensions.y && state.cubeDimensions.y === state.cubeDimensions.z
-        ? state.cubeSize
-        : `${state.cubeDimensions.x}x${state.cubeDimensions.y}x${state.cubeDimensions.z}`;
+    // Determine puzzle type for this score
+    let puzzleSize;
+    if (state.cubeDimensions.x === state.cubeDimensions.y && state.cubeDimensions.y === state.cubeDimensions.z) {
+        puzzleSize = state.cubeSize;
+    } else {
+        // Sort dimensions descending for consistency (e.g. 3x2x1)
+        const dims = [state.cubeDimensions.x, state.cubeDimensions.y, state.cubeDimensions.z].sort((a, b) => b - a);
+        puzzleSize = `${dims[0]}x${dims[1]}x${dims[2]}`;
+    }
 
     const puzzleType = typeof puzzleSize === 'string' ? puzzleSize : `${puzzleSize}x${puzzleSize}`;
 

@@ -1,6 +1,6 @@
 import { state } from '../shared/state.js';
 
-export function playCubeAnimation(reverse = false, onComplete = null) {
+export function playCubeAnimation(reverse = false, onComplete = null, fade = true) {
     state.isAnimating = true;
     state.pivot.rotation.set(0, 0, 0);
     state.pivot.position.set(0, 0, 0);
@@ -28,33 +28,35 @@ export function playCubeAnimation(reverse = false, onComplete = null) {
         state.pivot.position.y = jumpHeight * jumpEase;
 
         // Opacity Animation
-        let currentOpacity = 1.0;
-        if (!reverse) {
-            // Fading OUT (0 -> 1 progress)
-            if (progress > 0.5) {
-                currentOpacity = 1.0 - (progress - 0.5) * 2.0;
-            }
-        } else {
-            // Fading IN
-            if (effectiveProgress > 0.5) {
-                currentOpacity = (1.0 - effectiveProgress) * 2.0;
-            } else {
-                currentOpacity = 1.0;
-            }
-        }
-
-        // Apply opacity
-        state.allCubies.forEach(group => {
-            group.children.forEach(mesh => {
-                if (mesh.material) {
-                    if (mesh.userData.isSticker) {
-                        mesh.material.uniforms.opacity.value = currentOpacity;
-                    } else {
-                        mesh.material.opacity = currentOpacity;
-                    }
+        if (fade) {
+            let currentOpacity = 1.0;
+            if (!reverse) {
+                // Fading OUT (0 -> 1 progress)
+                if (progress > 0.5) {
+                    currentOpacity = 1.0 - (progress - 0.5) * 2.0;
                 }
+            } else {
+                // Fading IN
+                if (effectiveProgress > 0.5) {
+                    currentOpacity = (1.0 - effectiveProgress) * 2.0;
+                } else {
+                    currentOpacity = 1.0;
+                }
+            }
+
+            // Apply opacity
+            state.allCubies.forEach(group => {
+                group.children.forEach(mesh => {
+                    if (mesh.material) {
+                        if (mesh.userData.isSticker) {
+                            mesh.material.uniforms.opacity.value = currentOpacity;
+                        } else {
+                            mesh.material.opacity = currentOpacity;
+                        }
+                    }
+                });
             });
-        });
+        }
 
         if (progress < 1) {
             requestAnimationFrame(loop);
