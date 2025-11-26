@@ -286,8 +286,35 @@ export function setupUIEventListeners() {
         const select = document.getElementById('puzzle-select');
         let optionExists = false;
 
+        const isCube = dims[0] === dims[1] && dims[1] === dims[2];
+        const simpleCode = isCube ? dims[0].toString() : null;
+
+        // Helper to get sorted dims string from value
+        const getSortedDimsStr = (val) => {
+            if (!val || val === 'custom') return null;
+            if (val.includes('x')) {
+                return val.split('x').map(Number).sort((a, b) => b - a).join('x');
+            }
+            const n = parseInt(val);
+            return !isNaN(n) ? `${n}x${n}x${n}` : null;
+        };
+
+        const targetSorted = dims.join('x'); // dims is already sorted descending
+
         for (let i = 0; i < select.options.length; i++) {
-            if (select.options[i].value === puzzleCode) {
+            const optVal = select.options[i].value;
+            if (optVal === 'custom') continue;
+
+            // Direct match
+            if (optVal === puzzleCode || (simpleCode && optVal === simpleCode)) {
+                select.selectedIndex = i;
+                optionExists = true;
+                break;
+            }
+
+            // Permutation match
+            const optSorted = getSortedDimsStr(optVal);
+            if (optSorted === targetSorted) {
                 select.selectedIndex = i;
                 optionExists = true;
                 break;
