@@ -48,9 +48,9 @@ export function performMove(axisStr, direction, duration, sliceVal = null) {
             sliceVal = sliceIndex * S;
         }
 
-        if (['R', 'L', 'M', 'X'].includes(axisStr)) axisVector.set(1, 0, 0);
-        else if (['U', 'D', 'E', 'Y'].includes(axisStr)) axisVector.set(0, 1, 0);
-        else if (['F', 'B', 'S', 'Z'].includes(axisStr)) axisVector.set(0, 0, 1);
+        if (['R', 'L', 'M'].includes(axisStr)) axisVector.set(1, 0, 0);
+        else if (['U', 'D', 'E'].includes(axisStr)) axisVector.set(0, 1, 0);
+        else if (['F', 'B', 'S'].includes(axisStr)) axisVector.set(0, 0, 1);
 
         // Add to history
         let notation = axisStr;
@@ -59,12 +59,10 @@ export function performMove(axisStr, direction, duration, sliceVal = null) {
         if (['X', 'Y', 'Z'].includes(axisStr)) {
             notation = axisStr.toLowerCase();
             // No inversion needed if we negate the axis vector below
-        } else if (['x', 'y', 'z'].includes(axisStr)) {
-            notationDir *= -1;
         }
 
         // Check for layer prefix
-        if (sliceVal !== null && !['M', 'E', 'S', 'X', 'Y', 'Z', 'x', 'y', 'z'].includes(axisStr)) {
+        if (sliceVal !== null && !['M', 'E', 'S', 'X', 'Y', 'Z'].includes(axisStr)) {
             let layer = 1;
             // Reverse the logic from onKeyDown
             if (['R', 'U', 'F'].includes(axisStr)) {
