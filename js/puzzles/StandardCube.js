@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 import { Puzzle } from './Puzzle.js';
+import min2phase from '../lib/min2phase.js';
 import { state } from '../shared/state.js';
 import { CUBE_SIZE, SPACING, COLORS, CORE_COLOR, STICKER_BORDER_RADIUS, stickerVertexShader, stickerFragmentShader } from '../shared/constants.js';
 
@@ -249,7 +250,7 @@ export class StandardCube extends Puzzle {
         let notationTurns = turns;
         let index = sliceVal / S;
 
-        if (state.isBackgroundDrag) {
+        if (state.isBackgroundDrag && !state.isScrambling && !state.isAutoSolving) {
             if (axis === 'x') char = 'x';
             else if (axis === 'y') char = 'y';
             else if (axis === 'z') char = 'z';
@@ -296,7 +297,28 @@ export class StandardCube extends Puzzle {
         return char + suffix;
     }
 
-    getScramble(numMoves = 25) {
+    async getScramble(numMoves = 25) {
+        const dims = this.config.dimensions;
+        const isCubic = dims.x === dims.y && dims.y === dims.z;
+        // Only use WCA scrambles for 3x3 (min2phase is a 3x3 solver)
+        // 2x2 and others will fall back to the internal random move generator
+        const isWCA = isCubic && dims.x === 3;
+
+        if (isWCA) {
+            try {
+                min2phase.initFull(); // Ensure min2phase is initialized
+                const randomState = min2phase.randomCube();
+                const solution = min2phase.solve(randomState);
+                const scrambleString = this.invertScrambleString(solution);
+
+                console.log("Generated WCA Scramble (min2phase):", scrambleString);
+                return this.parseScrambleString(scrambleString);
+            } catch (e) {
+                console.warn("min2phase scramble generation failed, falling back to random moves", e);
+            }
+        }
+
+        // Fallback to existing random move logic
         let scrambleMoves = [];
         const axes = ['x', 'y', 'z'];
         const S = CUBE_SIZE + SPACING;
@@ -358,6 +380,85 @@ export class StandardCube extends Puzzle {
             scrambleMoves.push({ axis, dir, sliceVal });
         }
         return scrambleMoves;
+    }
+
+    parseScrambleString(scrambleString) {
+        const moves = [];
+        const parts = scrambleString.trim().split(/\s+/);
+        const S = CUBE_SIZE + SPACING;
+        const maxIndex = (state.activeDimensions.x - 1) / 2; // Assuming cubic for WCA
+
+        parts.forEach(part => {
+            // Parse notation: [prefix][char][suffix]
+            // e.g. R, R', R2, 2R, 2R'
+            let match = part.match(/^(\d*)([a-zA-Z])(.*)$/);
+            if (!match) return;
+
+            let prefix = match[1];
+            let char = match[2];
+            let suffix = match[3];
+
+            let dir = 1;
+            if (suffix.includes("'")) dir = -1; // Standard is -1 for '
+            if (suffix.includes("2")) dir = 2;
+
+            let axis = '';
+            if (['R', 'L'].includes(char.toUpperCase())) axis = 'x';
+            else if (['U', 'D'].includes(char.toUpperCase())) axis = 'y';
+            else if (['F', 'B'].includes(char.toUpperCase())) axis = 'z';
+
+            // Map face to slice index
+            // R = maxIndex, L = -maxIndex
+            // U = maxIndex, D = -maxIndex
+            // F = maxIndex, B = -maxIndex
+
+            let sliceIndex = 0;
+            if (['R', 'U', 'F'].includes(char)) {
+                sliceIndex = maxIndex;
+            } else {
+                sliceIndex = -maxIndex;
+            }
+
+            let internalDir = 0;
+
+            // Base direction for "Normal" (CW) turn of the face
+            // In my engine:
+            // R (slice > 0) -> dir=-1 is CW
+            // L (slice < 0) -> dir=1 is CW
+            // U (slice > 0) -> dir=-1 is CW
+            // D (slice < 0) -> dir=1 is CW
+            // F (slice > 0) -> dir=-1 is CW
+            // B (slice < 0) -> dir=1 is CW
+
+            if (['R', 'U', 'F'].includes(char)) {
+                internalDir = -1;
+            } else {
+                internalDir = 1;
+            }
+
+            // Apply modifier
+            if (dir === -1) internalDir *= -1; // ' reverses direction
+            if (dir === 2) internalDir = 2; // 2 is 2 (my engine handles 2 as 180)
+
+            // Wait, if dir is 2, sign doesn't matter for 180, but usually we use 2.
+            // My engine might expect 2 or -2?
+            // performMove: angle = direction * (Math.PI / 2).
+            // 2 * 90 = 180.
+
+            const sliceVal = sliceIndex * S;
+            moves.push({ axis, dir: internalDir, sliceVal });
+        });
+        return moves;
+    }
+
+    invertScrambleString(scramble) {
+        const moves = scramble.trim().split(/\s+/);
+        const invertedMoves = moves.reverse().map(move => {
+            if (move.endsWith("2")) return move;
+            if (move.endsWith("'")) return move.slice(0, -1);
+            return move + "'";
+        });
+        return invertedMoves.join(" ");
     }
 
     isFaceRectangular(axis) {
