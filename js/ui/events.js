@@ -7,13 +7,14 @@ import { submitScore, fetchLeaderboard } from '../leaderboard/firebase.js';
 import { playCubeAnimation } from '../animations/transitions.js';
 import { adjustCameraForCubeSize } from '../core/controls.js';
 import { onWindowResize, updateZoomDisplay } from '../core/scene.js';
-import { onKeyDown } from '../game/moves.js';
+import { onKeyDown, onKeyUp } from '../game/moves.js';
 import { soundManager } from '../core/sound.js';
 import { StandardCube } from '../puzzles/StandardCube.js';
 
 export function setupUIEventListeners() {
     window.addEventListener('resize', onWindowResize);
     window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
 
     document.getElementById('btn-scramble').addEventListener('click', () => {
         gtag('event', 'scramble_click');
