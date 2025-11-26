@@ -371,10 +371,23 @@ export function setupUIEventListeners() {
         gtag('event', 'toggle_mirror', { state: newState ? 'on' : 'off' });
     });
 
-    document.getElementById('btn-open-debug').addEventListener('click', (e) => {
-        e.stopPropagation();
-        document.getElementById('debug-modal').classList.remove('hidden');
-        gtag('event', 'open_debug');
+    // Debug Menu Cheat Code
+    const secretCode = 'debug';
+    let inputSequence = '';
+
+    window.addEventListener('keydown', (e) => {
+        // Ignore if typing in an input field
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+        inputSequence += e.key.toLowerCase();
+        if (inputSequence.length > secretCode.length) {
+            inputSequence = inputSequence.slice(-secretCode.length);
+        }
+        if (inputSequence === secretCode) {
+            document.getElementById('debug-modal').classList.remove('hidden');
+            gtag('event', 'open_debug_cheat');
+            inputSequence = '';
+        }
     });
 
     document.getElementById('btn-close-debug').addEventListener('click', () => {
