@@ -371,6 +371,14 @@
                     </label>
                 </div>
                 <div class="flex items-center justify-between p-3 bg-gray-900/50 rounded-lg">
+                    <span class="text-gray-300">Animation Speed (ms)</span>
+                    <div class="flex items-center gap-2">
+                        <input type="range" id="speed-slider" min="50" max="1000" step="10" value="140"
+                            class="w-24 h-1.5 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-500">
+                        <span id="speed-value" class="text-xs font-mono text-blue-400 w-8 text-right">140</span>
+                    </div>
+                </div>
+                <div class="flex items-center justify-between p-3 bg-gray-900/50 rounded-lg">
                     <span class="text-gray-300">Test Victory</span>
                     <button id="btn-test-victory"
                         class="bg-green-600 hover:bg-green-500 text-white text-xs font-bold py-1 px-3 rounded transition">
@@ -486,7 +494,7 @@
 }`, null, "rubiks-cube-app");
     </script>
 
-    <script type="module" src="js/app.js"></script>
+    <script type="module" src="js/app.js?v=1"></script>
 </body>
 
 </html>

@@ -19,6 +19,7 @@ export const state = {
     activeDimensions: { x: 3, y: 3, z: 3 },
     showMirrors: false,
     backMirrorHeightOffset: 1.7,
+    animationSpeed: 140,
 
     // Interaction State
     raycaster: new THREE.Raycaster(),

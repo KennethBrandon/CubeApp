@@ -6,7 +6,7 @@ import { checkSolved, startTimer } from './timer.js';
 import { getCubiesInSlice } from '../core/cube.js';
 import { soundManager } from '../core/sound.js';
 
-export function queueMove(axis, direction, duration = ANIMATION_SPEED, sliceVal = null) {
+export function queueMove(axis, direction, duration = state.animationSpeed, sliceVal = null) {
     state.moveQueue.push({ axis, direction, duration, sliceVal });
     processQueue();
 }
@@ -350,13 +350,13 @@ export function onKeyDown(event) {
         }
         queueMove(key, finalDir);
     } else if (event.key === 'ArrowRight') {
-        queueMove('y', -1, ANIMATION_SPEED, Infinity); // Rotate cube Y
+        queueMove('y', -1, state.animationSpeed, Infinity); // Rotate cube Y
     } else if (event.key === 'ArrowLeft') {
-        queueMove('y', 1, ANIMATION_SPEED, Infinity);
+        queueMove('y', 1, state.animationSpeed, Infinity);
     } else if (event.key === 'ArrowUp') {
-        queueMove('x', -1, ANIMATION_SPEED, Infinity);
+        queueMove('x', -1, state.animationSpeed, Infinity);
     } else if (event.key === 'ArrowDown') {
-        queueMove('x', 1, ANIMATION_SPEED, Infinity);
+        queueMove('x', 1, state.animationSpeed, Infinity);
     }
 }
 
