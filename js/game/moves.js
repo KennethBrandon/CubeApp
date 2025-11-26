@@ -29,21 +29,53 @@ export function performMove(axisStr, direction, duration, sliceVal = null) {
 
     // Handle named moves (R, L, U, D, F, B)
     const S = CUBE_SIZE + SPACING;
-    const maxIndex = (state.cubeSize - 1) / 2;
+    const dims = state.activeDimensions || state.cubeDimensions;
 
-    if (['R', 'L', 'U', 'D', 'F', 'B'].includes(axisStr)) {
-        let sliceIndex = 0;
-        if (['R', 'U', 'F'].includes(axisStr)) sliceIndex = maxIndex;
-        else sliceIndex = -maxIndex;
+    // Determine maxIndex based on axis
+    let maxIndex = 0;
+    if (axisStr === 'x' || ['R', 'L', 'M'].includes(axisStr)) maxIndex = (dims.x - 1) / 2;
+    else if (axisStr === 'y' || ['U', 'D', 'E'].includes(axisStr)) maxIndex = (dims.y - 1) / 2;
+    else if (axisStr === 'z' || ['F', 'B', 'S'].includes(axisStr)) maxIndex = (dims.z - 1) / 2;
+    else maxIndex = (state.cubeSize - 1) / 2; // Fallback
 
-        sliceVal = sliceIndex * S;
+    if (['R', 'L', 'U', 'D', 'F', 'B', 'M', 'E', 'S'].includes(axisStr)) {
+        if (sliceVal === null) {
+            let sliceIndex = 0;
+            if (['R', 'U', 'F'].includes(axisStr)) sliceIndex = maxIndex;
+            else if (['L', 'D', 'B'].includes(axisStr)) sliceIndex = -maxIndex;
+            else sliceIndex = 0; // M, E, S
 
-        if (axisStr === 'R' || axisStr === 'L') axisVector.set(1, 0, 0);
-        else if (axisStr === 'U' || axisStr === 'D') axisVector.set(0, 1, 0);
-        else if (axisStr === 'F' || axisStr === 'B') axisVector.set(0, 0, 1);
+            sliceVal = sliceIndex * S;
+        }
+
+        if (axisStr === 'R' || axisStr === 'L' || axisStr === 'M') axisVector.set(1, 0, 0);
+        else if (axisStr === 'U' || axisStr === 'D' || axisStr === 'E') axisVector.set(0, 1, 0);
+        else if (axisStr === 'F' || axisStr === 'B' || axisStr === 'S') axisVector.set(0, 0, 1);
 
         // Add to history
         let notation = axisStr;
+
+        // Check for layer prefix
+        if (sliceVal !== null && !['M', 'E', 'S'].includes(axisStr)) {
+            let layer = 1;
+            // Reverse the logic from onKeyDown
+            if (['R', 'U', 'F'].includes(axisStr)) {
+                // sliceVal = (maxIndex - (layer - 1)) * S
+                // sliceVal/S = maxIndex - layer + 1
+                // layer = maxIndex + 1 - sliceVal/S
+                layer = Math.round(maxIndex + 1 - sliceVal / S);
+            } else {
+                // sliceVal = (-maxIndex + (layer - 1)) * S
+                // sliceVal/S = -maxIndex + layer - 1
+                // layer = sliceVal/S + maxIndex + 1
+                layer = Math.round(sliceVal / S + maxIndex + 1);
+            }
+
+            if (layer > 1) {
+                notation = layer + notation;
+            }
+        }
+
         if (direction === -1) notation += "'";
         else if (direction === 2) notation += "2";
         addToHistory(notation, false);
@@ -58,24 +90,25 @@ export function performMove(axisStr, direction, duration, sliceVal = null) {
 
     // Generic slice selection
     if (sliceVal !== null) {
-        cubies = getCubiesInSlice(axisStr === 'x' || axisStr === 'R' || axisStr === 'L' ? 'x' :
-            (axisStr === 'y' || axisStr === 'U' || axisStr === 'D' ? 'y' : 'z'), sliceVal);
+        cubies = getCubiesInSlice(axisStr === 'x' || axisStr === 'R' || axisStr === 'L' || axisStr === 'M' ? 'x' :
+            (axisStr === 'y' || axisStr === 'U' || axisStr === 'D' || axisStr === 'E' ? 'y' : 'z'), sliceVal);
 
-        // Adjust rotation axis based on slice position for standard feel
-        // If we are rotating a positive slice (R, U, F), we want standard direction.
-        // If we are rotating a negative slice (L, D, B), we might need to invert?
-        // Standard Rubik's notation:
-        // R is clockwise looking at R face.
-        // L is clockwise looking at L face.
-        // If we rotate around X axis:
-        // R is rotation around -X (if R face is +X).
-        // L is rotation around +X (if L face is -X).
+        // Adjust rotation axis based on Face Polarity
+        // R, U, F are "Positive Faces" but their rotation is defined as Clockwise, 
+        // which corresponds to NEGATIVE rotation around their respective positive axes (Right Hand Rule).
+        // L, D, B are "Negative Faces" and their Clockwise rotation corresponds to POSITIVE rotation around their axes (or rather, around the main axis).
+        // S follows F (Positive Face logic), so it needs negation.
 
-        // If sliceVal > 0 (R), and we rotate around (1,0,0) with positive angle -> Counter-Clockwise looking at R.
-        // So R (clockwise) needs negative angle or negative axis.
-
-        if (sliceVal > 0) {
+        if (['R', 'U', 'F', 'S'].includes(axisStr)) {
             axisVector.negate();
+        } else if (['L', 'D', 'B', 'M', 'E'].includes(axisStr)) {
+            // Do nothing, standard axis direction is correct for L, D, B, M, E
+        } else {
+            // Fallback for generic 'x', 'y', 'z' moves (e.g. from arrow keys or other sources)
+            // If sliceVal > 0, we assume it behaves like R/U/F
+            if (sliceVal > 0) {
+                axisVector.negate();
+            }
         }
     } else {
         // Whole cube rotation (M, E, S or similar)
@@ -322,6 +355,29 @@ export function logMove(axis, sliceVal, turns) {
     addToHistory(char + suffix, false);
 }
 
+const heldKeys = new Set();
+
+const keyAliases = {
+    '1': '!', '!': '1',
+    '2': '@', '@': '2',
+    '3': '#', '#': '3',
+    '4': '$', '$': '4',
+    '5': '%', '%': '5',
+    '6': '^', '^': '6',
+    '7': '&', '&': '7',
+    '8': '*', '*': '8',
+    '9': '(', '(': '9',
+    '0': ')', ')': '0'
+};
+
+export function onKeyUp(event) {
+    const k = event.key;
+    heldKeys.delete(k);
+    heldKeys.delete(k.toLowerCase());
+    heldKeys.delete(k.toUpperCase());
+    if (keyAliases[k]) heldKeys.delete(keyAliases[k]);
+}
+
 export function onKeyDown(event) {
     // Check if any modal is open
     const modals = ['solved-modal', 'leaderboard-modal', 'detail-modal', 'debug-modal'];
@@ -334,29 +390,64 @@ export function onKeyDown(event) {
 
     if (state.isAnimating || state.isScrambling || state.isAutoSolving) return;
 
-    const key = event.key.toUpperCase();
+    const key = event.key;
+    heldKeys.add(key);
+    heldKeys.add(key.toLowerCase());
+    heldKeys.add(key.toUpperCase());
+
+    const upperKey = key.toUpperCase();
     const shift = event.shiftKey;
     const direction = shift ? -1 : 1;
 
-    if (['R', 'L', 'U', 'D', 'F', 'B'].includes(key)) {
+    if (['R', 'L', 'U', 'D', 'F', 'B', 'M', 'E', 'S'].includes(upperKey)) {
         let axis = '';
-        if (['R', 'L'].includes(key)) axis = 'x';
-        else if (['U', 'D'].includes(key)) axis = 'y';
-        else if (['F', 'B'].includes(key)) axis = 'z';
+        if (['R', 'L', 'M'].includes(upperKey)) axis = 'x';
+        else if (['U', 'D', 'E'].includes(upperKey)) axis = 'y';
+        else if (['F', 'B', 'S'].includes(upperKey)) axis = 'z';
 
         let finalDir = direction;
         if (isFaceRectangular(axis)) {
             finalDir = 2;
         }
-        queueMove(key, finalDir);
+
+        // Determine layer from held keys
+        let layer = 1;
+        if (heldKeys.has('0') || heldKeys.has(')')) layer = 10;
+        else if (heldKeys.has('9') || heldKeys.has('(')) layer = 9;
+        else if (heldKeys.has('8') || heldKeys.has('*')) layer = 8;
+        else if (heldKeys.has('7') || heldKeys.has('&')) layer = 7;
+        else if (heldKeys.has('6') || heldKeys.has('^')) layer = 6;
+        else if (heldKeys.has('5') || heldKeys.has('%')) layer = 5;
+        else if (heldKeys.has('4') || heldKeys.has('$')) layer = 4;
+        else if (heldKeys.has('3') || heldKeys.has('#')) layer = 3;
+        else if (heldKeys.has('2') || heldKeys.has('@')) layer = 2;
+
+        let sliceVal = null;
+        if (layer > 1 && !['M', 'E', 'S'].includes(upperKey)) {
+            const S = CUBE_SIZE + SPACING;
+            const dims = state.activeDimensions || state.cubeDimensions;
+            const axisDim = dims[axis];
+            const maxIndex = (axisDim - 1) / 2;
+
+            // Calculate slice index based on face polarity
+            // Positive Faces (R, U, F): Layer 1 is at maxIndex. Layer n is maxIndex - (n-1)
+            // Negative Faces (L, D, B): Layer 1 is at -maxIndex. Layer n is -maxIndex + (n-1)
+            if (['R', 'U', 'F'].includes(upperKey)) {
+                sliceVal = (maxIndex - (layer - 1)) * S;
+            } else {
+                sliceVal = (-maxIndex + (layer - 1)) * S;
+            }
+        }
+
+        queueMove(upperKey, finalDir, state.animationSpeed, sliceVal);
     } else if (event.key === 'ArrowRight') {
-        queueMove('y', -1, state.animationSpeed, Infinity); // Rotate cube Y
+        queueMove('y', -1, state.animationSpeed, Infinity); // Rotate cube Y (Right)
     } else if (event.key === 'ArrowLeft') {
-        queueMove('y', 1, state.animationSpeed, Infinity);
+        queueMove('y', 1, state.animationSpeed, Infinity); // Rotate cube Y' (Left)
     } else if (event.key === 'ArrowUp') {
-        queueMove('x', -1, state.animationSpeed, Infinity);
+        queueMove('x', 1, state.animationSpeed, Infinity); // Rotate cube x' (Up Arrow)
     } else if (event.key === 'ArrowDown') {
-        queueMove('x', 1, state.animationSpeed, Infinity);
+        queueMove('x', -1, state.animationSpeed, Infinity); // Rotate cube x (Down Arrow)
     }
 }
 
