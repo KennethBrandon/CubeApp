@@ -371,26 +371,55 @@ export function setupUIEventListeners() {
         const newState = !state.showMirrors;
         toggleMirrors(newState);
         gtag('event', 'toggle_mirror', { state: newState ? 'on' : 'off' });
+        handleDebugSequence('mirror');
     });
 
-    // Debug Menu Cheat Code
-    const secretCode = 'debug';
-    let inputSequence = '';
+    // Debug Menu Secret Sequence: Mirror -> Lock -> Mirror -> Lock -> Mirror -> Lock (3 cycles)
+    // Must be completed within 3 seconds
+    let lastDebugButton = null;
+    let lastDebugButtonTime = 0;
+    const DEBUG_TIMEOUT_MS = 3000;
 
-    window.addEventListener('keydown', (e) => {
-        // Ignore if typing in an input field
-        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    function handleDebugSequence(buttonType) {
+        const now = Date.now();
 
-        inputSequence += e.key.toLowerCase();
-        if (inputSequence.length > secretCode.length) {
-            inputSequence = inputSequence.slice(-secretCode.length);
+        // Check if timeout has expired
+        if (now - lastDebugButtonTime > DEBUG_TIMEOUT_MS) {
+            state.debugSequenceCount = 0;
+            lastDebugButton = null;
         }
-        if (inputSequence === secretCode) {
+
+        lastDebugButtonTime = now;
+
+        // Expected pattern: alternating mirror and lock
+        if (buttonType === 'mirror') {
+            if (lastDebugButton === 'lock' || lastDebugButton === null) {
+                state.debugSequenceCount++;
+                lastDebugButton = 'mirror';
+            } else {
+                // Same button twice in a row, reset
+                state.debugSequenceCount = 1;
+                lastDebugButton = 'mirror';
+            }
+        } else if (buttonType === 'lock') {
+            if (lastDebugButton === 'mirror') {
+                state.debugSequenceCount++;
+                lastDebugButton = 'lock';
+            } else {
+                // Same button twice or lock first, reset
+                state.debugSequenceCount = 0;
+                lastDebugButton = null;
+            }
+        }
+
+        // Check if sequence is complete (6 taps = 3 complete cycles)
+        if (state.debugSequenceCount >= 6) {
             document.getElementById('debug-modal').classList.remove('hidden');
-            gtag('event', 'open_debug_cheat');
-            inputSequence = '';
+            gtag('event', 'open_debug_sequence');
+            state.debugSequenceCount = 0;
+            lastDebugButton = null;
         }
-    });
+    }
 
     document.getElementById('btn-close-debug').addEventListener('click', () => {
         document.getElementById('debug-modal').classList.add('hidden');
@@ -475,6 +504,7 @@ export function setupUIEventListeners() {
             animateWrapperReset();
         }
         gtag('event', 'toggle_free_rotation', { state: state.freeRotation ? 'on' : 'off' });
+        handleDebugSequence('lock');
     });
 
     document.getElementById('toggle-free-rotation').addEventListener('change', (e) => {
