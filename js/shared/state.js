@@ -20,6 +20,7 @@ export const state = {
     showMirrors: false,
     backMirrorHeightOffset: 1.7,
     animationSpeed: 140,
+    freeRotation: true,
 
     // Interaction State
     raycaster: new THREE.Raycaster(),
@@ -37,6 +38,7 @@ export const state = {
     isBackgroundDrag: false,
     dragInputAxis: null,
     isRightZone: false,
+    activeKeys: new Set(),
 
     // Timer State
     startTime: 0,
@@ -56,5 +58,6 @@ export const state = {
     selectedLeaderboardPuzzle: null,
 
     // Active Puzzle Implementation
-    activePuzzle: null
+    activePuzzle: null,
+    cubeWrapper: null
 };

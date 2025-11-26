@@ -103,6 +103,11 @@
                     title="Leaderboard">
                     <span class="text-lg">🏆</span>
                 </button>
+                <button id="btn-toggle-axis-lock"
+                    class="bg-orange-700 hover:bg-orange-600 text-white p-2 rounded transition shadow-lg active:transform active:scale-95"
+                    title="Enable Free Rotation">
+                    <span class="text-lg">🔒</span>
+                </button>
                 <div class="w-px bg-gray-600 mx-1"></div>
                 <button id="btn-scramble"
                     class="bg-yellow-600 hover:bg-yellow-500 text-white text-sm font-bold py-2 px-4 rounded transition shadow-lg active:transform active:scale-95">
@@ -381,6 +386,15 @@
                         class="bg-green-600 hover:bg-green-500 text-white text-xs font-bold py-1 px-3 rounded transition">
                         Play
                     </button>
+                </div>
+                <div class="flex items-center justify-between p-3 bg-gray-900/50 rounded-lg">
+                    <span class="text-gray-300">Free Rotation</span>
+                    <label class="relative inline-block w-12 h-6">
+                        <input type="checkbox" id="toggle-free-rotation" class="sr-only peer">
+                        <div
+                            class="w-12 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-6 peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600">
+                        </div>
+                    </label>
                 </div>
                 <div class="flex items-center justify-between p-3 bg-gray-900/50 rounded-lg">
                     <span class="text-gray-300">Custom Puzzle</span>

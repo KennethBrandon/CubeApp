@@ -125,7 +125,7 @@ export function performMove(axisStr, direction, duration, sliceVal = null) {
 
     state.pivot.rotation.set(0, 0, 0);
     state.pivot.position.set(0, 0, 0);
-    state.scene.add(state.pivot);
+    state.cubeWrapper.add(state.pivot);
     cubies.forEach(c => state.pivot.attach(c));
 
     const targetAngle = direction * (Math.PI / 2);
@@ -152,10 +152,10 @@ export function performMove(axisStr, direction, duration, sliceVal = null) {
 export function finishMove(turns, axisVectorOrAxis, sliceVal) {
     state.pivot.updateMatrixWorld();
     const cubies = state.pivot.children.slice();
-    state.scene.attach(state.pivot); // Detach pivot, reattach to scene (actually we want to detach children)
+    state.cubeWrapper.attach(state.pivot); // Detach pivot, reattach to wrapper
 
     cubies.forEach(c => {
-        state.scene.attach(c);
+        state.cubeWrapper.attach(c);
         const S = CUBE_SIZE + SPACING;
         c.position.set(
             Math.round(c.position.x / S * 2) / 2 * S,
@@ -243,13 +243,15 @@ export function snapPivot(targetAngle, turns, axis, sliceVal) {
 export function attachSliceToPivot() {
     state.pivot.rotation.set(0, 0, 0);
     state.pivot.position.set(0, 0, 0);
-    state.scene.add(state.pivot);
+    state.cubeWrapper.add(state.pivot);
     let cubies;
     if (state.isBackgroundDrag && state.dragSliceValue === Infinity) {
+        console.log("Attaching ALL cubies (Background Drag)");
         cubies = state.allCubies;
     } else {
         const epsilon = 0.5;
         cubies = state.allCubies.filter(c => Math.abs(c.position[state.dragAxis] - state.dragSliceValue) < epsilon);
+        console.log(`Attaching Slice Cubies. Axis: ${state.dragAxis}, Val: ${state.dragSliceValue}, Count: ${cubies.length}`);
     }
     cubies.forEach(c => state.pivot.attach(c));
 }
@@ -367,7 +369,7 @@ export function logMove(axis, sliceVal, turns) {
     addToHistory(char + suffix, false);
 }
 
-const heldKeys = new Set();
+// Removed local heldKeys, using state.activeKeys
 
 const keyAliases = {
     '1': '!', '!': '1',
@@ -384,10 +386,10 @@ const keyAliases = {
 
 export function onKeyUp(event) {
     const k = event.key;
-    heldKeys.delete(k);
-    heldKeys.delete(k.toLowerCase());
-    heldKeys.delete(k.toUpperCase());
-    if (keyAliases[k]) heldKeys.delete(keyAliases[k]);
+    state.activeKeys.delete(k);
+    state.activeKeys.delete(k.toLowerCase());
+    state.activeKeys.delete(k.toUpperCase());
+    if (keyAliases[k]) state.activeKeys.delete(keyAliases[k]);
 }
 
 export function onKeyDown(event) {
@@ -400,12 +402,15 @@ export function onKeyDown(event) {
 
     if (isModalOpen) return;
 
-    if (state.isAnimating || state.isScrambling || state.isAutoSolving) return;
+    // Don't block camera keys if animating/scrambling, but block moves
+    const isCameraKey = ['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown'].includes(event.key);
 
     const key = event.key;
-    heldKeys.add(key);
-    heldKeys.add(key.toLowerCase());
-    heldKeys.add(key.toUpperCase());
+    state.activeKeys.add(key);
+    state.activeKeys.add(key.toLowerCase());
+    state.activeKeys.add(key.toUpperCase());
+
+    if (!isCameraKey && (state.isAnimating || state.isScrambling || state.isAutoSolving)) return;
 
     const upperKey = key.toUpperCase();
     const shift = event.shiftKey;
@@ -424,15 +429,15 @@ export function onKeyDown(event) {
 
         // Determine layer from held keys
         let layer = 1;
-        if (heldKeys.has('0') || heldKeys.has(')')) layer = 10;
-        else if (heldKeys.has('9') || heldKeys.has('(')) layer = 9;
-        else if (heldKeys.has('8') || heldKeys.has('*')) layer = 8;
-        else if (heldKeys.has('7') || heldKeys.has('&')) layer = 7;
-        else if (heldKeys.has('6') || heldKeys.has('^')) layer = 6;
-        else if (heldKeys.has('5') || heldKeys.has('%')) layer = 5;
-        else if (heldKeys.has('4') || heldKeys.has('$')) layer = 4;
-        else if (heldKeys.has('3') || heldKeys.has('#')) layer = 3;
-        else if (heldKeys.has('2') || heldKeys.has('@')) layer = 2;
+        if (state.activeKeys.has('0') || state.activeKeys.has(')')) layer = 10;
+        else if (state.activeKeys.has('9') || state.activeKeys.has('(')) layer = 9;
+        else if (state.activeKeys.has('8') || state.activeKeys.has('*')) layer = 8;
+        else if (state.activeKeys.has('7') || state.activeKeys.has('&')) layer = 7;
+        else if (state.activeKeys.has('6') || state.activeKeys.has('^')) layer = 6;
+        else if (state.activeKeys.has('5') || state.activeKeys.has('%')) layer = 5;
+        else if (state.activeKeys.has('4') || state.activeKeys.has('$')) layer = 4;
+        else if (state.activeKeys.has('3') || state.activeKeys.has('#')) layer = 3;
+        else if (state.activeKeys.has('2') || state.activeKeys.has('@')) layer = 2;
 
         // Validate M, E, S moves on even puzzles
         const dims = state.activeDimensions || state.cubeDimensions;
@@ -462,14 +467,6 @@ export function onKeyDown(event) {
         }
 
         queueMove(upperKey, finalDir, state.animationSpeed, sliceVal);
-    } else if (event.key === 'ArrowRight') {
-        queueMove('Y', -1, state.animationSpeed, Infinity); // Rotate cube Y' (Right)
-    } else if (event.key === 'ArrowLeft') {
-        queueMove('Y', 1, state.animationSpeed, Infinity); // Rotate cube Y (Left)
-    } else if (event.key === 'ArrowUp') {
-        queueMove('X', 1, state.animationSpeed, Infinity); // Rotate cube x (Up Arrow)
-    } else if (event.key === 'ArrowDown') {
-        queueMove('X', -1, state.animationSpeed, Infinity); // Rotate cube x' (Down Arrow)
     }
 }
 

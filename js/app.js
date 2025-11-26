@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import { initScene, animate } from './core/scene.js';
 import { createCube } from './core/cube.js';
 import { initControls, adjustCameraForCubeSize } from './core/controls.js';
@@ -17,6 +18,10 @@ window.openDetailModal = openDetailModal;
 function init() {
     // Initialize Scene & Renderer
     if (!initScene()) return;
+
+    // Initialize Cube Wrapper
+    state.cubeWrapper = new THREE.Group();
+    state.scene.add(state.cubeWrapper);
 
     // Initialize Controls
     initControls(state.renderer);

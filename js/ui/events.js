@@ -4,7 +4,7 @@ import { toggleMirrors, updateBackMirrorHeight, getMirrorHeight } from '../core/
 import { playSolveAnimation, animateVictory } from '../animations/victory.js';
 import { showWinModal, togglePanel, openDetailModal, updateHistoryUI, updateActivePuzzleTab } from './ui.js';
 import { submitScore, fetchLeaderboard } from '../leaderboard/firebase.js';
-import { playCubeAnimation } from '../animations/transitions.js';
+import { playCubeAnimation, animateWrapperReset } from '../animations/transitions.js';
 import { adjustCameraForCubeSize } from '../core/controls.js';
 import { onWindowResize, updateZoomDisplay } from '../core/scene.js';
 import { onKeyDown, onKeyUp } from '../game/moves.js';
@@ -444,6 +444,50 @@ export function setupUIEventListeners() {
         updateFloatingControlsVisibility();
         gtag('event', 'toggle_controls_ui', { control: 'mirror', state: e.target.checked ? 'on' : 'off' });
     });
+
+    const updateAxisLockButton = () => {
+        const btn = document.getElementById('btn-toggle-axis-lock');
+        const checkbox = document.getElementById('toggle-free-rotation');
+
+        if (btn) {
+            if (state.freeRotation) {
+                btn.innerHTML = '<span class="text-lg">🔓</span>';
+                btn.classList.remove('bg-orange-700', 'hover:bg-orange-600');
+                btn.classList.add('bg-blue-600', 'hover:bg-blue-500');
+                btn.title = "Disable Free Rotation";
+            } else {
+                btn.innerHTML = '<span class="text-lg">🔒</span>';
+                btn.classList.remove('bg-blue-600', 'hover:bg-blue-500');
+                btn.classList.add('bg-orange-700', 'hover:bg-orange-600');
+                btn.title = "Enable Free Rotation";
+            }
+        }
+
+        if (checkbox) {
+            checkbox.checked = state.freeRotation;
+        }
+    };
+
+    document.getElementById('btn-toggle-axis-lock').addEventListener('click', () => {
+        state.freeRotation = !state.freeRotation;
+        updateAxisLockButton();
+        if (!state.freeRotation) {
+            animateWrapperReset();
+        }
+        gtag('event', 'toggle_free_rotation', { state: state.freeRotation ? 'on' : 'off' });
+    });
+
+    document.getElementById('toggle-free-rotation').addEventListener('change', (e) => {
+        state.freeRotation = e.target.checked;
+        updateAxisLockButton();
+        if (!state.freeRotation) {
+            animateWrapperReset();
+        }
+        gtag('event', 'toggle_free_rotation', { state: e.target.checked ? 'on' : 'off' });
+    });
+
+    // Initialize button state
+    updateAxisLockButton();
 
     document.getElementById('btn-test-victory').addEventListener('click', () => {
         document.getElementById('debug-modal').classList.add('hidden');
