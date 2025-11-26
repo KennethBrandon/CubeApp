@@ -9,6 +9,7 @@ import { adjustCameraForCubeSize } from '../core/controls.js';
 import { onWindowResize, updateZoomDisplay } from '../core/scene.js';
 import { onKeyDown } from '../game/moves.js';
 import { soundManager } from '../core/sound.js';
+import { StandardCube } from '../puzzles/StandardCube.js';
 
 export function setupUIEventListeners() {
     window.addEventListener('resize', onWindowResize);
@@ -137,6 +138,11 @@ export function setupUIEventListeners() {
             const input = document.getElementById('mirror-height-value');
             if (slider) slider.value = newHeight;
             if (input) input.value = newHeight.toFixed(1);
+
+            // Update Active Puzzle
+            state.activePuzzle = new StandardCube({
+                dimensions: newDims
+            });
 
             hardReset(true);
             adjustCameraForCubeSize(zoomRatio);

@@ -8,6 +8,8 @@ import { initAuth } from './leaderboard/firebase.js';
 import { togglePanel, openDetailModal } from './ui/ui.js';
 import { state } from './shared/state.js';
 
+import { StandardCube } from './puzzles/StandardCube.js';
+
 // Expose functions to window for UI interactions (HTML onclick attributes)
 window.togglePanel = togglePanel;
 window.openDetailModal = openDetailModal;
@@ -18,6 +20,11 @@ function init() {
 
     // Initialize Controls
     initControls(state.renderer);
+
+    // Initialize Active Puzzle
+    state.activePuzzle = new StandardCube({
+        dimensions: { x: 3, y: 3, z: 3 } // Default to 3x3
+    });
 
     // Create Initial Game Objects
     createCube();
