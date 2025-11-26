@@ -422,11 +422,19 @@ export function onKeyDown(event) {
         else if (heldKeys.has('3') || heldKeys.has('#')) layer = 3;
         else if (heldKeys.has('2') || heldKeys.has('@')) layer = 2;
 
+        // Validate M, E, S moves on even puzzles
+        const dims = state.activeDimensions || state.cubeDimensions;
+        const axisDim = dims[axis];
+        if (['M', 'E', 'S'].includes(upperKey)) {
+            if (axisDim % 2 === 0) return; // Cannot do middle slice on even puzzles
+        }
+
+        // Validate layer bounds
+        if (layer > axisDim) return; // Cannot rotate a layer that doesn't exist
+
         let sliceVal = null;
         if (layer > 1 && !['M', 'E', 'S'].includes(upperKey)) {
             const S = CUBE_SIZE + SPACING;
-            const dims = state.activeDimensions || state.cubeDimensions;
-            const axisDim = dims[axis];
             const maxIndex = (axisDim - 1) / 2;
 
             // Calculate slice index based on face polarity
