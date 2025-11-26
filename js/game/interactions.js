@@ -171,72 +171,23 @@ function determineDragAxis(dx, dy) {
         return;
     }
 
-    const axes = [
-        { vec: new THREE.Vector3(1, 0, 0), name: 'x' },
-        { vec: new THREE.Vector3(0, 1, 0), name: 'y' },
-        { vec: new THREE.Vector3(0, 0, 1), name: 'z' }
-    ];
-    const validAxes = axes.filter(a => Math.abs(a.vec.dot(state.intersectedFaceNormal)) < 0.1);
-    let bestMatch = null;
-    let bestDot = -1;
     const screenMoveVec = new THREE.Vector2(dx, dy).normalize();
+    const dragData = state.activePuzzle.getDragAxis(
+        state.intersectedFaceNormal,
+        screenMoveVec,
+        state.intersectedCubie,
+        state.camera
+    );
 
-    validAxes.forEach(axis => {
-        const startPoint = state.intersectedCubie.position.clone();
-        const endPoint = startPoint.clone().add(axis.vec);
-        startPoint.project(state.camera);
-        endPoint.project(state.camera);
-        const screenAxisVec = new THREE.Vector2(
-            endPoint.x - startPoint.x,
-            -(endPoint.y - startPoint.y)
-        ).normalize();
-        const dot = Math.abs(screenAxisVec.dot(screenMoveVec));
-        if (dot > bestDot) {
-            bestDot = dot;
-            bestMatch = { moveAxis: axis, screenVec: screenAxisVec };
-        }
-    });
-
-    if (bestMatch) {
-        const moveAxisVec = bestMatch.moveAxis.vec;
-        const rotAxisRaw = new THREE.Vector3().crossVectors(moveAxisVec, state.intersectedFaceNormal).normalize();
-        let maxComp = 0;
-        let finalRotAxis = new THREE.Vector3();
-        let finalAxisName = 'x';
-
-        if (Math.abs(rotAxisRaw.x) > maxComp) { maxComp = Math.abs(rotAxisRaw.x); finalRotAxis.set(Math.sign(rotAxisRaw.x), 0, 0); finalAxisName = 'x'; }
-        if (Math.abs(rotAxisRaw.y) > maxComp) { maxComp = Math.abs(rotAxisRaw.y); finalRotAxis.set(0, Math.sign(rotAxisRaw.y), 0); finalAxisName = 'y'; }
-        if (Math.abs(rotAxisRaw.z) > maxComp) { maxComp = Math.abs(rotAxisRaw.z); finalRotAxis.set(0, 0, Math.sign(rotAxisRaw.z)); finalAxisName = 'z'; }
-
-        state.dragRotationAxis = finalRotAxis;
-        state.dragAxis = finalAxisName;
-
-        if (Math.abs(bestMatch.screenVec.x) > Math.abs(bestMatch.screenVec.y)) {
-            state.dragInputAxis = 'x';
-        } else {
-            state.dragInputAxis = 'y';
-        }
-
-        const inputVec = (state.dragInputAxis === 'x') ? new THREE.Vector2(1, 0) : new THREE.Vector2(0, 1);
-        const directionCheck = bestMatch.screenVec.dot(inputVec);
-        const axisAlignment = finalRotAxis.dot(rotAxisRaw);
-        state.dragAngleScale = -1 * (directionCheck > 0 ? 1 : -1) * Math.sign(axisAlignment);
-
-        const S = CUBE_SIZE + SPACING;
-        const p = state.intersectedCubie.position[state.dragAxis];
-
-        // Snap to nearest layer
-        // Snap to nearest layer (0.5 steps) to handle both even and odd dimensions correctly
-        // even after whole cube rotations.
-        state.dragSliceValue = Math.round(p / S * 2) / 2 * S;
+    if (dragData) {
+        state.dragAxis = dragData.dragAxis;
+        state.dragRotationAxis = dragData.dragRotationAxis;
+        state.dragInputAxis = dragData.dragInputAxis;
+        state.dragAngleScale = dragData.dragAngleScale;
+        state.dragSliceValue = dragData.dragSliceValue;
     }
 }
 
 function isFaceRectangular(axis) {
-    if (!state.activeDimensions) return false;
-    const dims = state.activeDimensions;
-    if (axis === 'x') return dims.y !== dims.z;
-    if (axis === 'y') return dims.x !== dims.z;
-    if (axis === 'z') return dims.x !== dims.y;
-    return false;
+    return state.activePuzzle.isFaceRectangular(axis);
 }

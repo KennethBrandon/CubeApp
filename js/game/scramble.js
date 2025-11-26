@@ -15,77 +15,14 @@ export function startScramble() {
     state.scrambleSequence = [];
     state.hasBeenScrambled = true;
 
-    let scrambleMoves = [];
-    const axes = ['x', 'y', 'z'];
-    const S = CUBE_SIZE + SPACING;
-
-    let lastAxis = '';
-    let lastLayer = -999;
-
-    // Determine scramble length based on cube size
-    let numMoves = SCRAMBLE_MOVES; // Default 25
-    if (state.cubeSize === 2) numMoves = 15;
-    else if (state.cubeSize === 3) numMoves = 25;
-    else if (state.cubeSize === 4) numMoves = 40;
-    else if (state.cubeSize >= 5) numMoves = 60;
-
-    for (let i = 0; i < numMoves; i++) {
-        let axis, layerNum, sliceVal;
-
-        // Avoid undoing previous move (same axis, same layer)
-        do {
-            // Weight axis selection by number of layers to ensure uniform distribution
-            // For a 2x2x3, we want each layer to have equal probability of being selected
-            const totalLayers = state.cubeDimensions.x + state.cubeDimensions.y + state.cubeDimensions.z;
-            const rand = Math.random() * totalLayers;
-
-            if (rand < state.cubeDimensions.x) {
-                axis = 'x';
-                const dim = state.cubeDimensions.x;
-                const rawIndex = Math.floor(Math.random() * dim);
-                sliceVal = (rawIndex - (dim - 1) / 2) * S;
-                layerNum = rawIndex;
-            } else if (rand < state.cubeDimensions.x + state.cubeDimensions.y) {
-                axis = 'y';
-                const dim = state.cubeDimensions.y;
-                const rawIndex = Math.floor(Math.random() * dim);
-                sliceVal = (rawIndex - (dim - 1) / 2) * S;
-                layerNum = rawIndex;
-            } else {
-                axis = 'z';
-                const dim = state.cubeDimensions.z;
-                const rawIndex = Math.floor(Math.random() * dim);
-                sliceVal = (rawIndex - (dim - 1) / 2) * S;
-                layerNum = rawIndex;
-            }
-
-        } while (axis === lastAxis && layerNum === lastLayer);
-
-        lastAxis = axis;
-        lastLayer = layerNum;
-
-        const dirs = [1, -1, 2];
-        let dir = dirs[Math.floor(Math.random() * dirs.length)];
-
-        // Enforce 180 degree turns for rectangular faces
-        if (isFaceRectangular(axis)) {
-            dir = 2;
-        }
-
-        scrambleMoves.push({ axis, dir, sliceVal });
-
-        // Log scramble move for display (simplified notation)
-        // We'll let queueMove handle execution, but we want to store the sequence
-        // We need standard notation for the end screen
-        // Let's reconstruct notation here or just store the move object and format later?
-        // Existing code stored strings in scrambleSequence.
-        // We can use a helper to get notation string.
-
-        const notation = getScrambleNotation(axis, sliceVal, dir);
-        state.scrambleSequence.push(notation);
-    }
+    // Delegate scramble generation to active puzzle
+    const scrambleMoves = state.activePuzzle.getScramble();
 
     scrambleMoves.forEach(m => {
+        // Log scramble move for display
+        const notation = state.activePuzzle.getNotation(m.axis, m.sliceVal, m.dir);
+        state.scrambleSequence.push(notation);
+
         queueMove(m.axis, m.dir, SCRAMBLE_SPEED, m.sliceVal);
     });
 
@@ -100,84 +37,7 @@ export function startScramble() {
     }, 100);
 }
 
-function getScrambleNotation(axis, sliceVal, dir) {
-    const S = CUBE_SIZE + SPACING;
-    const maxIndex = (state.cubeSize - 1) / 2;
-    const epsilon = 0.1;
-    let index = Math.round(sliceVal / S);
 
-    let char = '?';
-    let turns = dir;
-
-    if (axis === 'x') {
-        if (Math.abs(index - maxIndex) < epsilon) {
-            char = 'R';
-            turns *= -1;
-        } else if (Math.abs(index + maxIndex) < epsilon) {
-            char = 'L';
-        } else {
-            if (state.cubeSize % 2 !== 0 && Math.abs(index) < epsilon) {
-                char = 'M';
-            } else {
-                if (index > 0) {
-                    let depth = Math.round(maxIndex - index + 1);
-                    char = depth + 'R';
-                    turns *= -1;
-                } else {
-                    let depth = Math.round(maxIndex - Math.abs(index) + 1);
-                    char = depth + 'L';
-                }
-            }
-        }
-    } else if (axis === 'y') {
-        if (Math.abs(index - maxIndex) < epsilon) {
-            char = 'U';
-            turns *= -1;
-        } else if (Math.abs(index + maxIndex) < epsilon) {
-            char = 'D';
-        } else {
-            if (state.cubeSize % 2 !== 0 && Math.abs(index) < epsilon) {
-                char = 'E';
-            } else {
-                if (index > 0) {
-                    let depth = Math.round(maxIndex - index + 1);
-                    char = depth + 'U';
-                    turns *= -1;
-                } else {
-                    let depth = Math.round(maxIndex - Math.abs(index) + 1);
-                    char = depth + 'D';
-                }
-            }
-        }
-    } else if (axis === 'z') {
-        if (Math.abs(index - maxIndex) < epsilon) {
-            char = 'F';
-            turns *= -1;
-        } else if (Math.abs(index + maxIndex) < epsilon) {
-            char = 'B';
-        } else {
-            if (state.cubeSize % 2 !== 0 && Math.abs(index) < epsilon) {
-                char = 'S';
-                turns *= -1;
-            } else {
-                if (index > 0) {
-                    let depth = Math.round(maxIndex - index + 1);
-                    char = depth + 'F';
-                    turns *= -1;
-                } else {
-                    let depth = Math.round(maxIndex - Math.abs(index) + 1);
-                    char = depth + 'B';
-                }
-            }
-        }
-    }
-
-    let suffix = '';
-    if (Math.abs(turns) === 2) suffix = '2';
-    else if (turns < 0) suffix = "'";
-
-    return char + suffix;
-}
 
 export function handleResetClick() {
     if (state.isAutoSolving || state.isScrambling || (state.moveHistory.length === 0 && state.scrambleSequence.length === 0)) {

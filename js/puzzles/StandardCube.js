@@ -1,0 +1,432 @@
+import * as THREE from 'three';
+import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
+import { Puzzle } from './Puzzle.js';
+import { state } from '../shared/state.js';
+import { CUBE_SIZE, SPACING, COLORS, CORE_COLOR, STICKER_BORDER_RADIUS, stickerVertexShader, stickerFragmentShader } from '../shared/constants.js';
+
+export class StandardCube extends Puzzle {
+    constructor(config) {
+        super(config);
+        // config.dimensions = { x, y, z }
+    }
+
+    createGeometry() {
+        state.allCubies.forEach(c => {
+            if (c.parent) c.parent.remove(c);
+        });
+        state.allCubies = [];
+        state.activeDimensions = { ...this.config.dimensions };
+
+        let baseGeo = new THREE.BoxGeometry(CUBE_SIZE, CUBE_SIZE, CUBE_SIZE, 4, 4, 4);
+        baseGeo = mergeVertices(baseGeo);
+        baseGeo.computeVertexNormals();
+
+        const coreMat = new THREE.MeshStandardMaterial({
+            color: CORE_COLOR,
+            roughness: 0.6,
+            metalness: 0.1,
+            transparent: true,
+            opacity: 1.0
+        });
+
+        const dimX = state.activeDimensions.x;
+        const dimY = state.activeDimensions.y;
+        const dimZ = state.activeDimensions.z;
+
+        const offsetX = (dimX - 1) / 2;
+        const offsetY = (dimY - 1) / 2;
+        const offsetZ = (dimZ - 1) / 2;
+
+        for (let x = -offsetX; x <= offsetX; x++) {
+            for (let y = -offsetY; y <= offsetY; y++) {
+                for (let z = -offsetZ; z <= offsetZ; z++) {
+
+                    const group = new THREE.Group();
+                    group.position.set(
+                        x * (CUBE_SIZE + SPACING),
+                        y * (CUBE_SIZE + SPACING),
+                        z * (CUBE_SIZE + SPACING)
+                    );
+
+                    const core = new THREE.Mesh(baseGeo, coreMat);
+                    core.scale.set(0.98, 0.98, 0.98);
+                    group.add(core);
+
+                    const stickerGeo = new THREE.PlaneGeometry(0.88, 0.88);
+                    const stickerOffset = CUBE_SIZE / 2 + 0.001;
+
+                    const faces = [
+                        { axis: 'x', val: offsetX, rot: [0, Math.PI / 2, 0], pos: [stickerOffset, 0, 0], color: COLORS[0] },
+                        { axis: 'x', val: -offsetX, rot: [0, -Math.PI / 2, 0], pos: [-stickerOffset, 0, 0], color: COLORS[1] },
+                        { axis: 'y', val: offsetY, rot: [-Math.PI / 2, 0, 0], pos: [0, stickerOffset, 0], color: COLORS[2] },
+                        { axis: 'y', val: -offsetY, rot: [Math.PI / 2, 0, 0], pos: [0, -stickerOffset, 0], color: COLORS[3] },
+                        { axis: 'z', val: offsetZ, rot: [0, 0, 0], pos: [0, 0, stickerOffset], color: COLORS[4] },
+                        { axis: 'z', val: -offsetZ, rot: [0, Math.PI, 0], pos: [0, 0, -stickerOffset], color: COLORS[5] },
+                    ];
+
+                    faces.forEach(f => {
+                        if ((f.axis === 'x' && Math.abs(x - f.val) < 0.1) ||
+                            (f.axis === 'y' && Math.abs(y - f.val) < 0.1) ||
+                            (f.axis === 'z' && Math.abs(z - f.val) < 0.1)) {
+
+                            const stickerMat = new THREE.ShaderMaterial({
+                                uniforms: {
+                                    color: { value: new THREE.Color(f.color) },
+                                    borderRadius: { value: STICKER_BORDER_RADIUS },
+                                    opacity: { value: 1.0 }
+                                },
+                                vertexShader: stickerVertexShader,
+                                fragmentShader: stickerFragmentShader,
+                                transparent: true,
+                                side: THREE.DoubleSide
+                            });
+
+                            const sticker = new THREE.Mesh(stickerGeo, stickerMat);
+                            sticker.position.set(...f.pos);
+                            sticker.rotation.set(...f.rot);
+                            sticker.userData = { isSticker: true, originalColor: f.color };
+                            group.add(sticker);
+                        }
+                    });
+
+                    group.userData = { isCubie: true };
+                    state.scene.add(group);
+                    state.allCubies.push(group);
+                }
+            }
+        }
+    }
+
+    getRotationAxes() {
+        return {
+            x: new THREE.Vector3(1, 0, 0),
+            y: new THREE.Vector3(0, 1, 0),
+            z: new THREE.Vector3(0, 0, 1)
+        };
+    }
+
+    isSolved() {
+        // Check all 6 directions for uniform colors
+        // This is rotation-invariant - it checks sticker orientations, not world positions
+        const directions = [
+            new THREE.Vector3(1, 0, 0),   // Right
+            new THREE.Vector3(-1, 0, 0),  // Left
+            new THREE.Vector3(0, 1, 0),   // Top
+            new THREE.Vector3(0, -1, 0),  // Bottom
+            new THREE.Vector3(0, 0, 1),   // Front
+            new THREE.Vector3(0, 0, -1)   // Back
+        ];
+
+        let isAllSolved = true;
+
+        for (const faceDir of directions) {
+            let faceColorHex = null;
+            let stickerCount = 0;
+
+            // Check all cubies for stickers facing this direction
+            for (const group of state.allCubies) {
+                for (const child of group.children) {
+                    if (child.userData.isSticker) {
+                        // Calculate the sticker's world-space normal
+                        const normal = new THREE.Vector3(0, 0, 1);
+                        normal.applyQuaternion(child.quaternion);
+                        normal.applyQuaternion(group.quaternion);
+
+                        // Check if this sticker is facing the current direction
+                        const dotProduct = normal.dot(faceDir);
+                        if (dotProduct > 0.9) {
+                            const stickerColor = child.material.uniforms.color.value.getHex();
+                            stickerCount++;
+
+                            if (faceColorHex === null) {
+                                faceColorHex = stickerColor;
+                            } else if (faceColorHex !== stickerColor) {
+                                // Found a sticker facing this direction with a different color
+                                isAllSolved = false;
+                                break;
+                            }
+                        }
+                    }
+                }
+                if (!isAllSolved) break;
+            }
+
+            // Each face must have at least one sticker
+            if (stickerCount === 0) {
+                isAllSolved = false;
+            }
+
+            if (!isAllSolved) break;
+        }
+
+        return isAllSolved;
+    }
+
+    getCubiesInSlice(axis, value) {
+        return state.allCubies.filter(cubie => Math.abs(cubie.position[axis] - value) < 0.01);
+    }
+
+    performMove(moveId, direction, duration = 300, sliceVal = null) {
+        // This method replaces the logic in moves.js performMove
+        // It handles both named moves (R, L, etc) and generic axis moves (x, y, z)
+
+        state.isAnimating = true;
+        let axisVector = new THREE.Vector3();
+        let cubies = [];
+        let axisStr = moveId;
+
+        // Determine axis vector and cubies
+        if (axisStr === 'x') axisVector.set(1, 0, 0);
+        else if (axisStr === 'y') axisVector.set(0, 1, 0);
+        else if (axisStr === 'z') axisVector.set(0, 0, 1);
+
+        // Handle named moves (R, L, U, D, F, B)
+        const S = CUBE_SIZE + SPACING;
+        const maxIndex = (state.activeDimensions.x - 1) / 2; // Assuming cube is roughly cubic for maxIndex usage here, or use specific dim
+
+        if (['R', 'L', 'U', 'D', 'F', 'B'].includes(axisStr)) {
+            let sliceIndex = 0;
+            if (['R', 'U', 'F'].includes(axisStr)) sliceIndex = maxIndex;
+            else sliceIndex = -maxIndex;
+
+            sliceVal = sliceIndex * S;
+
+            if (axisStr === 'R' || axisStr === 'L') axisVector.set(1, 0, 0);
+            else if (axisStr === 'U' || axisStr === 'D') axisVector.set(0, 1, 0);
+            else if (axisStr === 'F' || axisStr === 'B') axisVector.set(0, 0, 1);
+
+            // Add to history
+            // We need to call addToHistory from UI. 
+            // Ideally Puzzle shouldn't know about UI. 
+            // But for now, let's return the notation and let the caller handle it?
+            // Or just import addToHistory.
+        }
+
+        // Generic slice selection
+        if (sliceVal !== null) {
+            let searchAxis = 'x';
+            if (axisStr === 'x' || axisStr === 'R' || axisStr === 'L') searchAxis = 'x';
+            else if (axisStr === 'y' || axisStr === 'U' || axisStr === 'D') searchAxis = 'y';
+            else searchAxis = 'z';
+
+            cubies = this.getCubiesInSlice(searchAxis, sliceVal);
+
+            if (sliceVal > 0) {
+                axisVector.negate();
+            }
+        } else {
+            // Whole cube rotation
+            cubies = state.allCubies;
+        }
+
+        // Return the data needed to animate
+        return {
+            axisVector,
+            cubies,
+            angle: direction * (Math.PI / 2),
+            axis: axisStr, // Original axis string for logging
+            sliceVal
+        };
+    }
+
+    getNotation(axis, sliceVal, turns) {
+        const S = CUBE_SIZE + SPACING;
+        const epsilon = 0.1;
+
+        const dims = state.activeDimensions;
+        const axisDim = dims[axis];
+        const maxIndex = (axisDim - 1) / 2;
+
+        let char = '';
+        let notationTurns = turns;
+        let index = sliceVal / S;
+
+        if (state.isBackgroundDrag) {
+            if (axis === 'x') char = 'x';
+            else if (axis === 'y') char = 'y';
+            else if (axis === 'z') char = 'z';
+        } else {
+            if (axis === 'x') {
+                if (Math.abs(index - maxIndex) < epsilon) { char = 'R'; notationTurns *= -1; }
+                else if (Math.abs(index + maxIndex) < epsilon) { char = 'L'; }
+                else {
+                    if (axisDim % 2 !== 0 && Math.abs(index) < epsilon) char = 'M';
+                    else {
+                        if (index > 0) { char = Math.round(maxIndex - index + 1) + 'R'; notationTurns *= -1; }
+                        else { char = Math.round(maxIndex - Math.abs(index) + 1) + 'L'; }
+                    }
+                }
+            } else if (axis === 'y') {
+                if (Math.abs(index - maxIndex) < epsilon) { char = 'U'; notationTurns *= -1; }
+                else if (Math.abs(index + maxIndex) < epsilon) { char = 'D'; }
+                else {
+                    if (axisDim % 2 !== 0 && Math.abs(index) < epsilon) char = 'E';
+                    else {
+                        if (index > 0) { char = Math.round(maxIndex - index + 1) + 'U'; notationTurns *= -1; }
+                        else { char = Math.round(maxIndex - Math.abs(index) + 1) + 'D'; }
+                    }
+                }
+            } else if (axis === 'z') {
+                if (Math.abs(index - maxIndex) < epsilon) { char = 'F'; notationTurns *= -1; }
+                else if (Math.abs(index + maxIndex) < epsilon) { char = 'B'; }
+                else {
+                    if (axisDim % 2 !== 0 && Math.abs(index) < epsilon) {
+                        char = 'S';
+                        notationTurns *= -1;
+                    } else {
+                        if (index > 0) { char = Math.round(maxIndex - index + 1) + 'F'; notationTurns *= -1; }
+                        else { char = Math.round(maxIndex - Math.abs(index) + 1) + 'B'; }
+                    }
+                }
+            }
+        }
+
+        let suffix = '';
+        if (Math.abs(notationTurns) === 2) suffix = '2';
+        else if (notationTurns < 0) suffix = "'";
+
+        return char + suffix;
+    }
+
+    getScramble(numMoves = 25) {
+        let scrambleMoves = [];
+        const axes = ['x', 'y', 'z'];
+        const S = CUBE_SIZE + SPACING;
+
+        let lastAxis = '';
+        let lastLayer = -999;
+
+        // Determine scramble length based on cube size if not provided
+        if (numMoves === 25) {
+            const size = this.config.dimensions.x; // Assuming cubic for simple size check
+            if (size === 2) numMoves = 15;
+            else if (size === 3) numMoves = 25;
+            else if (size === 4) numMoves = 40;
+            else if (size >= 5) numMoves = 60;
+        }
+
+        for (let i = 0; i < numMoves; i++) {
+            let axis, layerNum, sliceVal;
+
+            // Avoid undoing previous move (same axis, same layer)
+            do {
+                // Weight axis selection by number of layers to ensure uniform distribution
+                const totalLayers = state.activeDimensions.x + state.activeDimensions.y + state.activeDimensions.z;
+                const rand = Math.random() * totalLayers;
+
+                if (rand < state.activeDimensions.x) {
+                    axis = 'x';
+                    const dim = state.activeDimensions.x;
+                    const rawIndex = Math.floor(Math.random() * dim);
+                    sliceVal = (rawIndex - (dim - 1) / 2) * S;
+                    layerNum = rawIndex;
+                } else if (rand < state.activeDimensions.x + state.activeDimensions.y) {
+                    axis = 'y';
+                    const dim = state.activeDimensions.y;
+                    const rawIndex = Math.floor(Math.random() * dim);
+                    sliceVal = (rawIndex - (dim - 1) / 2) * S;
+                    layerNum = rawIndex;
+                } else {
+                    axis = 'z';
+                    const dim = state.activeDimensions.z;
+                    const rawIndex = Math.floor(Math.random() * dim);
+                    sliceVal = (rawIndex - (dim - 1) / 2) * S;
+                    layerNum = rawIndex;
+                }
+
+            } while (axis === lastAxis && layerNum === lastLayer);
+
+            lastAxis = axis;
+            lastLayer = layerNum;
+
+            const dirs = [1, -1, 2];
+            let dir = dirs[Math.floor(Math.random() * dirs.length)];
+
+            // Enforce 180 degree turns for rectangular faces
+            if (this.isFaceRectangular(axis)) {
+                dir = 2;
+            }
+
+            scrambleMoves.push({ axis, dir, sliceVal });
+        }
+        return scrambleMoves;
+    }
+
+    isFaceRectangular(axis) {
+        const dims = state.activeDimensions;
+        if (axis === 'x') return dims.y !== dims.z;
+        if (axis === 'y') return dims.x !== dims.z;
+        if (axis === 'z') return dims.x !== dims.y;
+        return false;
+    }
+
+    getDragAxis(faceNormal, screenMoveVec, intersectedCubie, camera) {
+        // This logic is moved from interactions.js determineDragAxis
+        // It determines which axis we are dragging along based on mouse movement and face normal
+
+        const axes = [
+            { vec: new THREE.Vector3(1, 0, 0), name: 'x' },
+            { vec: new THREE.Vector3(0, 1, 0), name: 'y' },
+            { vec: new THREE.Vector3(0, 0, 1), name: 'z' }
+        ];
+
+        const validAxes = axes.filter(a => Math.abs(a.vec.dot(faceNormal)) < 0.1);
+        let bestMatch = null;
+        let bestDot = -1;
+
+        validAxes.forEach(axis => {
+            const startPoint = intersectedCubie.position.clone();
+            const endPoint = startPoint.clone().add(axis.vec);
+            startPoint.project(camera);
+            endPoint.project(camera);
+            const screenAxisVec = new THREE.Vector2(
+                endPoint.x - startPoint.x,
+                -(endPoint.y - startPoint.y)
+            ).normalize();
+            const dot = Math.abs(screenAxisVec.dot(screenMoveVec));
+            if (dot > bestDot) {
+                bestDot = dot;
+                bestMatch = { moveAxis: axis, screenVec: screenAxisVec };
+            }
+        });
+
+        if (bestMatch) {
+            const moveAxisVec = bestMatch.moveAxis.vec;
+            const rotAxisRaw = new THREE.Vector3().crossVectors(moveAxisVec, faceNormal).normalize();
+            let maxComp = 0;
+            let finalRotAxis = new THREE.Vector3();
+            let finalAxisName = 'x';
+
+            if (Math.abs(rotAxisRaw.x) > maxComp) { maxComp = Math.abs(rotAxisRaw.x); finalRotAxis.set(Math.sign(rotAxisRaw.x), 0, 0); finalAxisName = 'x'; }
+            if (Math.abs(rotAxisRaw.y) > maxComp) { maxComp = Math.abs(rotAxisRaw.y); finalRotAxis.set(0, Math.sign(rotAxisRaw.y), 0); finalAxisName = 'y'; }
+            if (Math.abs(rotAxisRaw.z) > maxComp) { maxComp = Math.abs(rotAxisRaw.z); finalRotAxis.set(0, 0, Math.sign(rotAxisRaw.z)); finalAxisName = 'z'; }
+
+            let dragInputAxis = 'x';
+            if (Math.abs(bestMatch.screenVec.x) > Math.abs(bestMatch.screenVec.y)) {
+                dragInputAxis = 'x';
+            } else {
+                dragInputAxis = 'y';
+            }
+
+            const inputVec = (dragInputAxis === 'x') ? new THREE.Vector2(1, 0) : new THREE.Vector2(0, 1);
+            const directionCheck = bestMatch.screenVec.dot(inputVec);
+            const axisAlignment = finalRotAxis.dot(rotAxisRaw);
+            const dragAngleScale = -1 * (directionCheck > 0 ? 1 : -1) * Math.sign(axisAlignment);
+
+            const S = CUBE_SIZE + SPACING;
+            const p = intersectedCubie.position[finalAxisName];
+
+            // Snap to nearest layer
+            const dragSliceValue = Math.round(p / S * 2) / 2 * S;
+
+            return {
+                dragAxis: finalAxisName,
+                dragRotationAxis: finalRotAxis,
+                dragInputAxis,
+                dragAngleScale,
+                dragSliceValue
+            };
+        }
+        return null;
+    }
+}

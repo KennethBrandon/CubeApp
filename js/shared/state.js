@@ -52,5 +52,8 @@ export const state = {
     leaderboardUnsubscribe: null,
 
     // Leaderboard Selection
-    selectedLeaderboardPuzzle: null
+    selectedLeaderboardPuzzle: null,
+
+    // Active Puzzle Implementation
+    activePuzzle: null
 };

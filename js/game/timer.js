@@ -119,60 +119,7 @@ export function stopTimer() {
 export function checkSolved() {
     if (!state.isGameActive || state.isScrambling || state.moveHistory.length === 0 || state.isInspection || state.isAutoSolving || !state.hasBeenScrambled) return;
 
-    // Check all 6 directions for uniform colors
-    // This is rotation-invariant - it checks sticker orientations, not world positions
-    const directions = [
-        new THREE.Vector3(1, 0, 0),   // Right
-        new THREE.Vector3(-1, 0, 0),  // Left
-        new THREE.Vector3(0, 1, 0),   // Top
-        new THREE.Vector3(0, -1, 0),  // Bottom
-        new THREE.Vector3(0, 0, 1),   // Front
-        new THREE.Vector3(0, 0, -1)   // Back
-    ];
-
-    let isAllSolved = true;
-
-    for (const faceDir of directions) {
-        let faceColorHex = null;
-        let stickerCount = 0;
-
-        // Check all cubies for stickers facing this direction
-        for (const group of state.allCubies) {
-            for (const child of group.children) {
-                if (child.userData.isSticker) {
-                    // Calculate the sticker's world-space normal
-                    const normal = new THREE.Vector3(0, 0, 1);
-                    normal.applyQuaternion(child.quaternion);
-                    normal.applyQuaternion(group.quaternion);
-
-                    // Check if this sticker is facing the current direction
-                    const dotProduct = normal.dot(faceDir);
-                    if (dotProduct > 0.9) {
-                        const stickerColor = child.material.uniforms.color.value.getHex();
-                        stickerCount++;
-
-                        if (faceColorHex === null) {
-                            faceColorHex = stickerColor;
-                        } else if (faceColorHex !== stickerColor) {
-                            // Found a sticker facing this direction with a different color
-                            isAllSolved = false;
-                            break;
-                        }
-                    }
-                }
-            }
-            if (!isAllSolved) break;
-        }
-
-        // Each face must have at least one sticker
-        if (stickerCount === 0) {
-            isAllSolved = false;
-        }
-
-        if (!isAllSolved) break;
-    }
-
-    if (isAllSolved) {
+    if (state.activePuzzle.isSolved()) {
         stopTimer();
         state.isGameActive = false;
         animateVictory();
