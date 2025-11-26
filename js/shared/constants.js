@@ -1,6 +1,6 @@
 export const CUBE_SIZE = 1;
 export const SPACING = 0.02; // Gap between cubies
-export const ANIMATION_SPEED = 300; // ms per turn
+export const ANIMATION_SPEED = 140; // ms per turn
 export const SCRAMBLE_MOVES = 25;
 export const SCRAMBLE_SPEED = 50;
 export const SNAP_SPEED = 200;

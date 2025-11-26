@@ -381,6 +381,12 @@ export function setupUIEventListeners() {
         document.getElementById('debug-modal').classList.add('hidden');
     });
 
+    document.getElementById('speed-slider').addEventListener('input', (e) => {
+        const val = parseInt(e.target.value);
+        state.animationSpeed = val;
+        document.getElementById('speed-value').textContent = val;
+    });
+
     document.getElementById('toggle-fps').addEventListener('change', (e) => {
         const fpsCounter = document.getElementById('fps-counter');
         if (e.target.checked) {
