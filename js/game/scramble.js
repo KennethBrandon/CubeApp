@@ -8,7 +8,7 @@ import { createEnvironment, createMirrors } from '../core/environment.js';
 import { updateHistoryUI } from '../ui/ui.js';
 import { soundManager } from '../core/sound.js';
 
-export function startScramble() {
+export async function startScramble() {
     if (state.isAnimating) return;
     hardReset(true); // Keep camera on scramble
     state.isScrambling = true;
@@ -16,7 +16,15 @@ export function startScramble() {
     state.hasBeenScrambled = true;
 
     // Delegate scramble generation to active puzzle
-    const scrambleMoves = state.activePuzzle.getScramble();
+    // Now async to support cubing.js
+    let scrambleMoves = [];
+    try {
+        scrambleMoves = await state.activePuzzle.getScramble();
+    } catch (e) {
+        console.error("Scramble generation failed:", e);
+        state.isScrambling = false;
+        return;
+    }
 
     scrambleMoves.forEach(m => {
         // Log scramble move for display
@@ -25,6 +33,8 @@ export function startScramble() {
 
         queueMove(m.axis, m.dir, SCRAMBLE_SPEED, m.sliceVal);
     });
+
+    console.log("Scramble:", state.scrambleSequence.join(" "));
 
     // After scramble, enable game
     const checkInterval = setInterval(() => {
