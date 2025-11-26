@@ -79,4 +79,6 @@ The Firebase configuration is publicly visible in the code (this is safe and int
 
 ## License
 
-MIT License - Feel free to use this project however you'd like!
+Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)
+
+This project is free for personal, educational, and non-commercial use. You are welcome to modify and share it under the same terms. Commercial use (selling the code, wrapping it with ads, etc.) is strictly prohibited without prior permission.
