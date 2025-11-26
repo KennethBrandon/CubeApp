@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { state } from '../shared/state.js';
+import { updateCameraFromKeys } from './controls.js';
 
 // FPS tracking variables
 let lastTime = performance.now();
@@ -67,7 +68,11 @@ export function animate() {
         if (fpsValue) fpsValue.textContent = fps;
     }
 
+    // ... inside animate
+
+    // ... inside animate
     if (state.controls) {
+        updateCameraFromKeys(); // Check keys
         state.controls.update();
     }
 

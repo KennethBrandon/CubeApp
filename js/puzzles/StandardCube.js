@@ -91,7 +91,7 @@ export class StandardCube extends Puzzle {
                     });
 
                     group.userData = { isCubie: true };
-                    state.scene.add(group);
+                    state.cubeWrapper.add(group);
                     state.allCubies.push(group);
                 }
             }
@@ -473,19 +473,27 @@ export class StandardCube extends Puzzle {
         // This logic is moved from interactions.js determineDragAxis
         // It determines which axis we are dragging along based on mouse movement and face normal
 
+        // Transform face normal to local space of the wrapper
+        const localFaceNormal = faceNormal.clone().transformDirection(state.cubeWrapper.matrixWorld.clone().invert()).round();
+
         const axes = [
             { vec: new THREE.Vector3(1, 0, 0), name: 'x' },
             { vec: new THREE.Vector3(0, 1, 0), name: 'y' },
             { vec: new THREE.Vector3(0, 0, 1), name: 'z' }
         ];
 
-        const validAxes = axes.filter(a => Math.abs(a.vec.dot(faceNormal)) < 0.1);
+        const validAxes = axes.filter(a => Math.abs(a.vec.dot(localFaceNormal)) < 0.1);
         let bestMatch = null;
         let bestDot = -1;
 
         validAxes.forEach(axis => {
             const startPoint = intersectedCubie.position.clone();
-            const endPoint = startPoint.clone().add(axis.vec);
+            // Apply wrapper transformation to get world start/end points for projection
+            startPoint.applyMatrix4(state.cubeWrapper.matrixWorld);
+
+            const axisVecWorld = axis.vec.clone().transformDirection(state.cubeWrapper.matrixWorld);
+            const endPoint = startPoint.clone().add(axisVecWorld);
+
             startPoint.project(camera);
             endPoint.project(camera);
             const screenAxisVec = new THREE.Vector2(
@@ -501,7 +509,7 @@ export class StandardCube extends Puzzle {
 
         if (bestMatch) {
             const moveAxisVec = bestMatch.moveAxis.vec;
-            const rotAxisRaw = new THREE.Vector3().crossVectors(moveAxisVec, faceNormal).normalize();
+            const rotAxisRaw = new THREE.Vector3().crossVectors(moveAxisVec, localFaceNormal).normalize();
             let maxComp = 0;
             let finalRotAxis = new THREE.Vector3();
             let finalAxisName = 'x';

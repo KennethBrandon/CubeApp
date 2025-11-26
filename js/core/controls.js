@@ -98,3 +98,47 @@ export function adjustCameraForCubeSize(relativeZoom = null) {
         updateZoomDisplay();
     }
 }
+
+export function updateCameraFromKeys() {
+    if (!state.activeKeys || state.activeKeys.size === 0) return;
+
+    const rotateSpeed = 0.015; // Radians per frame (smooth)
+    let moved = false;
+    let dTheta = 0;
+    let dPhi = 0;
+
+    if (state.activeKeys.has('ArrowRight')) {
+        dTheta += rotateSpeed; // Inverted: Right arrow moves camera right (orbits left)
+        moved = true;
+    }
+    if (state.activeKeys.has('ArrowLeft')) {
+        dTheta -= rotateSpeed; // Inverted: Left arrow moves camera left (orbits right)
+        moved = true;
+    }
+    if (state.activeKeys.has('ArrowUp')) {
+        dPhi -= rotateSpeed;
+        moved = true;
+    }
+    if (state.activeKeys.has('ArrowDown')) {
+        dPhi += rotateSpeed;
+        moved = true;
+    }
+
+    if (moved) {
+        const offset = new THREE.Vector3();
+        offset.copy(state.camera.position).sub(state.controls.target);
+
+        const spherical = new THREE.Spherical();
+        spherical.setFromVector3(offset);
+
+        spherical.theta += dTheta;
+        spherical.phi += dPhi;
+
+        spherical.makeSafe();
+        offset.setFromSpherical(spherical);
+
+        state.camera.position.copy(state.controls.target).add(offset);
+        state.camera.lookAt(state.controls.target);
+        state.controls.update();
+    }
+}
