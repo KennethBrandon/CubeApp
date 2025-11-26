@@ -69,9 +69,13 @@ export function setupUIEventListeners() {
     // Leaderboard Listeners
     document.getElementById('btn-leaderboard').addEventListener('click', () => {
         if (!state.selectedLeaderboardPuzzle) {
-            const currentPuzzle = state.cubeDimensions.x === state.cubeDimensions.y && state.cubeDimensions.y === state.cubeDimensions.z
-                ? state.cubeSize
-                : `${state.cubeDimensions.x}x${state.cubeDimensions.y}x${state.cubeDimensions.z}`;
+            let currentPuzzle;
+            if (state.cubeDimensions.x === state.cubeDimensions.y && state.cubeDimensions.y === state.cubeDimensions.z) {
+                currentPuzzle = state.cubeSize;
+            } else {
+                const dims = [state.cubeDimensions.x, state.cubeDimensions.y, state.cubeDimensions.z].sort((a, b) => b - a);
+                currentPuzzle = `${dims[0]}x${dims[1]}x${dims[2]}`;
+            }
             state.selectedLeaderboardPuzzle = currentPuzzle;
         }
 
@@ -102,8 +106,21 @@ export function setupUIEventListeners() {
         document.getElementById('detail-modal').classList.add('hidden');
     });
 
+    let previousPuzzleSelection = '3'; // Default to 3x3
+
     document.getElementById('puzzle-select').addEventListener('change', (e) => {
         const val = e.target.value;
+
+        if (val === 'custom') {
+            document.getElementById('custom-puzzle-panel').classList.remove('hidden');
+            return;
+        }
+
+        // Hide custom panel if switching to a different puzzle
+        document.getElementById('custom-puzzle-panel').classList.add('hidden');
+
+        previousPuzzleSelection = val; // Store valid selection
+
         let newSize = 3;
         let newDims = { x: 3, y: 3, z: 3 };
 
@@ -152,6 +169,173 @@ export function setupUIEventListeners() {
             playCubeAnimation(true);
         });
         gtag('event', 'puzzle_change', { puzzle_type: val });
+    });
+
+    // Custom Puzzle Panel Logic - Live Preview
+    const updateCustomDimension = (id, valId) => {
+        const el = document.getElementById(id);
+        const valEl = document.getElementById(valId);
+        el.addEventListener('input', (e) => {
+            valEl.textContent = e.target.value;
+            // Live preview: update puzzle immediately without animation
+            updateCustomPuzzlePreview();
+        });
+    };
+    updateCustomDimension('custom-dim1', 'val-dim1');
+    updateCustomDimension('custom-dim2', 'val-dim2');
+    updateCustomDimension('custom-dim3', 'val-dim3');
+
+    function updateCustomPuzzlePreview() {
+        const dim1 = parseInt(document.getElementById('custom-dim1').value);
+        const dim2 = parseInt(document.getElementById('custom-dim2').value);
+        const dim3 = parseInt(document.getElementById('custom-dim3').value);
+
+        // Sort dimensions descending
+        const dims = [dim1, dim2, dim3].sort((a, b) => b - a);
+        const newDims = { x: dims[1], y: dims[0], z: dims[2] };
+        const newSize = dims[0];
+
+        // Preserve zoom ratio
+        const currentDist = state.camera.position.length();
+        const minD = state.controls.minDistance;
+        const maxD = state.controls.maxDistance;
+        let zoomRatio = null;
+        if (maxD > minD) {
+            zoomRatio = (currentDist - minD) / (maxD - minD);
+        }
+
+        // Update state and puzzle WITHOUT animation
+        state.cubeSize = newSize;
+        state.cubeDimensions = newDims;
+
+        const newHeight = getMirrorHeight(newSize);
+        state.backMirrorHeightOffset = newHeight;
+
+        const slider = document.getElementById('mirror-height-slider');
+        const input = document.getElementById('mirror-height-value');
+        if (slider) slider.value = newHeight;
+        if (input) input.value = newHeight.toFixed(1);
+
+        state.activePuzzle = new StandardCube({
+            dimensions: newDims
+        });
+
+        hardReset(false); // No scramble
+        adjustCameraForCubeSize(zoomRatio);
+    }
+
+    document.getElementById('btn-cancel-custom').addEventListener('click', () => {
+        document.getElementById('custom-puzzle-panel').classList.add('hidden');
+        document.getElementById('puzzle-select').value = previousPuzzleSelection;
+
+        // Revert to the previous puzzle selection
+        const val = previousPuzzleSelection;
+        let newSize = 3;
+        let newDims = { x: 3, y: 3, z: 3 };
+
+        if (val.includes('x')) {
+            const dims = val.split('x').map(Number);
+            dims.sort((a, b) => b - a);
+            newDims = { x: dims[1], y: dims[0], z: dims[2] };
+            newSize = dims[0];
+        } else {
+            newSize = parseInt(val);
+            newDims = { x: newSize, y: newSize, z: newSize };
+        }
+
+        const currentDist = state.camera.position.length();
+        const minD = state.controls.minDistance;
+        const maxD = state.controls.maxDistance;
+        let zoomRatio = null;
+        if (maxD > minD) {
+            zoomRatio = (currentDist - minD) / (maxD - minD);
+        }
+
+        state.cubeSize = newSize;
+        state.cubeDimensions = newDims;
+        const newHeight = getMirrorHeight(newSize);
+        state.backMirrorHeightOffset = newHeight;
+
+        const slider = document.getElementById('mirror-height-slider');
+        const input = document.getElementById('mirror-height-value');
+        if (slider) slider.value = newHeight;
+        if (input) input.value = newHeight.toFixed(1);
+
+        state.activePuzzle = new StandardCube({
+            dimensions: newDims
+        });
+
+        hardReset(false);
+        adjustCameraForCubeSize(zoomRatio);
+    });
+
+    document.getElementById('btn-submit-custom').addEventListener('click', () => {
+        const dim1 = parseInt(document.getElementById('custom-dim1').value);
+        const dim2 = parseInt(document.getElementById('custom-dim2').value);
+        const dim3 = parseInt(document.getElementById('custom-dim3').value);
+
+        document.getElementById('custom-puzzle-panel').classList.add('hidden');
+
+        // Sort dimensions for consistency
+        const dims = [dim1, dim2, dim3].sort((a, b) => b - a);
+        const puzzleCode = `${dims[0]}x${dims[1]}x${dims[2]}`;
+        const newDims = { x: dims[1], y: dims[0], z: dims[2] };
+        const newSize = dims[0];
+
+        // Update dropdown
+        const select = document.getElementById('puzzle-select');
+        let optionExists = false;
+
+        for (let i = 0; i < select.options.length; i++) {
+            if (select.options[i].value === puzzleCode) {
+                select.selectedIndex = i;
+                optionExists = true;
+                break;
+            }
+        }
+
+        if (!optionExists) {
+            const newOption = document.createElement('option');
+            newOption.value = puzzleCode;
+            newOption.textContent = `${puzzleCode} Cube`;
+
+            const customOption = select.querySelector('option[value="custom"]');
+            select.insertBefore(newOption, customOption);
+            select.value = puzzleCode;
+        }
+
+        previousPuzzleSelection = puzzleCode;
+
+        const currentDist = state.camera.position.length();
+        const minD = state.controls.minDistance;
+        const maxD = state.controls.maxDistance;
+        let zoomRatio = null;
+        if (maxD > minD) {
+            zoomRatio = (currentDist - minD) / (maxD - minD);
+        }
+
+        // Play spin animation on submit
+        playCubeAnimation(false, () => {
+            state.cubeSize = newSize;
+            state.cubeDimensions = newDims;
+
+            const newHeight = getMirrorHeight(newSize);
+            state.backMirrorHeightOffset = newHeight;
+
+            const slider = document.getElementById('mirror-height-slider');
+            const input = document.getElementById('mirror-height-value');
+            if (slider) slider.value = newHeight;
+            if (input) input.value = newHeight.toFixed(1);
+
+            state.activePuzzle = new StandardCube({
+                dimensions: newDims
+            });
+
+            hardReset(true);
+            adjustCameraForCubeSize(zoomRatio);
+            playCubeAnimation(true, null, false);
+        }, false);
+        gtag('event', 'custom_puzzle_create', { puzzle_def: puzzleCode });
     });
 
     document.getElementById('btn-toggle-mirrors').addEventListener('click', () => {
@@ -219,6 +403,69 @@ export function setupUIEventListeners() {
             animateVictory();
         }, 1000);
         gtag('event', 'test_victory');
+    });
+
+    document.getElementById('btn-create-custom-puzzle').addEventListener('click', () => {
+        const input = document.getElementById('custom-puzzle-input');
+        const val = input.value.trim();
+        let newSize = 3;
+        let newDims = { x: 3, y: 3, z: 3 };
+
+        try {
+            if (val.includes('x')) {
+                const dims = val.split('x').map(n => parseInt(n.trim()));
+                if (dims.length !== 3 || dims.some(isNaN)) throw new Error("Invalid format");
+
+                // Sort descending like the select handler
+                const sortedDims = [...dims].sort((a, b) => b - a);
+                newDims = { x: sortedDims[1], y: sortedDims[0], z: sortedDims[2] };
+                newSize = sortedDims[0];
+            } else {
+                const size = parseInt(val);
+                if (isNaN(size)) throw new Error("Invalid number");
+                newSize = size;
+                newDims = { x: newSize, y: newSize, z: newSize };
+            }
+
+            // Close debug modal
+            document.getElementById('debug-modal').classList.add('hidden');
+
+            const currentDist = state.camera.position.length();
+            const minD = state.controls.minDistance;
+            const maxD = state.controls.maxDistance;
+            let zoomRatio = null;
+            if (maxD > minD) {
+                zoomRatio = (currentDist - minD) / (maxD - minD);
+            }
+
+            playCubeAnimation(false, () => {
+                state.cubeSize = newSize;
+                state.cubeDimensions = newDims;
+
+                // Update mirror height based on new size
+                const newHeight = getMirrorHeight(newSize);
+                state.backMirrorHeightOffset = newHeight;
+
+                // Update UI controls
+                const slider = document.getElementById('mirror-height-slider');
+                const heightInput = document.getElementById('mirror-height-value');
+                if (slider) slider.value = newHeight;
+                if (heightInput) heightInput.value = newHeight.toFixed(1);
+
+                // Update Active Puzzle
+                state.activePuzzle = new StandardCube({
+                    dimensions: newDims
+                });
+
+                hardReset(true);
+                adjustCameraForCubeSize(zoomRatio);
+                playCubeAnimation(true);
+            });
+            gtag('event', 'custom_puzzle_create', { puzzle_def: val });
+
+        } catch (e) {
+            alert("Invalid format! Use N or NxNxN (e.g. 5 or 2x3x4)");
+        }
     });
 
     document.getElementById('zoom-slider').addEventListener('input', (e) => {
