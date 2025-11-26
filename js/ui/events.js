@@ -2,7 +2,7 @@ import { state } from '../shared/state.js';
 import { startScramble, handleResetClick, hardReset } from '../game/scramble.js';
 import { toggleMirrors, updateBackMirrorHeight, getMirrorHeight } from '../core/environment.js';
 import { playSolveAnimation, animateVictory } from '../animations/victory.js';
-import { showWinModal, togglePanel, openDetailModal, updateHistoryUI } from './ui.js';
+import { showWinModal, togglePanel, openDetailModal, updateHistoryUI, updateActivePuzzleTab } from './ui.js';
 import { submitScore, fetchLeaderboard } from '../leaderboard/firebase.js';
 import { playCubeAnimation } from '../animations/transitions.js';
 import { adjustCameraForCubeSize } from '../core/controls.js';
@@ -528,13 +528,4 @@ function updateSoundButton(btn) {
     }
 }
 
-function updateActivePuzzleTab(puzzleSize) {
-    const puzzleStr = String(puzzleSize);
-    document.querySelectorAll('.puzzle-tab').forEach(tab => {
-        if (tab.dataset.puzzle === puzzleStr) {
-            tab.classList.add('active');
-        } else {
-            tab.classList.remove('active');
-        }
-    });
-}
+

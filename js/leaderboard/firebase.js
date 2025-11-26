@@ -2,7 +2,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, collection, addDoc, onSnapshot } from 'firebase/firestore';
 import { state } from '../shared/state.js';
-import { renderLeaderboardUI } from '../ui/ui.js';
+import { renderLeaderboardUI, updateActivePuzzleTab } from '../ui/ui.js';
 
 // --- Firebase Setup ---
 // We need to access the global config which is injected in index.html
@@ -101,6 +101,7 @@ export async function submitScore(name, timeMs, timeString, scramble, solution) 
         document.getElementById('solved-modal').classList.add('hidden');
         state.selectedLeaderboardPuzzle = puzzleSize;
         fetchLeaderboard(puzzleSize);
+        updateActivePuzzleTab(puzzleSize);
         document.getElementById('leaderboard-modal').classList.remove('hidden');
     } catch (e) {
         console.error("Error adding score: ", e);

@@ -112,3 +112,14 @@ export function escapeHtml(text) {
     if (!text) return text;
     return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
 }
+
+export function updateActivePuzzleTab(puzzleSize) {
+    const puzzleStr = String(puzzleSize);
+    document.querySelectorAll('.puzzle-tab').forEach(tab => {
+        if (tab.dataset.puzzle === puzzleStr) {
+            tab.classList.add('active');
+        } else {
+            tab.classList.remove('active');
+        }
+    });
+}
