@@ -107,9 +107,12 @@ export function setupUIEventListeners() {
         let newSize = 3;
         let newDims = { x: 3, y: 3, z: 3 };
 
-        if (val === "2x2x3") {
-            newSize = 3;
-            newDims = { x: 2, y: 2, z: 3 };
+        if (val.includes('x')) {
+            const dims = val.split('x').map(Number);
+            dims.sort((a, b) => b - a); // Sort descending
+            // Assign largest to Y (height), then X, then Z
+            newDims = { x: dims[1], y: dims[0], z: dims[2] };
+            newSize = dims[0]; // Max dimension determines camera zoom roughly
         } else {
             newSize = parseInt(val);
             newDims = { x: newSize, y: newSize, z: newSize };

@@ -182,18 +182,26 @@ export class StandardCube extends Puzzle {
 
         // Handle named moves (R, L, U, D, F, B)
         const S = CUBE_SIZE + SPACING;
-        const maxIndex = (state.activeDimensions.x - 1) / 2; // Assuming cube is roughly cubic for maxIndex usage here, or use specific dim
 
         if (['R', 'L', 'U', 'D', 'F', 'B'].includes(axisStr)) {
+            let maxIndex;
+
+            if (['R', 'L'].includes(axisStr)) {
+                maxIndex = (state.activeDimensions.x - 1) / 2;
+                axisVector.set(1, 0, 0);
+            } else if (['U', 'D'].includes(axisStr)) {
+                maxIndex = (state.activeDimensions.y - 1) / 2;
+                axisVector.set(0, 1, 0);
+            } else if (['F', 'B'].includes(axisStr)) {
+                maxIndex = (state.activeDimensions.z - 1) / 2;
+                axisVector.set(0, 0, 1);
+            }
+
             let sliceIndex = 0;
             if (['R', 'U', 'F'].includes(axisStr)) sliceIndex = maxIndex;
             else sliceIndex = -maxIndex;
 
             sliceVal = sliceIndex * S;
-
-            if (axisStr === 'R' || axisStr === 'L') axisVector.set(1, 0, 0);
-            else if (axisStr === 'U' || axisStr === 'D') axisVector.set(0, 1, 0);
-            else if (axisStr === 'F' || axisStr === 'B') axisVector.set(0, 0, 1);
 
             // Add to history
             // We need to call addToHistory from UI. 

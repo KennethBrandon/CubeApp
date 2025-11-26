@@ -19,17 +19,31 @@ export function processQueue() {
 
 export function performMove(axisStr, direction, duration, sliceVal = null) {
     state.isAnimating = true;
+    let axisVector = new THREE.Vector3();
+    let cubies = [];
 
-    // Delegate move logic to the active puzzle
-    const moveData = state.activePuzzle.performMove(axisStr, direction, duration, sliceVal);
+    // Determine axis vector and cubies
+    if (axisStr === 'x') axisVector.set(1, 0, 0);
+    else if (axisStr === 'y') axisVector.set(0, 1, 0);
+    else if (axisStr === 'z') axisVector.set(0, 0, 1);
 
-    const { axisVector, cubies, angle, axis } = moveData;
-    // sliceVal might be updated by the puzzle (e.g. named moves)
-    const finalSliceVal = moveData.sliceVal;
+    // Handle named moves (R, L, U, D, F, B)
+    const S = CUBE_SIZE + SPACING;
+    const maxIndex = (state.cubeSize - 1) / 2;
 
-    // Add to history if it's a named move (R, L, U, D, F, B)
-    if (['R', 'L', 'U', 'D', 'F', 'B'].includes(axis)) {
-        let notation = axis;
+    if (['R', 'L', 'U', 'D', 'F', 'B'].includes(axisStr)) {
+        let sliceIndex = 0;
+        if (['R', 'U', 'F'].includes(axisStr)) sliceIndex = maxIndex;
+        else sliceIndex = -maxIndex;
+
+        sliceVal = sliceIndex * S;
+
+        if (axisStr === 'R' || axisStr === 'L') axisVector.set(1, 0, 0);
+        else if (axisStr === 'U' || axisStr === 'D') axisVector.set(0, 1, 0);
+        else if (axisStr === 'F' || axisStr === 'B') axisVector.set(0, 0, 1);
+
+        // Add to history
+        let notation = axisStr;
         if (direction === -1) notation += "'";
         else if (direction === 2) notation += "2";
         addToHistory(notation, false);
@@ -42,12 +56,38 @@ export function performMove(axisStr, direction, duration, sliceVal = null) {
         }
     }
 
+    // Generic slice selection
+    if (sliceVal !== null) {
+        cubies = getCubiesInSlice(axisStr === 'x' || axisStr === 'R' || axisStr === 'L' ? 'x' :
+            (axisStr === 'y' || axisStr === 'U' || axisStr === 'D' ? 'y' : 'z'), sliceVal);
+
+        // Adjust rotation axis based on slice position for standard feel
+        // If we are rotating a positive slice (R, U, F), we want standard direction.
+        // If we are rotating a negative slice (L, D, B), we might need to invert?
+        // Standard Rubik's notation:
+        // R is clockwise looking at R face.
+        // L is clockwise looking at L face.
+        // If we rotate around X axis:
+        // R is rotation around -X (if R face is +X).
+        // L is rotation around +X (if L face is -X).
+
+        // If sliceVal > 0 (R), and we rotate around (1,0,0) with positive angle -> Counter-Clockwise looking at R.
+        // So R (clockwise) needs negative angle or negative axis.
+
+        if (sliceVal > 0) {
+            axisVector.negate();
+        }
+    } else {
+        // Whole cube rotation (M, E, S or similar)
+        cubies = state.allCubies;
+    }
+
     state.pivot.rotation.set(0, 0, 0);
     state.pivot.position.set(0, 0, 0);
     state.scene.add(state.pivot);
     cubies.forEach(c => state.pivot.attach(c));
 
-    const targetAngle = angle;
+    const targetAngle = direction * (Math.PI / 2);
     const startTime = Date.now();
 
     function loop() {
@@ -61,7 +101,7 @@ export function performMove(axisStr, direction, duration, sliceVal = null) {
         if (progress < 1) {
             requestAnimationFrame(loop);
         } else {
-            finishMove(direction, axisVector, finalSliceVal);
+            finishMove(direction, axisVector, sliceVal);
             processQueue();
         }
     }
