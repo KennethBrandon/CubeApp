@@ -59,5 +59,6 @@ export const state = {
 
     // Active Puzzle Implementation
     activePuzzle: null,
-    cubeWrapper: null
+    cubeWrapper: null,
+    debugSequenceCount: 0
 };
