@@ -48,10 +48,10 @@
     <!-- Top Bar: Unified Controls (Title, Timer, Buttons) -->
     <div class="absolute top-0 left-0 w-full z-30 pointer-events-none p-2 sm:p-4">
         <div
-            class="pointer-events-auto bg-gray-900/90 backdrop-blur-md rounded-xl border border-gray-700 shadow-2xl p-3 flex flex-wrap items-center justify-between gap-3 mx-auto max-w-4xl">
+            class="pointer-events-auto bg-gray-900/90 backdrop-blur-md rounded-xl border border-gray-700 shadow-2xl p-3 flex flex-wrap items-center justify-center lg:justify-between gap-3 mx-auto max-w-4xl">
 
             <!-- Left: Title & Timer -->
-            <div class="flex items-center gap-4">
+            <div class="flex flex-wrap justify-center items-center gap-4">
                 <select id="puzzle-select"
                     class="bg-gray-800 text-blue-400 font-bold text-lg border border-gray-600 rounded px-2 py-1 focus:outline-none focus:border-blue-500">
                     <option value="2">2x2 Cube</option>
@@ -87,7 +87,7 @@
             </div>
 
             <!-- Right: Actions -->
-            <div class="flex gap-2">
+            <div class="flex flex-wrap justify-center gap-2">
                 <button id="btn-toggle-mirrors"
                     class="bg-blue-700 hover:bg-blue-600 text-white p-2 rounded transition shadow-lg active:transform active:scale-95"
                     title="Toggle Mirrors">
