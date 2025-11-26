@@ -110,6 +110,7 @@ export function setupUIEventListeners() {
     let previousPuzzleSelection = '3'; // Default to 3x3
 
     document.getElementById('puzzle-select').addEventListener('change', (e) => {
+        e.target.blur(); // Remove focus so keyboard controls work immediately
         const val = e.target.value;
 
         if (val === 'custom') {
