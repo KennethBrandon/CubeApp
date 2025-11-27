@@ -416,7 +416,9 @@ export class MirrorCube extends StandardCube {
             const unrotatedPos = currentPos.applyQuaternion(invRefQ);
 
             if (unrotatedPos.distanceTo(cubie.userData.initialPosition) > epsilon) {
-                // console.log(`MirrorCube: Position mismatch for cubie ${i}. Dist: ${unrotatedPos.distanceTo(cubie.userData.initialPosition)}`);
+                console.log(`MirrorCube: Position mismatch for cubie ${i}. Dist: ${unrotatedPos.distanceTo(cubie.userData.initialPosition)}`);
+                console.log(`  Current (Unrotated): ${JSON.stringify(unrotatedPos)}`);
+                console.log(`  Initial: ${JSON.stringify(cubie.userData.initialPosition)}`);
                 return false;
             }
 
@@ -437,7 +439,9 @@ export class MirrorCube extends StandardCube {
 
             // Compare with initial size
             if (currentDims.distanceTo(cubie.userData.initialSize) > epsilon) {
-                // console.log(`MirrorCube: Dimension mismatch for cubie ${i}`);
+                console.log(`MirrorCube: Dimension mismatch for cubie ${i}`);
+                console.log(`  Current Dims: ${JSON.stringify(currentDims)}`);
+                console.log(`  Initial Dims: ${JSON.stringify(cubie.userData.initialSize)}`);
                 return false;
             }
         }
