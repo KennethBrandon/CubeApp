@@ -73,11 +73,19 @@ export function setupUIEventListeners() {
     document.getElementById('btn-leaderboard').addEventListener('click', () => {
         if (!state.selectedLeaderboardPuzzle) {
             let currentPuzzle;
+            const isMirror = state.activePuzzle instanceof MirrorCube;
+
             if (state.cubeDimensions.x === state.cubeDimensions.y && state.cubeDimensions.y === state.cubeDimensions.z) {
-                currentPuzzle = state.cubeSize;
+                if (isMirror) {
+                    const s = state.cubeSize;
+                    currentPuzzle = `mirror-${s}x${s}x${s}`;
+                } else {
+                    currentPuzzle = state.cubeSize;
+                }
             } else {
                 const dims = [state.cubeDimensions.x, state.cubeDimensions.y, state.cubeDimensions.z].sort((a, b) => b - a);
-                currentPuzzle = `${dims[0]}x${dims[1]}x${dims[2]}`;
+                const dimStr = `${dims[0]}x${dims[1]}x${dims[2]}`;
+                currentPuzzle = isMirror ? `mirror-${dimStr}` : dimStr;
             }
             state.selectedLeaderboardPuzzle = currentPuzzle;
         }
@@ -92,18 +100,23 @@ export function setupUIEventListeners() {
         document.getElementById('leaderboard-modal').classList.add('hidden');
     });
 
-    // Puzzle Tab Switching
-    document.querySelectorAll('.puzzle-tab').forEach(tab => {
-        tab.addEventListener('click', (e) => {
-            const puzzleSize = e.target.dataset.puzzle;
-            const parsedPuzzle = puzzleSize.includes('x') ? puzzleSize : parseInt(puzzleSize);
+    // Puzzle Tab Switching (Event Delegation)
+    const tabContainer = document.getElementById('puzzle-tabs');
+    if (tabContainer) {
+        tabContainer.addEventListener('click', (e) => {
+            const tab = e.target.closest('.puzzle-tab');
+            if (!tab) return;
+
+            const puzzleSize = tab.dataset.puzzle;
+            // Handle numeric vs string
+            const parsedPuzzle = (puzzleSize.includes('x') || puzzleSize.includes('mirror')) ? puzzleSize : parseInt(puzzleSize);
 
             state.selectedLeaderboardPuzzle = parsedPuzzle;
             fetchLeaderboard(parsedPuzzle);
             updateActivePuzzleTab(parsedPuzzle);
             gtag('event', 'leaderboard_tab_click', { puzzle: parsedPuzzle });
         });
-    });
+    }
 
     document.getElementById('btn-close-detail').addEventListener('click', () => {
         document.getElementById('detail-modal').classList.add('hidden');
