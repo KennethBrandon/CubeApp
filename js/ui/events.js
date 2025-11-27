@@ -137,6 +137,13 @@ export function setupUIEventListeners() {
             newSize = 3;
             newDims = { x: 3, y: 3, z: 3 };
             PuzzleClass = MirrorCube;
+        } else if (val.startsWith('mirror-')) {
+            const dimsStr = val.replace('mirror-', '');
+            const dims = dimsStr.split('x').map(Number);
+            dims.sort((a, b) => b - a);
+            newDims = { x: dims[1], y: dims[0], z: dims[2] };
+            newSize = dims[0];
+            PuzzleClass = MirrorCube;
         } else if (val.includes('x')) {
             const dims = val.split('x').map(Number);
             dims.sort((a, b) => b - a); // Sort descending
@@ -394,10 +401,14 @@ export function setupUIEventListeners() {
         }
     });
 
+    // Update preview when checkbox changes
+    document.getElementById('custom-mirror-check').addEventListener('change', updateCustomPuzzlePreview);
+
     function updateCustomPuzzlePreview() {
         const dim1 = parseInt(document.getElementById('custom-dim1').value);
         const dim2 = parseInt(document.getElementById('custom-dim2').value);
         const dim3 = parseInt(document.getElementById('custom-dim3').value);
+        const isMirror = document.getElementById('custom-mirror-check').checked;
 
         // Sort dimensions descending
         const dims = [dim1, dim2, dim3].sort((a, b) => b - a);
@@ -425,7 +436,7 @@ export function setupUIEventListeners() {
         if (slider) slider.value = newHeight;
         if (input) input.value = newHeight.toFixed(1);
 
-        state.activePuzzle = new StandardCube({
+        state.activePuzzle = isMirror ? new MirrorCube({ dimensions: newDims }) : new StandardCube({
             dimensions: newDims
         });
 
@@ -484,6 +495,7 @@ export function setupUIEventListeners() {
         const dim1 = parseInt(document.getElementById('custom-dim1').value);
         const dim2 = parseInt(document.getElementById('custom-dim2').value);
         const dim3 = parseInt(document.getElementById('custom-dim3').value);
+        const isMirror = document.getElementById('custom-mirror-check').checked;
 
         document.getElementById('custom-puzzle-panel').classList.add('hidden');
         const backdrop = document.getElementById('custom-puzzle-backdrop');
@@ -514,34 +526,61 @@ export function setupUIEventListeners() {
 
         const targetSorted = dims.join('x'); // dims is already sorted descending
 
+        // Determine target value for the option
+        let targetValue = puzzleCode;
+        if (isMirror) {
+            if (puzzleCode === '3x3x3') targetValue = 'mirror';
+            else targetValue = `mirror-${puzzleCode}`;
+        }
+
         for (let i = 0; i < select.options.length; i++) {
             const optVal = select.options[i].value;
             if (optVal === 'custom') continue;
 
-            // Direct match
-            if (optVal === puzzleCode || (simpleCode && optVal === simpleCode)) {
+            // Check for exact match with targetValue
+            if (optVal === targetValue) {
                 select.selectedIndex = i;
                 optionExists = true;
                 break;
             }
 
-            // Permutation match
-            const optSorted = getSortedDimsStr(optVal);
-            if (optSorted === targetSorted) {
+            // For Standard Cubes: Check for simple code match (e.g. '3' for '3x3x3')
+            if (!isMirror && simpleCode && optVal === simpleCode) {
                 select.selectedIndex = i;
                 optionExists = true;
                 break;
+            }
+
+            // For Standard Cubes: Check for permutation match (e.g. '2x3x4' vs '4x3x2')
+            if (!isMirror && optVal.includes('x') && !optVal.startsWith('mirror-')) {
+                const optSorted = getSortedDimsStr(optVal);
+                if (optSorted === targetSorted) {
+                    select.selectedIndex = i;
+                    optionExists = true;
+                    break;
+                }
+            }
+
+            // For Mirror Cubes: Check for permutation match with prefix
+            if (isMirror && optVal.startsWith('mirror-')) {
+                const optDimsStr = optVal.replace('mirror-', '');
+                const optSorted = getSortedDimsStr(optDimsStr);
+                if (optSorted === targetSorted) {
+                    select.selectedIndex = i;
+                    optionExists = true;
+                    break;
+                }
             }
         }
 
         if (!optionExists) {
             const newOption = document.createElement('option');
-            newOption.value = puzzleCode;
-            newOption.textContent = `${puzzleCode} Cube`;
+            newOption.value = targetValue;
+            newOption.textContent = `${puzzleCode} ${isMirror ? 'Mirror ' : ''}Cube`;
 
             const customOption = select.querySelector('option[value="custom"]');
             select.insertBefore(newOption, customOption);
-            select.value = puzzleCode;
+            select.value = targetValue;
         }
 
         previousPuzzleSelection = puzzleCode;
@@ -567,7 +606,7 @@ export function setupUIEventListeners() {
             if (slider) slider.value = newHeight;
             if (input) input.value = newHeight.toFixed(1);
 
-            state.activePuzzle = new StandardCube({
+            state.activePuzzle = isMirror ? new MirrorCube({ dimensions: newDims }) : new StandardCube({
                 dimensions: newDims
             });
 
