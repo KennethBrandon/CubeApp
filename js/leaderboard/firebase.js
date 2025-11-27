@@ -151,9 +151,9 @@ export async function submitScore(name, timeMs, timeString, scramble, solution) 
         });
 
         document.getElementById('solved-modal').classList.add('hidden');
-        state.selectedLeaderboardPuzzle = puzzleSize;
-        fetchLeaderboard(puzzleSize);
-        updateActivePuzzleTab(puzzleSize);
+        state.selectedLeaderboardPuzzle = puzzleType;
+        fetchLeaderboard(puzzleType);
+        updateActivePuzzleTab(puzzleType);
         document.getElementById('leaderboard-modal').classList.remove('hidden');
     } catch (e) {
         console.error("Error adding score: ", e);
