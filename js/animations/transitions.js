@@ -78,7 +78,7 @@ export function playCubeAnimation(reverse = false, onComplete = null, fade = tru
             state.allCubies.forEach(group => {
                 group.children.forEach(mesh => {
                     if (mesh.material) {
-                        if (mesh.userData.isSticker) {
+                        if (mesh.userData.isSticker && mesh.material.uniforms && mesh.material.uniforms.opacity) {
                             mesh.material.uniforms.opacity.value = currentOpacity;
                         } else {
                             mesh.material.opacity = currentOpacity;
@@ -100,7 +100,7 @@ export function playCubeAnimation(reverse = false, onComplete = null, fade = tru
             state.allCubies.forEach(group => {
                 group.children.forEach(mesh => {
                     if (mesh.material) {
-                        if (mesh.userData.isSticker) {
+                        if (mesh.userData.isSticker && mesh.material.uniforms && mesh.material.uniforms.opacity) {
                             mesh.material.uniforms.opacity.value = 1.0;
                         } else {
                             mesh.material.opacity = 1.0;

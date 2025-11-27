@@ -397,7 +397,7 @@ export function onKeyUp(event) {
 
 export function onKeyDown(event) {
     // Check if any modal is open
-    const modals = ['solved-modal', 'leaderboard-modal', 'detail-modal', 'debug-modal'];
+    const modals = ['solved-modal', 'leaderboard-modal', 'detail-modal', 'debug-modal', 'custom-puzzle-panel'];
     const isModalOpen = modals.some(id => {
         const el = document.getElementById(id);
         return el && !el.classList.contains('hidden');

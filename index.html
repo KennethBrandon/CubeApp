@@ -422,57 +422,61 @@
         </div>
     </div>
 
-    <!-- Custom Puzzle Panel (Modal Overlay) -->
+    <!-- Custom Puzzle Backdrop -->
+    <div id="custom-puzzle-backdrop" class="hidden fixed inset-0 z-40 bg-black/10 backdrop-blur-[2px]"></div>
+
+    <!-- Custom Puzzle Panel (Floating Window) -->
     <div id="custom-puzzle-panel"
-        class="hidden fixed inset-0 z-50 bg-black/20 backdrop-blur-[1px] flex items-start justify-start pt-4 pl-4 sm:pt-24 sm:pl-4">
+        class="hidden absolute top-24 left-4 z-50 bg-gray-800/95 backdrop-blur-md border border-gray-700 rounded-xl shadow-2xl p-4 w-56 pointer-events-auto">
 
-        <div
-            class="bg-gray-800/95 backdrop-blur-md border border-gray-700 rounded-xl shadow-2xl p-4 w-56 pointer-events-auto">
-            <h3 class="text-sm font-bold text-white mb-3 text-center uppercase tracking-wider">Custom Puzzle</h3>
+        <div id="custom-puzzle-header"
+            class="flex justify-between items-center mb-3 cursor-move border-b border-gray-700 pb-2">
+            <h3 class="text-sm font-bold text-white uppercase tracking-wider">Custom Puzzle</h3>
+            <!-- Optional close button if needed, but Cancel button exists below -->
+        </div>
 
-            <div class="space-y-3 mb-4">
-                <div>
-                    <div class="flex justify-between items-center mb-1">
-                        <label class="text-[10px] text-gray-400 uppercase font-bold">Dimension 1</label>
-                        <span id="val-dim1" class="text-purple-400 font-mono font-bold text-xs">3</span>
-                    </div>
-                    <input type="range" id="custom-dim1" min="1" max="20" value="3"
-                        class="w-full h-1.5 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-500">
+        <div class="space-y-3 mb-4">
+            <div>
+                <div class="flex justify-between items-center mb-1">
+                    <label class="text-[10px] text-gray-400 uppercase font-bold">Dimension 1</label>
+                    <span id="val-dim1" class="text-purple-400 font-mono font-bold text-xs">3</span>
                 </div>
-                <div>
-                    <div class="flex justify-between items-center mb-1">
-                        <label class="text-[10px] text-gray-400 uppercase font-bold">Dimension 2</label>
-                        <span id="val-dim2" class="text-purple-400 font-mono font-bold text-xs">3</span>
-                    </div>
-                    <input type="range" id="custom-dim2" min="1" max="20" value="3"
-                        class="w-full h-1.5 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-500">
-                </div>
-                <div>
-                    <div class="flex justify-between items-center mb-1">
-                        <label class="text-[10px] text-gray-400 uppercase font-bold">Dimension 3</label>
-                        <span id="val-dim3" class="text-purple-400 font-mono font-bold text-xs">3</span>
-                    </div>
-                    <input type="range" id="custom-dim3" min="1" max="20" value="3"
-                        class="w-full h-1.5 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-500">
-                </div>
+                <input type="range" id="custom-dim1" min="1" max="20" value="3"
+                    class="w-full h-1.5 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-500">
             </div>
-
-            <div class="flex flex-col gap-2">
-                <button id="btn-submit-custom"
-                    class="w-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-2 rounded-lg transition shadow-lg">
-                    Create Puzzle
-                </button>
-                <button id="btn-cancel-custom"
-                    class="w-full bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold py-2 rounded-lg transition">
-                    Cancel
-                </button>
+            <div>
+                <div class="flex justify-between items-center mb-1">
+                    <label class="text-[10px] text-gray-400 uppercase font-bold">Dimension 2</label>
+                    <span id="val-dim2" class="text-purple-400 font-mono font-bold text-xs">3</span>
+                </div>
+                <input type="range" id="custom-dim2" min="1" max="20" value="3"
+                    class="w-full h-1.5 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-500">
             </div>
+            <div>
+                <div class="flex justify-between items-center mb-1">
+                    <label class="text-[10px] text-gray-400 uppercase font-bold">Dimension 3</label>
+                    <span id="val-dim3" class="text-purple-400 font-mono font-bold text-xs">3</span>
+                </div>
+                <input type="range" id="custom-dim3" min="1" max="20" value="3"
+                    class="w-full h-1.5 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-500">
+            </div>
+        </div>
+
+        <div class="flex flex-col gap-2">
+            <button id="btn-submit-custom"
+                class="w-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-2 rounded-lg transition shadow-lg">
+                Create Puzzle
+            </button>
+            <button id="btn-cancel-custom"
+                class="w-full bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold py-2 rounded-lg transition">
+                Cancel
+            </button>
         </div>
     </div>
 
     <!-- FPS Counter (Top Right) -->
     <div id="fps-counter"
-        class="hidden absolute top-32 right-4 z-10 bg-black/70 backdrop-blur-md border border-gray-700 rounded-lg px-3 py-2 text-white font-mono text-sm pointer-events-none">
+        class="hidden absolute top-32 right-4 z-50 bg-black/70 backdrop-blur-md border border-gray-700 rounded-lg px-3 py-2 text-white font-mono text-sm cursor-move">
         FPS: <span id="fps-value" class="text-green-400 font-bold">60</span>
     </div>
 

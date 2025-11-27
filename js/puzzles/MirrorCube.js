@@ -37,8 +37,7 @@ export class MirrorCube extends StandardCube {
     }
 
     createGeometry() {
-        // Clear existing geometry if any (handled by caller usually, but good to be safe)
-        // In this architecture, createGeometry is called on a fresh instance or after clear.
+        // Clear existing geometry if any
         state.allCubies.forEach(c => {
             if (c.parent) c.parent.remove(c);
         });
@@ -58,31 +57,10 @@ export class MirrorCube extends StandardCube {
         const STICKER_MARGIN = 0.040; // User preferred margin
         const BORDER_RADIUS = 0.080; // User preferred radius
 
-        // Custom shader for rectangular stickers with uniform border radius
-        const rectStickerFragmentShader = `
-            uniform vec3 color;
-            uniform float borderRadius;
-            uniform float opacity;
-            uniform vec2 uSize;
-            varying vec2 vUv;
-
-            void main() {
-                // Convert UV to centered world coordinates
-                vec2 pos = (vUv - 0.5) * uSize;
-                vec2 halfSize = uSize * 0.5;
-                
-                // Calculate distance field for rounded box
-                // d is distance from the inner "box" (size minus radius)
-                vec2 d = abs(pos) - (halfSize - borderRadius);
-                float dist = length(max(d, 0.0)) + min(max(d.x, d.y), 0.0) - borderRadius;
-                
-                // Antialiasing
-                float alpha = 1.0 - smoothstep(0.0, 0.015, dist);
-                
-                if (alpha < 0.1) discard;
-                gl_FragColor = vec4(color, alpha * opacity);
-            }
-        `;
+        // Generate sparkle normal map once
+        if (!this.sparkleMap) {
+            this.sparkleMap = createSparkleMap();
+        }
 
         // Loop through 3x3x3 grid
         this.stickers = [];
@@ -142,18 +120,64 @@ export class MirrorCube extends StandardCube {
                             const sH = f.h - 2 * STICKER_MARGIN;
 
                             const geo = new THREE.PlaneGeometry(sW, sH);
-                            const stickerMat = new THREE.ShaderMaterial({
-                                uniforms: {
-                                    color: { value: new THREE.Color(goldColor) },
-                                    borderRadius: { value: BORDER_RADIUS },
-                                    opacity: { value: 1.0 },
-                                    uSize: { value: new THREE.Vector2(sW, sH) }
-                                },
-                                vertexShader: stickerVertexShader,
-                                fragmentShader: rectStickerFragmentShader,
+
+                            // Create a custom MeshStandardMaterial
+                            // This ensures all PBR features (lights, normal maps, etc.) work correctly.
+                            // We use onBeforeCompile to inject the custom rounded corner alpha logic.
+                            const stickerMat = new THREE.MeshStandardMaterial({
+                                color: goldColor,
+                                roughness: 0.4,
+                                metalness: 0.6, // Reduced from 1.0 to ensure color is visible without env map
+                                normalMap: this.sparkleMap,
+                                normalScale: new THREE.Vector2(0.5, 0.5),
                                 transparent: true,
                                 side: THREE.DoubleSide
                             });
+
+                            // We need to store the uniform references to update them later
+                            stickerMat.userData.uSize = { value: new THREE.Vector2(sW, sH) };
+                            stickerMat.userData.borderRadius = { value: BORDER_RADIUS };
+
+                            stickerMat.onBeforeCompile = (shader) => {
+                                shader.uniforms.uSize = stickerMat.userData.uSize;
+                                shader.uniforms.borderRadius = stickerMat.userData.borderRadius;
+
+                                // Inject custom varying for UV
+                                shader.vertexShader = `
+                                    varying vec2 vCustomUv;
+                                ` + shader.vertexShader;
+
+                                shader.vertexShader = shader.vertexShader.replace(
+                                    '#include <uv_vertex>',
+                                    `
+                                    #include <uv_vertex>
+                                    vCustomUv = uv;
+                                    `
+                                );
+
+                                shader.fragmentShader = `
+                                    uniform vec2 uSize;
+                                    uniform float borderRadius;
+                                    varying vec2 vCustomUv;
+                                ` + shader.fragmentShader;
+
+                                shader.fragmentShader = shader.fragmentShader.replace(
+                                    '#include <dithering_fragment>',
+                                    `
+                                    #include <dithering_fragment>
+                                    
+                                    // Custom Rounded Rect Alpha
+                                    vec2 pos = (vCustomUv - 0.5) * uSize;
+                                    vec2 halfSize = uSize * 0.5;
+                                    vec2 d = abs(pos) - (halfSize - borderRadius);
+                                    float dist = length(max(d, 0.0)) + min(max(d.x, d.y), 0.0) - borderRadius;
+                                    float alpha = 1.0 - smoothstep(0.0, 0.015, dist);
+                                    
+                                    gl_FragColor.a *= alpha;
+                                    if (gl_FragColor.a < 0.01) discard;
+                                    `
+                                );
+                            };
 
                             const sticker = new THREE.Mesh(geo, stickerMat);
                             // Apply offset to sticker position
@@ -193,17 +217,16 @@ export class MirrorCube extends StandardCube {
             const newH = fullH - 2 * margin;
 
             // Scale mesh to match new dimensions
-            // initialGeoW is the size of the PlaneGeometry created
             sticker.scale.set(
                 newW / sticker.userData.initialGeoW,
                 newH / sticker.userData.initialGeoH,
                 1
             );
 
-            // Update uniforms
-            if (sticker.material.uniforms) {
-                sticker.material.uniforms.borderRadius.value = radius;
-                sticker.material.uniforms.uSize.value.set(newW, newH);
+            // Update uniforms via userData references
+            if (sticker.material.userData.uSize) {
+                sticker.material.userData.borderRadius.value = radius;
+                sticker.material.userData.uSize.value.set(newW, newH);
             }
         });
     }
@@ -256,4 +279,39 @@ export class MirrorCube extends StandardCube {
         }
         return true;
     }
+}
+
+function createSparkleMap() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+
+    // Fill with neutral normal (128, 128, 255)
+    ctx.fillStyle = 'rgb(128, 128, 255)';
+    ctx.fillRect(0, 0, 512, 512);
+
+    // Add noise
+    const imgData = ctx.getImageData(0, 0, 512, 512);
+    const data = imgData.data;
+
+    for (let i = 0; i < data.length; i += 4) {
+        // Perturb normals slightly
+        // Stronger noise for more sparkle
+        const strength = 60;
+        const noiseX = (Math.random() - 0.5) * strength;
+        const noiseY = (Math.random() - 0.5) * strength;
+
+        data[i] = Math.min(255, Math.max(0, 128 + noiseX));
+        data[i + 1] = Math.min(255, Math.max(0, 128 + noiseY));
+        data[i + 2] = 255; // Keep Z pointing up mostly
+    }
+
+    ctx.putImageData(imgData, 0, 0);
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(2, 2); // Repeat to make grain finer
+    return tex;
 }

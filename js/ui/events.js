@@ -117,11 +117,15 @@ export function setupUIEventListeners() {
 
         if (val === 'custom') {
             document.getElementById('custom-puzzle-panel').classList.remove('hidden');
+            const backdrop = document.getElementById('custom-puzzle-backdrop');
+            if (backdrop) backdrop.classList.remove('hidden');
             return;
         }
 
         // Hide custom panel if switching to a different puzzle
         document.getElementById('custom-puzzle-panel').classList.add('hidden');
+        const backdrop = document.getElementById('custom-puzzle-backdrop');
+        if (backdrop) backdrop.classList.add('hidden');
 
         previousPuzzleSelection = val; // Store valid selection
 
@@ -310,22 +314,24 @@ export function setupUIEventListeners() {
         // Let's just insert the drag logic here.
     });
 
-    // Drag Logic for Mirror Tuner
-    const makeDraggable = (elmnt) => {
+    // Drag Logic for Mirror Tuner & Custom Puzzle
+    const makeDraggable = (elmnt, handleId) => {
         let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
-        // Fix: ID in HTML is "mirror-debug-header", not "mirror-debug-ui-header"
-        // But let's be safer and just look for the specific ID we know we used.
-        const header = document.getElementById("mirror-debug-header");
+        const header = document.getElementById(handleId);
 
-        if (header) {
-            header.onmousedown = dragMouseDown;
-        } else {
-            // Fallback only if header is missing, but we should ensure it exists
-            elmnt.onmousedown = dragMouseDown;
-        }
+        // Use header if found, otherwise fallback to element
+        const dragTarget = header || elmnt;
+
+        dragTarget.onmousedown = dragMouseDown;
 
         function dragMouseDown(e) {
             e = e || window.event;
+
+            // Allow interaction with inputs, buttons, and sliders
+            if (['INPUT', 'BUTTON', 'SELECT', 'TEXTAREA', 'LABEL'].includes(e.target.tagName)) {
+                return;
+            }
+
             e.preventDefault();
             // Get the mouse cursor position at startup:
             pos3 = e.clientX;
@@ -359,11 +365,34 @@ export function setupUIEventListeners() {
 
     const tunerUI = document.getElementById('mirror-debug-ui');
     if (tunerUI) {
-        makeDraggable(tunerUI);
+        makeDraggable(tunerUI, 'mirror-debug-header');
     }
+
+    const customPuzzlePanel = document.getElementById('custom-puzzle-panel');
+    if (customPuzzlePanel) {
+        makeDraggable(customPuzzlePanel, 'custom-puzzle-header');
+    }
+
+    const fpsCounter = document.getElementById('fps-counter');
+    if (fpsCounter) {
+        makeDraggable(fpsCounter, 'fps-counter');
+    }
+
     updateCustomDimension('custom-dim1', 'val-dim1');
     updateCustomDimension('custom-dim2', 'val-dim2');
     updateCustomDimension('custom-dim3', 'val-dim3');
+
+    // Add listeners for custom dimension sliders
+    ['custom-dim1', 'custom-dim2', 'custom-dim3'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('input', () => {
+                const valId = id.replace('custom-', 'val-');
+                updateCustomDimension(id, valId);
+                updateCustomPuzzlePreview();
+            });
+        }
+    });
 
     function updateCustomPuzzlePreview() {
         const dim1 = parseInt(document.getElementById('custom-dim1').value);
@@ -406,6 +435,8 @@ export function setupUIEventListeners() {
 
     document.getElementById('btn-cancel-custom').addEventListener('click', () => {
         document.getElementById('custom-puzzle-panel').classList.add('hidden');
+        const backdrop = document.getElementById('custom-puzzle-backdrop');
+        if (backdrop) backdrop.classList.add('hidden');
         document.getElementById('puzzle-select').value = previousPuzzleSelection;
 
         // Revert to the previous puzzle selection
@@ -455,6 +486,8 @@ export function setupUIEventListeners() {
         const dim3 = parseInt(document.getElementById('custom-dim3').value);
 
         document.getElementById('custom-puzzle-panel').classList.add('hidden');
+        const backdrop = document.getElementById('custom-puzzle-backdrop');
+        if (backdrop) backdrop.classList.add('hidden');
 
         // Sort dimensions for consistency
         const dims = [dim1, dim2, dim3].sort((a, b) => b - a);
