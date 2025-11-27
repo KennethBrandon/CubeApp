@@ -546,4 +546,27 @@ export class StandardCube extends Puzzle {
         }
         return null;
     }
+    snapCubies(cubies) {
+        const S = CUBE_SIZE + SPACING;
+        cubies.forEach(c => {
+            c.position.set(
+                Math.round(c.position.x / S * 2) / 2 * S,
+                Math.round(c.position.y / S * 2) / 2 * S,
+                Math.round(c.position.z / S * 2) / 2 * S
+            );
+            c.quaternion.normalize();
+
+            // Snap rotation to nearest 90 degrees
+            const euler = new THREE.Euler().setFromQuaternion(c.quaternion);
+            const snap = (val) => {
+                const piHalf = Math.PI / 2;
+                return Math.round(val / piHalf) * piHalf;
+            };
+            c.rotation.set(
+                snap(euler.x),
+                snap(euler.y),
+                snap(euler.z)
+            );
+        });
+    }
 }
