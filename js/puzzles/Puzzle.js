@@ -68,4 +68,11 @@ export class Puzzle {
     getDragAxis(faceNormal, screenMoveVec) {
         throw new Error("Method 'getDragAxis()' must be implemented.");
     }
+    /**
+     * Snaps the cubies to their grid positions and rotations.
+     * @param {Array} cubies - List of cubies to snap.
+     */
+    snapCubies(cubies) {
+        throw new Error("Method 'snapCubies()' must be implemented.");
+    }
 }

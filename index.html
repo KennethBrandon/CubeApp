@@ -59,6 +59,7 @@
                     <option value="2x2x3">2x2x3 Cube</option>
                     <option value="2x2x4">2x2x4 Cube</option>
                     <option value="3" selected>3x3x3 (Rubik's Cube)</option>
+                    <option value="mirror">3x3x3 Mirror Cube</option>
                     <option value="3x3x1">3x3x1 Cube (Floppy)</option>
                     <option value="3x3x2">3x3x2 Cube</option>
                     <option value="3x3x4">3x3x4 Cube</option>
@@ -380,6 +381,17 @@
                         <span id="speed-value" class="text-xs font-mono text-blue-400 w-8 text-right">140</span>
                     </div>
                 </div>
+                <!-- Mirror Cube Sticker Tuner Toggle -->
+                <div id="mirror-debug-row"
+                    class="hidden flex items-center justify-between p-3 bg-gray-900/50 rounded-lg">
+                    <span class="text-gray-300">Sticker Tuner</span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="toggle-sticker-tuner" class="sr-only peer">
+                        <div
+                            class="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600">
+                        </div>
+                    </label>
+                </div>
                 <div class="flex items-center justify-between p-3 bg-gray-900/50 rounded-lg">
                     <span class="text-gray-300">Test Victory</span>
                     <button id="btn-test-victory"
@@ -465,10 +477,32 @@
         FPS: <span id="fps-value" class="text-green-400 font-bold">60</span>
     </div>
 
+    <!-- Mirror Cube Debug UI -->
+    <div id="mirror-debug-ui"
+        class="hidden absolute top-20 left-4 z-50 bg-black/70 backdrop-blur-md border border-gray-700 p-4 rounded-lg text-white text-sm shadow-xl">
+        <div class="flex justify-between items-center mb-3">
+            <h3 class="font-bold text-yellow-400">Sticker Tuning</h3>
+            <button id="close-sticker-tuner" class="text-gray-400 hover:text-white">&times;</button>
+        </div>
+        <div class="mb-3">
+            <label class="block mb-1 text-gray-300">Margin: <span id="margin-val"
+                    class="text-white font-mono">0.040</span></label>
+            <input type="range" id="sticker-margin" min="0" max="0.2" step="0.005" value="0.040"
+                class="w-48 h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-yellow-500">
+        </div>
+        <div>
+            <label class="block mb-1 text-gray-300">Radius: <span id="radius-val"
+                    class="text-white font-mono">0.080</span></label>
+            <input type="range" id="sticker-radius" min="0" max="0.5" step="0.01" value="0.080"
+                class="w-48 h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-yellow-500">
+        </div>
+    </div>
+
     <!-- Floating Controls (Zoom & Mirror) -->
     <div id="floating-controls"
         class="hidden absolute top-32 left-1/2 transform -translate-x-1/2 z-10 bg-black/70 backdrop-blur-md border border-gray-700 rounded-lg px-4 py-3 flex flex-col gap-3 items-center">
 
+        <!-- Main UI Container -->
         <!-- Zoom Controls -->
         <div id="zoom-controls" class="hidden flex items-center gap-4">
             <label class="text-white text-sm font-medium w-12 text-right">Zoom:</label>

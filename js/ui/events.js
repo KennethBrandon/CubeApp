@@ -10,6 +10,8 @@ import { onWindowResize, updateZoomDisplay } from '../core/scene.js';
 import { onKeyDown, onKeyUp } from '../game/moves.js';
 import { soundManager } from '../core/sound.js';
 import { StandardCube } from '../puzzles/StandardCube.js';
+import { MirrorCube } from '../puzzles/MirrorCube.js';
+import { checkSolved } from '../game/timer.js';
 
 export function setupUIEventListeners() {
     window.addEventListener('resize', onWindowResize);
@@ -125,8 +127,13 @@ export function setupUIEventListeners() {
 
         let newSize = 3;
         let newDims = { x: 3, y: 3, z: 3 };
+        let PuzzleClass = StandardCube;
 
-        if (val.includes('x')) {
+        if (val === 'mirror') {
+            newSize = 3;
+            newDims = { x: 3, y: 3, z: 3 };
+            PuzzleClass = MirrorCube;
+        } else if (val.includes('x')) {
             const dims = val.split('x').map(Number);
             dims.sort((a, b) => b - a); // Sort descending
             // Assign largest to Y (height), then X, then Z
@@ -137,7 +144,8 @@ export function setupUIEventListeners() {
             newDims = { x: newSize, y: newSize, z: newSize };
         }
 
-        if (newDims.x === state.cubeDimensions.x && newDims.y === state.cubeDimensions.y && newDims.z === state.cubeDimensions.z) return;
+        if (PuzzleClass === StandardCube && newDims.x === state.cubeDimensions.x && newDims.y === state.cubeDimensions.y && newDims.z === state.cubeDimensions.z && !(state.activePuzzle instanceof MirrorCube)) return;
+        // If switching from Mirror to Standard 3x3, we need to proceed even if dims are same
 
         const currentDist = state.camera.position.length();
         const minD = state.controls.minDistance;
@@ -162,15 +170,71 @@ export function setupUIEventListeners() {
             if (input) input.value = newHeight.toFixed(1);
 
             // Update Active Puzzle
-            state.activePuzzle = new StandardCube({
+            state.activePuzzle = new PuzzleClass({
                 dimensions: newDims
             });
 
             hardReset(true);
+
+            // Mirror Cube Debug Button Visibility
+            const debugRow = document.getElementById('mirror-debug-row');
+            const debugUI = document.getElementById('mirror-debug-ui');
+
+            if (state.activePuzzle instanceof MirrorCube) {
+                if (debugRow) debugRow.classList.remove('hidden');
+                // Ensure UI is hidden by default on load
+                if (debugUI) debugUI.classList.add('hidden');
+
+                // Apply defaults
+                const margin = parseFloat(document.getElementById('sticker-margin').value);
+                const radius = parseFloat(document.getElementById('sticker-radius').value);
+                state.activePuzzle.updateStickers(margin, radius);
+            } else {
+                if (debugRow) debugRow.classList.add('hidden');
+                if (debugUI) debugUI.classList.add('hidden');
+            }
+
             adjustCameraForCubeSize(zoomRatio);
             playCubeAnimation(true);
         });
         gtag('event', 'puzzle_change', { puzzle_type: val });
+    });
+
+    // Mirror Cube Debug UI Listeners
+    const updateMirrorStickers = () => {
+        if (state.activePuzzle instanceof MirrorCube) {
+            const margin = parseFloat(document.getElementById('sticker-margin').value);
+            const radius = parseFloat(document.getElementById('sticker-radius').value);
+            document.getElementById('margin-val').textContent = margin.toFixed(3);
+            document.getElementById('radius-val').textContent = radius.toFixed(3);
+            state.activePuzzle.updateStickers(margin, radius);
+        }
+    };
+
+    const marginSlider = document.getElementById('sticker-margin');
+    const radiusSlider = document.getElementById('sticker-radius');
+    if (marginSlider) marginSlider.addEventListener('input', updateMirrorStickers);
+    if (radiusSlider) radiusSlider.addEventListener('input', updateMirrorStickers);
+
+    // Toggle Switch
+    document.getElementById('toggle-sticker-tuner').addEventListener('change', (e) => {
+        const ui = document.getElementById('mirror-debug-ui');
+        if (ui) {
+            if (e.target.checked) {
+                ui.classList.remove('hidden');
+            } else {
+                ui.classList.add('hidden');
+            }
+        }
+    });
+
+    // Close Button (on the UI itself)
+    document.getElementById('close-sticker-tuner').addEventListener('click', () => {
+        const ui = document.getElementById('mirror-debug-ui');
+        if (ui) ui.classList.add('hidden');
+        // Also uncheck the toggle
+        const toggle = document.getElementById('toggle-sticker-tuner');
+        if (toggle) toggle.checked = false;
     });
 
     // Custom Puzzle Panel Logic - Live Preview

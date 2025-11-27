@@ -156,22 +156,25 @@ export function finishMove(turns, axisVectorOrAxis, sliceVal) {
 
     cubies.forEach(c => {
         state.cubeWrapper.attach(c);
-        const S = CUBE_SIZE + SPACING;
-        c.position.set(
-            Math.round(c.position.x / S * 2) / 2 * S,
-            Math.round(c.position.y / S * 2) / 2 * S,
-            Math.round(c.position.z / S * 2) / 2 * S
-        );
-        c.quaternion.normalize();
-
-        // Snap rotation to nearest 90 degrees
-        const euler = new THREE.Euler().setFromQuaternion(c.quaternion);
-        c.rotation.set(
-            snap(euler.x),
-            snap(euler.y),
-            snap(euler.z)
-        );
     });
+
+    if (state.activePuzzle && typeof state.activePuzzle.snapCubies === 'function') {
+        state.activePuzzle.snapCubies(cubies);
+    } else {
+        // Fallback for safety
+        cubies.forEach(c => {
+            const S = CUBE_SIZE + SPACING;
+            c.position.set(
+                Math.round(c.position.x / S * 2) / 2 * S,
+                Math.round(c.position.y / S * 2) / 2 * S,
+                Math.round(c.position.z / S * 2) / 2 * S
+            );
+            c.quaternion.normalize();
+            const euler = new THREE.Euler().setFromQuaternion(c.quaternion);
+            const snap = (val) => Math.round(val / (Math.PI / 2)) * (Math.PI / 2);
+            c.rotation.set(snap(euler.x), snap(euler.y), snap(euler.z));
+        });
+    }
 
     state.pivot.rotation.set(0, 0, 0);
     state.isAnimating = false;
