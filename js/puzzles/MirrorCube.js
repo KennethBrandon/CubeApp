@@ -81,13 +81,15 @@ export class MirrorCube extends StandardCube {
         // Y: -2.2, 0.8. Shift = -0.7
         // Z: -1.1, 1.9. Shift = +0.4
 
-        const shiftX = 0.1;
-        const shiftY = -0.7;
-        const shiftZ = 0.4;
-
         const dx = dims.x;
         const dy = dims.y;
         const dz = dims.z;
+
+        // If a dimension is 1, we must center it (shift = 0) to avoid the "orbiting" effect.
+        // Otherwise, use the standard mirror cube offsets.
+        const shiftX = dx === 1 ? 0 : 0.1;
+        const shiftY = dy === 1 ? 0 : -0.7;
+        const shiftZ = dz === 1 ? 0 : 0.4;
 
         bounds.x = generateAxisCuts(dx, dx / 2 - shiftX, dx / 2 + shiftX);
         bounds.y = generateAxisCuts(dy, dy / 2 - shiftY, dy / 2 + shiftY);
