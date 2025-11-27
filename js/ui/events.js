@@ -330,6 +330,7 @@ export function setupUIEventListeners() {
         const dragTarget = header || elmnt;
 
         dragTarget.onmousedown = dragMouseDown;
+        dragTarget.ontouchstart = dragTouchStart;
 
         function dragMouseDown(e) {
             e = e || window.event;
@@ -345,6 +346,24 @@ export function setupUIEventListeners() {
             pos4 = e.clientY;
             document.onmouseup = closeDragElement;
             document.onmousemove = elementDrag;
+        }
+
+        function dragTouchStart(e) {
+            // Allow interaction with inputs, buttons, and sliders
+            if (['INPUT', 'BUTTON', 'SELECT', 'TEXTAREA', 'LABEL'].includes(e.target.tagName)) {
+                return;
+            }
+
+            // e.preventDefault(); // Don't prevent default immediately, might want to click
+            // Actually for dragging a modal, we usually want to prevent scroll
+            if (e.cancelable) e.preventDefault();
+
+            const touch = e.touches[0];
+            pos3 = touch.clientX;
+            pos4 = touch.clientY;
+
+            document.ontouchend = closeDragElement;
+            document.ontouchmove = elementTouchDrag;
         }
 
         function elementDrag(e) {
@@ -363,10 +382,29 @@ export function setupUIEventListeners() {
             elmnt.style.bottom = 'auto';
         }
 
+        function elementTouchDrag(e) {
+            if (e.cancelable) e.preventDefault();
+            const touch = e.touches[0];
+
+            // Calculate the new cursor position:
+            pos1 = pos3 - touch.clientX;
+            pos2 = pos4 - touch.clientY;
+            pos3 = touch.clientX;
+            pos4 = touch.clientY;
+
+            // Set the element's new position:
+            elmnt.style.top = (elmnt.offsetTop - pos2) + "px";
+            elmnt.style.left = (elmnt.offsetLeft - pos1) + "px";
+            elmnt.style.right = 'auto';
+            elmnt.style.bottom = 'auto';
+        }
+
         function closeDragElement() {
             // Stop moving when mouse button is released:
             document.onmouseup = null;
             document.onmousemove = null;
+            document.ontouchend = null;
+            document.ontouchmove = null;
         }
     };
 
