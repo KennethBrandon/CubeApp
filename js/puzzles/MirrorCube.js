@@ -15,23 +15,17 @@ export class MirrorCube extends StandardCube {
         // We want asymmetric extensions.
         // Let's define the total size we want.
         // Standard cube extends from -1.5*S to 1.5*S (approx).
-        // Dimensions based on user feedback and image analysis
-        // X: Thin Left, Thick Right
-        // Y: Thick Bottom, Thin Top
-        // Z: Thin Back, Thick Front (User request: "smallest corner in up back left")
-        // Smallest corner is intersection of Thin Left (X-), Thin Top (Y+), Thin Back (Z-)
+        // Dimensions based on user feedback (Left 1.4, Right 1.6, Bottom 2.2, Top 0.8, Back 1.1, Front 1.9)
 
         const S = CUBE_SIZE + SPACING;
         const cut = 0.5 * S; // Internal cut positions must remain symmetric for mechanism
 
         this.bounds = {
             // Left (-x) to Right (+x)
-            x: [-1.1 * S, -cut, cut, 1.9 * S],
+            x: [-1.4 * S, -cut, cut, 1.6 * S],
             // Bottom (-y) to Top (+y)
-            y: [-1.9 * S, -cut, cut, 1.1 * S],
+            y: [-2.2 * S, -cut, cut, 0.8 * S],
             // Back (-z) to Front (+z)
-            // Back (-z) extension small (e.g. 1.1S -> -1.1S bound) -> Thin Back
-            // Front (+z) extension large (e.g. 1.9S -> 1.9S bound) -> Thick Front
             z: [-1.1 * S, -cut, cut, 1.9 * S]
         };
 
@@ -43,16 +37,17 @@ export class MirrorCube extends StandardCube {
     }
 
     createGeometry() {
+        // Clear existing geometry if any (handled by caller usually, but good to be safe)
+        // In this architecture, createGeometry is called on a fresh instance or after clear.
         state.allCubies.forEach(c => {
             if (c.parent) c.parent.remove(c);
         });
         state.allCubies = [];
         state.activeDimensions = { ...this.config.dimensions };
 
-        // Gold material for stickers
-        const goldColor = new THREE.Color(0xFFD700);
+        const goldColor = 0xFFD700; // Gold
 
-        // Core material (black plastic)
+        // Material for the core (black plastic)
         const coreMat = new THREE.MeshStandardMaterial({
             color: 0x111111,
             roughness: 0.6,
@@ -149,7 +144,7 @@ export class MirrorCube extends StandardCube {
                             const geo = new THREE.PlaneGeometry(sW, sH);
                             const stickerMat = new THREE.ShaderMaterial({
                                 uniforms: {
-                                    color: { value: goldColor },
+                                    color: { value: new THREE.Color(goldColor) },
                                     borderRadius: { value: BORDER_RADIUS },
                                     opacity: { value: 1.0 },
                                     uSize: { value: new THREE.Vector2(sW, sH) }
@@ -215,6 +210,38 @@ export class MirrorCube extends StandardCube {
 
     // Removed getCubiesInSlice override - StandardCube logic works because pivots are standard
     // Removed snapCubies override - StandardCube logic works because pivots are standard
+
+    updateDimensions(offsets) {
+        // offsets: { left, right, bottom, top, back, front }
+        // All values are multipliers of S (or absolute offsets? Let's use multipliers of S for consistency with bounds)
+        // Actually, the UI will probably pass absolute values or multipliers.
+        // Let's assume the UI passes the raw values from the sliders, which we'll interpret as multipliers of S.
+
+        const S = CUBE_SIZE + SPACING;
+        const cut = 0.5 * S;
+
+        // Default multipliers if not provided
+        // Current defaults:
+        // x: [-1.1, 1.9] -> left: 1.1, right: 1.9
+        // y: [-1.9, 1.1] -> bottom: 1.9, top: 1.1
+        // z: [-1.1, 1.9] -> back: 1.1, front: 1.9
+
+        const left = offsets.left !== undefined ? offsets.left : 1.4;
+        const right = offsets.right !== undefined ? offsets.right : 1.6;
+        const bottom = offsets.bottom !== undefined ? offsets.bottom : 2.2;
+        const top = offsets.top !== undefined ? offsets.top : 0.8;
+        const back = offsets.back !== undefined ? offsets.back : 1.1;
+        const front = offsets.front !== undefined ? offsets.front : 1.9;
+
+        this.bounds = {
+            x: [-left * S, -cut, cut, right * S],
+            y: [-bottom * S, -cut, cut, top * S],
+            z: [-back * S, -cut, cut, front * S]
+        };
+
+        // Regenerate geometry
+        this.createGeometry();
+    }
 
     isSolved() {
         // Check orientation of all cubies
