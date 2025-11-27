@@ -34,7 +34,7 @@ export function playCubeAnimation(reverse = false, onComplete = null, fade = tru
     state.isAnimating = true;
     state.pivot.rotation.set(0, 0, 0);
     state.pivot.position.set(0, 0, 0);
-    state.cubeWrapper.add(state.pivot); // Use cubeWrapper
+    state.scene.add(state.pivot); // Use scene for world-space animation
     state.allCubies.forEach(c => state.pivot.attach(c));
     const spinDuration = 800; // Quick animation
     const spinRotations = 2 * Math.PI * 2; // 2 full rotations
