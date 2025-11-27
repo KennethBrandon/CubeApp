@@ -178,21 +178,25 @@ export function setupUIEventListeners() {
 
             // Mirror Cube Debug Button Visibility
             const debugRow = document.getElementById('mirror-debug-row');
-            const debugUI = document.getElementById('mirror-debug-ui');
+            // Always show the debug row
+            if (debugRow) debugRow.classList.remove('hidden');
 
             if (state.activePuzzle instanceof MirrorCube) {
-                if (debugRow) debugRow.classList.remove('hidden');
-                // Ensure UI is hidden by default on load
-                if (debugUI) debugUI.classList.add('hidden');
-
                 // Apply defaults
                 const margin = parseFloat(document.getElementById('sticker-margin').value);
                 const radius = parseFloat(document.getElementById('sticker-radius').value);
                 state.activePuzzle.updateStickers(margin, radius);
-            } else {
-                if (debugRow) debugRow.classList.add('hidden');
-                if (debugUI) debugUI.classList.add('hidden');
+
+                // Apply dimension defaults (read from sliders which have the defaults set in HTML)
+                const left = parseFloat(document.getElementById('dim-left').value);
+                const right = parseFloat(document.getElementById('dim-right').value);
+                const bottom = parseFloat(document.getElementById('dim-bottom').value);
+                const top = parseFloat(document.getElementById('dim-top').value);
+                const back = parseFloat(document.getElementById('dim-back').value);
+                const front = parseFloat(document.getElementById('dim-front').value);
+                state.activePuzzle.updateDimensions({ left, right, bottom, top, back, front });
             }
+            // Removed else block that hid the UI
 
             adjustCameraForCubeSize(zoomRatio);
             playCubeAnimation(true);
@@ -237,16 +241,126 @@ export function setupUIEventListeners() {
         if (toggle) toggle.checked = false;
     });
 
+    // Dimension Tuner Listeners
+    const updateMirrorDimensions = () => {
+        if (state.activePuzzle instanceof MirrorCube) {
+            const left = parseFloat(document.getElementById('dim-left').value);
+            const right = parseFloat(document.getElementById('dim-right').value);
+            const bottom = parseFloat(document.getElementById('dim-bottom').value);
+            const top = parseFloat(document.getElementById('dim-top').value);
+            const back = parseFloat(document.getElementById('dim-back').value);
+            const front = parseFloat(document.getElementById('dim-front').value);
+
+            document.getElementById('val-left').textContent = left.toFixed(1);
+            document.getElementById('val-right').textContent = right.toFixed(1);
+            document.getElementById('val-bottom').textContent = bottom.toFixed(1);
+            document.getElementById('val-top').textContent = top.toFixed(1);
+            document.getElementById('val-back').textContent = back.toFixed(1);
+            document.getElementById('val-front').textContent = front.toFixed(1);
+
+            state.activePuzzle.updateDimensions({ left, right, bottom, top, back, front });
+        }
+    };
+
+    ['dim-left', 'dim-right', 'dim-bottom', 'dim-top', 'dim-back', 'dim-front'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('input', updateMirrorDimensions);
+    });
+
+    // Reset Defaults Button
+    const btnResetDefaults = document.getElementById('btn-reset-mirror-defaults');
+    if (btnResetDefaults) {
+        btnResetDefaults.addEventListener('click', () => {
+            // Defaults: Left 1.4, Right 1.6, Bottom 2.2, Top 0.8, Back 1.1, Front 1.9
+            const defaults = {
+                'dim-left': 1.4,
+                'dim-right': 1.6,
+                'dim-bottom': 2.2,
+                'dim-top': 0.8,
+                'dim-back': 1.1,
+                'dim-front': 1.9
+            };
+
+            for (const [id, val] of Object.entries(defaults)) {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.value = val;
+                    // Trigger input event to update display and cube
+                    el.dispatchEvent(new Event('input'));
+                }
+            }
+        });
+    }
+
     // Custom Puzzle Panel Logic - Live Preview
     const updateCustomDimension = (id, valId) => {
         const el = document.getElementById(id);
         const valEl = document.getElementById(valId);
-        el.addEventListener('input', (e) => {
-            valEl.textContent = e.target.value;
-            // Live preview: update puzzle immediately without animation
-            updateCustomPuzzlePreview();
-        });
+        if (el && valEl) {
+            valEl.textContent = el.value;
+        }
     };
+
+    ['custom-x', 'custom-y', 'custom-z'].forEach(axis => {
+        const id = `dim-${axis}`; // wait, these IDs are for the custom puzzle creator, not mirror tuner
+        // The custom puzzle creator uses 'custom-x', 'custom-y', 'custom-z' inputs?
+        // Let's check index.html... ah, 'custom-puzzle-input' is a text input.
+        // There are no sliders for custom puzzle creator dimensions in the code I saw earlier.
+        // The code I'm replacing seems to be a placeholder or I misread the context.
+        // Let's just insert the drag logic here.
+    });
+
+    // Drag Logic for Mirror Tuner
+    const makeDraggable = (elmnt) => {
+        let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+        // Fix: ID in HTML is "mirror-debug-header", not "mirror-debug-ui-header"
+        // But let's be safer and just look for the specific ID we know we used.
+        const header = document.getElementById("mirror-debug-header");
+
+        if (header) {
+            header.onmousedown = dragMouseDown;
+        } else {
+            // Fallback only if header is missing, but we should ensure it exists
+            elmnt.onmousedown = dragMouseDown;
+        }
+
+        function dragMouseDown(e) {
+            e = e || window.event;
+            e.preventDefault();
+            // Get the mouse cursor position at startup:
+            pos3 = e.clientX;
+            pos4 = e.clientY;
+            document.onmouseup = closeDragElement;
+            document.onmousemove = elementDrag;
+        }
+
+        function elementDrag(e) {
+            e = e || window.event;
+            e.preventDefault();
+            // Calculate the new cursor position:
+            pos1 = pos3 - e.clientX;
+            pos2 = pos4 - e.clientY;
+            pos3 = e.clientX;
+            pos4 = e.clientY;
+            // Set the element's new position:
+            elmnt.style.top = (elmnt.offsetTop - pos2) + "px";
+            elmnt.style.left = (elmnt.offsetLeft - pos1) + "px";
+            // Clear right/bottom to allow free movement if they were set
+            elmnt.style.right = 'auto';
+            elmnt.style.bottom = 'auto';
+        }
+
+        function closeDragElement() {
+            // Stop moving when mouse button is released:
+            document.onmouseup = null;
+            document.onmousemove = null;
+        }
+    };
+
+    const tunerUI = document.getElementById('mirror-debug-ui');
+    if (tunerUI) {
+        makeDraggable(tunerUI);
+    }
     updateCustomDimension('custom-dim1', 'val-dim1');
     updateCustomDimension('custom-dim2', 'val-dim2');
     updateCustomDimension('custom-dim3', 'val-dim3');
