@@ -371,16 +371,43 @@ export class MirrorCube extends StandardCube {
     }
 
     isSolved() {
-        // Check orientation of all cubies
-        const epsilon = 0.1;
-        for (const cubie of state.allCubies) {
-            const up = new THREE.Vector3(0, 1, 0).applyQuaternion(cubie.quaternion);
-            const fwd = new THREE.Vector3(0, 0, 1).applyQuaternion(cubie.quaternion);
+        // Check if the puzzle is solved by verifying shape.
+        // Since Mirror Cube pieces are unique (mostly), we check:
+        // 1. All cubies must share the same global orientation (rotation invariant).
+        // 2. When un-rotated by that global orientation, they must be at their initial positions.
 
-            if (Math.abs(up.y - 1) > epsilon || Math.abs(fwd.z - 1) > epsilon) {
+        const cubies = state.allCubies;
+        if (!cubies || cubies.length === 0) return false;
+
+        const epsilon = 0.1;
+
+        // Use the first cubie as a reference for the global rotation
+        const refCubie = cubies[0];
+        const refQ = refCubie.quaternion.clone();
+        const invRefQ = refQ.clone().invert();
+
+        for (const cubie of cubies) {
+            // 1. Check Orientation Consistency
+            // Dot product of quaternions: |q1.dot(q2)| should be close to 1
+            if (Math.abs(cubie.quaternion.dot(refQ)) < 0.9) {
                 return false;
             }
+
+            // 2. Check Relative Position
+            // If the puzzle is just rotated globally, then:
+            // currentPos = initialPos.applyQuaternion(globalRotation)
+            // So: currentPos.applyQuaternion(inverseGlobalRotation) should == initialPos
+
+            if (cubie.userData.initialPosition) {
+                const currentPos = cubie.position.clone();
+                const unrotatedPos = currentPos.applyQuaternion(invRefQ);
+
+                if (unrotatedPos.distanceTo(cubie.userData.initialPosition) > epsilon) {
+                    return false;
+                }
+            }
         }
+
         return true;
     }
 }
