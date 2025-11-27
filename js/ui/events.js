@@ -12,11 +12,15 @@ import { soundManager } from '../core/sound.js';
 import { StandardCube } from '../puzzles/StandardCube.js';
 import { MirrorCube } from '../puzzles/MirrorCube.js';
 import { checkSolved } from '../game/timer.js';
+import { setupPuzzleSelector, openPuzzleSelector } from './puzzleSelector.js';
+import { setupLeaderboardUI, openLeaderboardModal } from './leaderboardUi.js';
 
 export function setupUIEventListeners() {
     window.addEventListener('resize', onWindowResize);
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup', onKeyUp);
+
+    setupPuzzleSelector();
 
     document.getElementById('btn-scramble').addEventListener('click', () => {
         gtag('event', 'scramble_click');
@@ -70,163 +74,22 @@ export function setupUIEventListeners() {
     window.addEventListener('touchstart', initAudio);
 
     // Leaderboard Listeners
+    setupLeaderboardUI();
+
     document.getElementById('btn-leaderboard').addEventListener('click', () => {
-        if (!state.selectedLeaderboardPuzzle) {
-            let currentPuzzle;
-            const isMirror = state.activePuzzle instanceof MirrorCube;
-
-            if (state.cubeDimensions.x === state.cubeDimensions.y && state.cubeDimensions.y === state.cubeDimensions.z) {
-                if (isMirror) {
-                    const s = state.cubeSize;
-                    currentPuzzle = `mirror-${s}x${s}x${s}`;
-                } else {
-                    currentPuzzle = state.cubeSize;
-                }
-            } else {
-                const dims = [state.cubeDimensions.x, state.cubeDimensions.y, state.cubeDimensions.z].sort((a, b) => b - a);
-                const dimStr = `${dims[0]}x${dims[1]}x${dims[2]}`;
-                currentPuzzle = isMirror ? `mirror-${dimStr}` : dimStr;
-            }
-            state.selectedLeaderboardPuzzle = currentPuzzle;
-        }
-
-        fetchLeaderboard(state.selectedLeaderboardPuzzle);
-        updateActivePuzzleTab(state.selectedLeaderboardPuzzle);
-        document.getElementById('leaderboard-modal').classList.remove('hidden');
-        gtag('event', 'open_leaderboard', { puzzle: state.selectedLeaderboardPuzzle });
+        openLeaderboardModal();
+        gtag('event', 'open_leaderboard');
     });
 
     document.getElementById('btn-close-leaderboard').addEventListener('click', () => {
         document.getElementById('leaderboard-modal').classList.add('hidden');
     });
 
-    // Puzzle Tab Switching (Event Delegation)
-    const tabContainer = document.getElementById('puzzle-tabs');
-    if (tabContainer) {
-        tabContainer.addEventListener('click', (e) => {
-            const tab = e.target.closest('.puzzle-tab');
-            if (!tab) return;
-
-            const puzzleSize = tab.dataset.puzzle;
-            // Handle numeric vs string
-            const parsedPuzzle = (puzzleSize.includes('x') || puzzleSize.includes('mirror')) ? puzzleSize : parseInt(puzzleSize);
-
-            state.selectedLeaderboardPuzzle = parsedPuzzle;
-            fetchLeaderboard(parsedPuzzle);
-            updateActivePuzzleTab(parsedPuzzle);
-            gtag('event', 'leaderboard_tab_click', { puzzle: parsedPuzzle });
-        });
-    }
-
     document.getElementById('btn-close-detail').addEventListener('click', () => {
         document.getElementById('detail-modal').classList.add('hidden');
     });
 
-    let previousPuzzleSelection = '3'; // Default to 3x3
 
-    document.getElementById('puzzle-select').addEventListener('change', (e) => {
-        e.target.blur(); // Remove focus so keyboard controls work immediately
-        const val = e.target.value;
-
-        if (val === 'custom') {
-            document.getElementById('custom-puzzle-panel').classList.remove('hidden');
-            const backdrop = document.getElementById('custom-puzzle-backdrop');
-            if (backdrop) backdrop.classList.remove('hidden');
-            return;
-        }
-
-        // Hide custom panel if switching to a different puzzle
-        document.getElementById('custom-puzzle-panel').classList.add('hidden');
-        const backdrop = document.getElementById('custom-puzzle-backdrop');
-        if (backdrop) backdrop.classList.add('hidden');
-
-        previousPuzzleSelection = val; // Store valid selection
-
-        let newSize = 3;
-        let newDims = { x: 3, y: 3, z: 3 };
-        let PuzzleClass = StandardCube;
-
-        if (val === 'mirror') {
-            newSize = 3;
-            newDims = { x: 3, y: 3, z: 3 };
-            PuzzleClass = MirrorCube;
-        } else if (val.startsWith('mirror-')) {
-            const dimsStr = val.replace('mirror-', '');
-            const dims = dimsStr.split('x').map(Number);
-            dims.sort((a, b) => b - a);
-            newDims = { x: dims[1], y: dims[0], z: dims[2] };
-            newSize = dims[0];
-            PuzzleClass = MirrorCube;
-        } else if (val.includes('x')) {
-            const dims = val.split('x').map(Number);
-            dims.sort((a, b) => b - a); // Sort descending
-            // Assign largest to Y (height), then X, then Z
-            newDims = { x: dims[1], y: dims[0], z: dims[2] };
-            newSize = dims[0]; // Max dimension determines camera zoom roughly
-        } else {
-            newSize = parseInt(val);
-            newDims = { x: newSize, y: newSize, z: newSize };
-        }
-
-        if (PuzzleClass === StandardCube && newDims.x === state.cubeDimensions.x && newDims.y === state.cubeDimensions.y && newDims.z === state.cubeDimensions.z && !(state.activePuzzle instanceof MirrorCube)) return;
-        // If switching from Mirror to Standard 3x3, we need to proceed even if dims are same
-
-        const currentDist = state.camera.position.length();
-        const minD = state.controls.minDistance;
-        const maxD = state.controls.maxDistance;
-        let zoomRatio = null;
-        if (maxD > minD) {
-            zoomRatio = (currentDist - minD) / (maxD - minD);
-        }
-
-        playCubeAnimation(false, () => {
-            state.cubeSize = newSize;
-            state.cubeDimensions = newDims;
-
-            // Update mirror height based on new size
-            const newHeight = getMirrorHeight(newSize);
-            state.backMirrorHeightOffset = newHeight;
-
-            // Update UI controls
-            const slider = document.getElementById('mirror-height-slider');
-            const input = document.getElementById('mirror-height-value');
-            if (slider) slider.value = newHeight;
-            if (input) input.value = newHeight.toFixed(1);
-
-            // Update Active Puzzle
-            state.activePuzzle = new PuzzleClass({
-                dimensions: newDims
-            });
-
-            hardReset(true);
-
-            // Mirror Cube Debug Button Visibility
-            const debugRow = document.getElementById('mirror-debug-row');
-            // Always show the debug row
-            if (debugRow) debugRow.classList.remove('hidden');
-
-            if (state.activePuzzle instanceof MirrorCube) {
-                // Apply defaults
-                const margin = parseFloat(document.getElementById('sticker-margin').value);
-                const radius = parseFloat(document.getElementById('sticker-radius').value);
-                state.activePuzzle.updateStickers(margin, radius);
-
-                // Apply dimension defaults (read from sliders which have the defaults set in HTML)
-                const left = parseFloat(document.getElementById('dim-left').value);
-                const right = parseFloat(document.getElementById('dim-right').value);
-                const bottom = parseFloat(document.getElementById('dim-bottom').value);
-                const top = parseFloat(document.getElementById('dim-top').value);
-                const back = parseFloat(document.getElementById('dim-back').value);
-                const front = parseFloat(document.getElementById('dim-front').value);
-                state.activePuzzle.updateDimensions({ left, right, bottom, top, back, front });
-            }
-            // Removed else block that hid the UI
-
-            adjustCameraForCubeSize(zoomRatio);
-            playCubeAnimation(true);
-        });
-        gtag('event', 'puzzle_change', { puzzle_type: val });
-    });
 
     // Mirror Cube Debug UI Listeners
     const updateMirrorStickers = () => {
@@ -463,247 +326,14 @@ export function setupUIEventListeners() {
         makeDraggable(tunerUI, 'mirror-debug-header');
     }
 
-    const customPuzzlePanel = document.getElementById('custom-puzzle-panel');
-    if (customPuzzlePanel) {
-        makeDraggable(customPuzzlePanel, 'custom-puzzle-header');
-    }
+
 
     const fpsCounter = document.getElementById('fps-counter');
     if (fpsCounter) {
         makeDraggable(fpsCounter, 'fps-counter');
     }
 
-    updateCustomDimension('custom-dim1', 'val-dim1');
-    updateCustomDimension('custom-dim2', 'val-dim2');
-    updateCustomDimension('custom-dim3', 'val-dim3');
 
-    // Add listeners for custom dimension sliders
-    ['custom-dim1', 'custom-dim2', 'custom-dim3'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) {
-            el.addEventListener('input', () => {
-                const valId = id.replace('custom-', 'val-');
-                updateCustomDimension(id, valId);
-                updateCustomPuzzlePreview();
-            });
-        }
-    });
-
-    // Update preview when checkbox changes
-    document.getElementById('custom-mirror-check').addEventListener('change', updateCustomPuzzlePreview);
-
-    function updateCustomPuzzlePreview() {
-        const dim1 = parseInt(document.getElementById('custom-dim1').value);
-        const dim2 = parseInt(document.getElementById('custom-dim2').value);
-        const dim3 = parseInt(document.getElementById('custom-dim3').value);
-        const isMirror = document.getElementById('custom-mirror-check').checked;
-
-        // Sort dimensions descending
-        const dims = [dim1, dim2, dim3].sort((a, b) => b - a);
-        const newDims = { x: dims[1], y: dims[0], z: dims[2] };
-        const newSize = dims[0];
-
-        // Preserve zoom ratio
-        const currentDist = state.camera.position.length();
-        const minD = state.controls.minDistance;
-        const maxD = state.controls.maxDistance;
-        let zoomRatio = null;
-        if (maxD > minD) {
-            zoomRatio = (currentDist - minD) / (maxD - minD);
-        }
-
-        // Update state and puzzle WITHOUT animation
-        state.cubeSize = newSize;
-        state.cubeDimensions = newDims;
-
-        const newHeight = getMirrorHeight(newSize);
-        state.backMirrorHeightOffset = newHeight;
-
-        const slider = document.getElementById('mirror-height-slider');
-        const input = document.getElementById('mirror-height-value');
-        if (slider) slider.value = newHeight;
-        if (input) input.value = newHeight.toFixed(1);
-
-        state.activePuzzle = isMirror ? new MirrorCube({ dimensions: newDims }) : new StandardCube({
-            dimensions: newDims
-        });
-
-        hardReset(false); // No scramble
-        adjustCameraForCubeSize(zoomRatio);
-    }
-
-    document.getElementById('btn-cancel-custom').addEventListener('click', () => {
-        document.getElementById('custom-puzzle-panel').classList.add('hidden');
-        const backdrop = document.getElementById('custom-puzzle-backdrop');
-        if (backdrop) backdrop.classList.add('hidden');
-        document.getElementById('puzzle-select').value = previousPuzzleSelection;
-
-        // Revert to the previous puzzle selection
-        const val = previousPuzzleSelection;
-        let newSize = 3;
-        let newDims = { x: 3, y: 3, z: 3 };
-
-        if (val.includes('x')) {
-            const dims = val.split('x').map(Number);
-            dims.sort((a, b) => b - a);
-            newDims = { x: dims[1], y: dims[0], z: dims[2] };
-            newSize = dims[0];
-        } else {
-            newSize = parseInt(val);
-            newDims = { x: newSize, y: newSize, z: newSize };
-        }
-
-        const currentDist = state.camera.position.length();
-        const minD = state.controls.minDistance;
-        const maxD = state.controls.maxDistance;
-        let zoomRatio = null;
-        if (maxD > minD) {
-            zoomRatio = (currentDist - minD) / (maxD - minD);
-        }
-
-        state.cubeSize = newSize;
-        state.cubeDimensions = newDims;
-        const newHeight = getMirrorHeight(newSize);
-        state.backMirrorHeightOffset = newHeight;
-
-        const slider = document.getElementById('mirror-height-slider');
-        const input = document.getElementById('mirror-height-value');
-        if (slider) slider.value = newHeight;
-        if (input) input.value = newHeight.toFixed(1);
-
-        state.activePuzzle = new StandardCube({
-            dimensions: newDims
-        });
-
-        hardReset(false);
-        adjustCameraForCubeSize(zoomRatio);
-    });
-
-    document.getElementById('btn-submit-custom').addEventListener('click', () => {
-        const dim1 = parseInt(document.getElementById('custom-dim1').value);
-        const dim2 = parseInt(document.getElementById('custom-dim2').value);
-        const dim3 = parseInt(document.getElementById('custom-dim3').value);
-        const isMirror = document.getElementById('custom-mirror-check').checked;
-
-        document.getElementById('custom-puzzle-panel').classList.add('hidden');
-        const backdrop = document.getElementById('custom-puzzle-backdrop');
-        if (backdrop) backdrop.classList.add('hidden');
-
-        // Sort dimensions for consistency
-        const dims = [dim1, dim2, dim3].sort((a, b) => b - a);
-        const puzzleCode = `${dims[0]}x${dims[1]}x${dims[2]}`;
-        const newDims = { x: dims[1], y: dims[0], z: dims[2] };
-        const newSize = dims[0];
-
-        // Update dropdown
-        const select = document.getElementById('puzzle-select');
-        let optionExists = false;
-
-        const isCube = dims[0] === dims[1] && dims[1] === dims[2];
-        const simpleCode = isCube ? dims[0].toString() : null;
-
-        // Helper to get sorted dims string from value
-        const getSortedDimsStr = (val) => {
-            if (!val || val === 'custom') return null;
-            if (val.includes('x')) {
-                return val.split('x').map(Number).sort((a, b) => b - a).join('x');
-            }
-            const n = parseInt(val);
-            return !isNaN(n) ? `${n}x${n}x${n}` : null;
-        };
-
-        const targetSorted = dims.join('x'); // dims is already sorted descending
-
-        // Determine target value for the option
-        let targetValue = puzzleCode;
-        if (isMirror) {
-            if (puzzleCode === '3x3x3') targetValue = 'mirror';
-            else targetValue = `mirror-${puzzleCode}`;
-        }
-
-        for (let i = 0; i < select.options.length; i++) {
-            const optVal = select.options[i].value;
-            if (optVal === 'custom') continue;
-
-            // Check for exact match with targetValue
-            if (optVal === targetValue) {
-                select.selectedIndex = i;
-                optionExists = true;
-                break;
-            }
-
-            // For Standard Cubes: Check for simple code match (e.g. '3' for '3x3x3')
-            if (!isMirror && simpleCode && optVal === simpleCode) {
-                select.selectedIndex = i;
-                optionExists = true;
-                break;
-            }
-
-            // For Standard Cubes: Check for permutation match (e.g. '2x3x4' vs '4x3x2')
-            if (!isMirror && optVal.includes('x') && !optVal.startsWith('mirror-')) {
-                const optSorted = getSortedDimsStr(optVal);
-                if (optSorted === targetSorted) {
-                    select.selectedIndex = i;
-                    optionExists = true;
-                    break;
-                }
-            }
-
-            // For Mirror Cubes: Check for permutation match with prefix
-            if (isMirror && optVal.startsWith('mirror-')) {
-                const optDimsStr = optVal.replace('mirror-', '');
-                const optSorted = getSortedDimsStr(optDimsStr);
-                if (optSorted === targetSorted) {
-                    select.selectedIndex = i;
-                    optionExists = true;
-                    break;
-                }
-            }
-        }
-
-        if (!optionExists) {
-            const newOption = document.createElement('option');
-            newOption.value = targetValue;
-            newOption.textContent = `${puzzleCode} ${isMirror ? 'Mirror ' : ''}Cube`;
-
-            const customOption = select.querySelector('option[value="custom"]');
-            select.insertBefore(newOption, customOption);
-            select.value = targetValue;
-        }
-
-        previousPuzzleSelection = puzzleCode;
-
-        const currentDist = state.camera.position.length();
-        const minD = state.controls.minDistance;
-        const maxD = state.controls.maxDistance;
-        let zoomRatio = null;
-        if (maxD > minD) {
-            zoomRatio = (currentDist - minD) / (maxD - minD);
-        }
-
-        // Play spin animation on submit
-        playCubeAnimation(false, () => {
-            state.cubeSize = newSize;
-            state.cubeDimensions = newDims;
-
-            const newHeight = getMirrorHeight(newSize);
-            state.backMirrorHeightOffset = newHeight;
-
-            const slider = document.getElementById('mirror-height-slider');
-            const input = document.getElementById('mirror-height-value');
-            if (slider) slider.value = newHeight;
-            if (input) input.value = newHeight.toFixed(1);
-
-            state.activePuzzle = isMirror ? new MirrorCube({ dimensions: newDims }) : new StandardCube({
-                dimensions: newDims
-            });
-
-            hardReset(true);
-            adjustCameraForCubeSize(zoomRatio);
-            playCubeAnimation(true, null, false);
-        }, false);
-        gtag('event', 'custom_puzzle_create', { puzzle_def: puzzleCode });
-    });
 
     document.getElementById('btn-toggle-mirrors').addEventListener('click', () => {
         const newState = !state.showMirrors;

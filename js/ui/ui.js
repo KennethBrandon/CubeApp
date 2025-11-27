@@ -113,104 +113,18 @@ export function escapeHtml(text) {
     return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
 }
 
-export function updateActivePuzzleTab(puzzleSize) {
-    const puzzleStr = String(puzzleSize);
-    document.querySelectorAll('.puzzle-tab').forEach(tab => {
-        if (tab.dataset.puzzle === puzzleStr) {
-            tab.classList.add('active');
-            // Scroll into view if needed
-            tab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-        } else {
-            tab.classList.remove('active');
+export function updateActivePuzzleTab(activeType) {
+    const btn = document.getElementById('btn-leaderboard-filter');
+    if (btn) {
+        let text = activeType;
+        // Format nicely if possible
+        if (typeof activeType === 'number') {
+            text = `${activeType}x${activeType}x${activeType}`;
+        } else if (String(activeType).startsWith('mirror-')) {
+            text = activeType.replace('mirror-', '') + ' Mirror';
         }
-    });
-}
-
-export function renderLeaderboardTabs(availableTypes, activeType) {
-    const container = document.getElementById('puzzle-tabs');
-    if (!container) return;
-
-    // Helper to parse puzzle string for sorting
-    const parseType = (t) => {
-        const isMirror = t.startsWith('mirror-');
-        const core = t.replace('mirror-', '');
-        let dims = [];
-        if (core.includes('x')) {
-            dims = core.split('x').map(Number);
-        } else {
-            const n = parseInt(core);
-            dims = [n, n, n];
-        }
-        // Sort dims descending for consistent comparison
-        dims.sort((a, b) => b - a);
-        return { isMirror, dims, original: t };
-    };
-
-    const parsed = availableTypes.map(parseType);
-
-    parsed.sort((a, b) => {
-        // 1. Standard before Mirror
-        if (a.isMirror !== b.isMirror) return a.isMirror ? 1 : -1;
-
-        // 2. Cubic before Non-Cubic (Standard only? Or generally?)
-        // Let's just sort by max dimension, then volume, then shape
-        const maxA = a.dims[0];
-        const maxB = b.dims[0];
-        if (maxA !== maxB) return maxA - maxB;
-
-        // Volume
-        const volA = a.dims[0] * a.dims[1] * a.dims[2];
-        const volB = b.dims[0] * b.dims[1] * b.dims[2];
-        if (volA !== volB) return volA - volB;
-
-        return a.original.localeCompare(b.original);
-    });
-
-    container.innerHTML = '';
-
-    // Always ensure the active type is present even if not in availableTypes (e.g. first load)
-    let typesToShow = parsed.map(p => p.original);
-    if (activeType && !typesToShow.includes(String(activeType))) {
-        typesToShow.push(String(activeType));
-        // Re-sort? Nah, just append or prepend.
-        // Actually, let's just let the next update fix it, or add it.
+        btn.textContent = `Filter: ${text}`;
     }
-
-    // De-duplicate just in case
-    typesToShow = [...new Set(typesToShow)];
-
-    // Re-sort again if we added activeType
-    const finalParsed = typesToShow.map(parseType);
-    finalParsed.sort((a, b) => {
-        if (a.isMirror !== b.isMirror) return a.isMirror ? 1 : -1;
-        const maxA = a.dims[0]; const maxB = b.dims[0];
-        if (maxA !== maxB) return maxA - maxB;
-        const volA = a.dims[0] * a.dims[1] * a.dims[2];
-        const volB = b.dims[0] * b.dims[1] * b.dims[2];
-        if (volA !== volB) return volA - volB;
-        return a.original.localeCompare(b.original);
-    });
-
-    finalParsed.forEach(p => {
-        const btn = document.createElement('button');
-        // Copy classes from index.html example: "puzzle-tab px-3 py-1 rounded text-xs font-medium transition"
-        // Active class handled by updateActivePuzzleTab or here
-        btn.className = "puzzle-tab px-3 py-1 rounded text-xs font-medium transition shrink-0";
-
-        if (p.original === String(activeType)) {
-            btn.classList.add('active');
-        }
-
-        // Format Label
-        let label = p.original;
-        if (p.isMirror) {
-            label = "Mirror " + p.original.replace('mirror-', '');
-        } else if (!p.original.includes('x')) {
-            label = p.original + "x" + p.original; // 3 -> 3x3
-        }
-
-        btn.textContent = label;
-        btn.dataset.puzzle = p.original;
-        container.appendChild(btn);
-    });
 }
+
+// renderLeaderboardTabs removed as tabs are no longer used

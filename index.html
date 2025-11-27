@@ -52,34 +52,10 @@
 
             <!-- Left: Title & Timer -->
             <div class="flex flex-wrap justify-center items-center gap-4">
-                <select id="puzzle-select"
-                    class="bg-gray-800 text-blue-400 font-bold text-lg border border-gray-600 rounded px-2 py-1 focus:outline-none focus:border-blue-500">
-                    <option value="2">2x2 Cube</option>
-                    <option value="2x2x1">2x2x1 Cube</option>
-                    <option value="2x2x3">2x2x3 Cube</option>
-                    <option value="2x2x4">2x2x4 Cube</option>
-                    <option value="3" selected>3x3x3 (Rubik's Cube)</option>
-                    <option value="mirror">3x3x3 Mirror Cube</option>
-                    <option value="3x3x1">3x3x1 Cube (Floppy)</option>
-                    <option value="3x3x2">3x3x2 Cube</option>
-                    <option value="3x3x4">3x3x4 Cube</option>
-                    <option value="3x3x5">3x3x5 Cube</option>
-                    <option value="4">4x4 Cube</option>
-                    <option value="5">5x5 Cube</option>
-                    <option value="6">6x6 Cube</option>
-                    <option value="7">7x7 Cube</option>
-                    <option value="8">8x8 Cube</option>
-                    <option value="9">9x9 Cube</option>
-                    <option value="10">10x10 Cube</option>
-                    <option value="11">11x11 Cube</option>
-                    <option value="12">12x12 Cube</option>
-                    <option value="13">13x13 Cube</option>
-                    <option value="14">14x14 Cube</option>
-                    <option value="15">15x15 Cube</option>
-                    <option value="16">16x16 Cube</option>
-                    <option value="17">17x17 Cube</option>
-                    <option value="custom" class="font-bold text-yellow-500">Custom...</option>
-                </select>
+                <button id="btn-puzzle-select"
+                    class="bg-gray-800 text-blue-400 font-bold text-lg border border-gray-600 rounded-lg px-4 py-2 hover:bg-gray-700 transition flex items-center shadow-lg">
+                    <span class="mr-2">🧩</span> 3x3x3 Cube <span class="ml-2 text-xs opacity-50">▼</span>
+                </button>
                 <div class="bg-black/50 px-3 py-1 rounded-lg border border-gray-600">
                     <div class="text-gray-500 text-[10px] uppercase tracking-wider leading-none mb-1" id="timer-label">
                         Time</div>
@@ -180,6 +156,129 @@
         </div>
     </div>
 
+    <!-- Puzzle Selector Modal -->
+    <div id="puzzle-selector-modal"
+        class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-4">
+        <div
+            class="bg-gray-900 w-full max-w-5xl h-[90vh] md:h-[80vh] rounded-2xl border border-gray-700 shadow-2xl flex flex-col md:flex-row overflow-hidden">
+
+            <!-- Sidebar -->
+            <div
+                class="w-full md:w-64 bg-gray-800/50 border-b md:border-b-0 md:border-r border-gray-700 flex flex-row md:flex-col flex-wrap md:flex-nowrap p-4 gap-2 md:overflow-y-auto shrink-0">
+                <h2 class="text-xl font-bold text-white mb-4 px-2 hidden md:block">Select Puzzle</h2>
+
+                <!-- Mobile Title -->
+                <div class="md:hidden flex items-center mr-4">
+                    <span class="font-bold text-white whitespace-nowrap">Puzzles</span>
+                </div>
+
+                <button
+                    class="puzzle-category-btn text-left px-4 py-2 md:py-3 rounded-xl transition font-bold text-gray-400 hover:bg-gray-800 whitespace-nowrap"
+                    data-category="standard">Standard</button>
+                <button
+                    class="puzzle-category-btn text-left px-4 py-2 md:py-3 rounded-xl transition font-bold text-gray-400 hover:bg-gray-800 whitespace-nowrap"
+                    data-category="big">Big</button>
+                <button
+                    class="puzzle-category-btn text-left px-4 py-2 md:py-3 rounded-xl transition font-bold text-gray-400 hover:bg-gray-800 whitespace-nowrap"
+                    data-category="cuboids">Cuboids</button>
+                <button
+                    class="puzzle-category-btn text-left px-4 py-2 md:py-3 rounded-xl transition font-bold text-gray-400 hover:bg-gray-800 whitespace-nowrap"
+                    data-category="mirror">Mirror</button>
+                <button
+                    class="puzzle-category-btn text-left px-4 py-2 md:py-3 rounded-xl transition font-bold text-gray-400 hover:bg-gray-800 whitespace-nowrap"
+                    data-category="custom">Custom</button>
+
+                <div class="flex-1 hidden md:block"></div>
+                <button id="btn-close-puzzle-selector"
+                    class="hidden md:block text-center px-4 py-3 rounded-xl bg-gray-800 hover:bg-gray-700 text-white font-bold transition">Close</button>
+            </div>
+
+            <!-- Content Area -->
+            <div class="flex-1 p-6 overflow-y-auto bg-gray-900 relative">
+
+                <!-- Standard -->
+                <div id="cat-standard"
+                    class="puzzle-category-content grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                    <div id="cat-standard-list" class="contents"></div>
+                </div>
+
+                <!-- Big -->
+                <div id="cat-big"
+                    class="puzzle-category-content hidden grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                    <div id="cat-big-list" class="contents"></div>
+                </div>
+
+                <!-- Cuboids -->
+                <div id="cat-cuboids"
+                    class="puzzle-category-content hidden grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                    <div id="cat-cuboids-list" class="contents"></div>
+                </div>
+
+                <!-- Mirror -->
+                <div id="cat-mirror"
+                    class="puzzle-category-content hidden grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                    <div id="cat-mirror-list" class="contents"></div>
+                </div>
+
+                <!-- Custom -->
+                <div id="cat-custom"
+                    class="puzzle-category-content hidden flex flex-col items-center justify-center h-full">
+                    <div class="bg-gray-800 p-8 rounded-2xl border border-gray-700 max-w-md w-full">
+                        <h3 class="text-2xl font-bold text-white mb-6 text-center">Create Custom Puzzle</h3>
+
+                        <div class="space-y-6 mb-8">
+                            <div>
+                                <div class="flex justify-between items-center mb-2">
+                                    <label class="text-xs text-gray-400 uppercase font-bold">Dimension 1
+                                        (Height)</label>
+                                    <span id="custom-modal-val-d1" class="text-purple-400 font-mono font-bold">3</span>
+                                </div>
+                                <input type="range" id="custom-modal-d1" min="1" max="20" value="3"
+                                    class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-500">
+                            </div>
+                            <div>
+                                <div class="flex justify-between items-center mb-2">
+                                    <label class="text-xs text-gray-400 uppercase font-bold">Dimension 2 (Width)</label>
+                                    <span id="custom-modal-val-d2" class="text-purple-400 font-mono font-bold">3</span>
+                                </div>
+                                <input type="range" id="custom-modal-d2" min="1" max="20" value="3"
+                                    class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-500">
+                            </div>
+                            <div>
+                                <div class="flex justify-between items-center mb-2">
+                                    <label class="text-xs text-gray-400 uppercase font-bold">Dimension 3 (Depth)</label>
+                                    <span id="custom-modal-val-d3" class="text-purple-400 font-mono font-bold">3</span>
+                                </div>
+                                <input type="range" id="custom-modal-d3" min="1" max="20" value="3"
+                                    class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-500">
+                            </div>
+
+                            <div class="pt-4 border-t border-gray-700">
+                                <label class="flex items-center gap-3 cursor-pointer">
+                                    <input type="checkbox" id="custom-modal-mirror"
+                                        class="w-5 h-5 rounded bg-gray-600 border-gray-500 text-blue-600 focus:ring-blue-500 focus:ring-offset-gray-800">
+                                    <span class="font-bold text-gray-300">Mirror Blocks Mode</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <button id="btn-create-custom-puzzle-modal"
+                            class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-xl transition shadow-lg text-lg">
+                            Create Puzzle
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Mobile Close Button -->
+            <div class="md:hidden p-4 border-t border-gray-700 bg-gray-800/50 shrink-0">
+                <button onclick="document.getElementById('btn-close-puzzle-selector').click()"
+                    class="w-full text-center px-4 py-3 rounded-xl bg-gray-700 hover:bg-gray-600 text-white font-bold transition">Close</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Solved / Submit Score Modal -->
     <div id="solved-modal"
         class="hidden opacity-0 transition-opacity duration-500 absolute inset-0 z-40 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
@@ -228,78 +327,76 @@
 
     <!-- Leaderboard Modal -->
     <div id="leaderboard-modal"
-        class="hidden absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+        class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-4">
         <div
-            class="bg-gray-800 rounded-2xl border border-gray-700 shadow-2xl max-w-md w-full flex flex-col max-h-[80vh]">
-            <div class="p-4 border-b border-gray-700 flex justify-between items-center bg-gray-900/50 rounded-t-2xl">
-                <h2 class="text-xl font-bold text-yellow-500 flex items-center gap-2">
-                    <span>🏆</span> <span id="leaderboard-title">Top Solvers</span>
+            class="bg-gray-900 w-full max-w-5xl h-[90vh] md:h-[80vh] rounded-2xl border border-gray-700 shadow-2xl flex flex-col md:flex-row overflow-hidden">
+
+            <!-- Sidebar -->
+            <div
+                class="w-full md:w-64 bg-gray-800/50 border-b md:border-b-0 md:border-r border-gray-700 flex flex-row md:flex-col flex-wrap md:flex-nowrap p-4 gap-2 md:overflow-y-auto shrink-0">
+                <h2 class="text-xl font-bold text-yellow-500 mb-4 px-2 hidden md:flex items-center gap-2">
+                    <span>🏆</span> Leaderboard
                 </h2>
-                <button id="btn-close-leaderboard" class="text-gray-400 hover:text-white">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
-                        </path>
-                    </svg>
-                </button>
-            </div>
 
-            <!-- Puzzle Selector Tabs -->
-            <div class="p-2 border-b border-gray-700 bg-gray-900/30 overflow-x-auto">
-                <div id="puzzle-tabs" class="flex gap-1 min-w-max">
-                    <button class="puzzle-tab px-3 py-1 rounded text-xs font-medium transition"
-                        data-puzzle="2">2x2</button>
-                    <button class="puzzle-tab px-3 py-1 rounded text-xs font-medium transition"
-                        data-puzzle="2x2x3">2x2x3</button>
-                    <button class="puzzle-tab px-3 py-1 rounded text-xs font-medium transition active"
-                        data-puzzle="3">3x3</button>
-                    <button class="puzzle-tab px-3 py-1 rounded text-xs font-medium transition"
-                        data-puzzle="4">4x4</button>
-                    <button class="puzzle-tab px-3 py-1 rounded text-xs font-medium transition"
-                        data-puzzle="5">5x5</button>
-                    <button class="puzzle-tab px-3 py-1 rounded text-xs font-medium transition"
-                        data-puzzle="6">6x6</button>
-                    <button class="puzzle-tab px-3 py-1 rounded text-xs font-medium transition"
-                        data-puzzle="7">7x7</button>
-                    <button class="puzzle-tab px-3 py-1 rounded text-xs font-medium transition"
-                        data-puzzle="8">8x8</button>
-                    <button class="puzzle-tab px-3 py-1 rounded text-xs font-medium transition"
-                        data-puzzle="9">9x9</button>
-                    <button class="puzzle-tab px-3 py-1 rounded text-xs font-medium transition"
-                        data-puzzle="10">10x10</button>
-                    <button class="puzzle-tab px-3 py-1 rounded text-xs font-medium transition"
-                        data-puzzle="11">11x11</button>
-                    <button class="puzzle-tab px-3 py-1 rounded text-xs font-medium transition"
-                        data-puzzle="12">12x12</button>
-                    <button class="puzzle-tab px-3 py-1 rounded text-xs font-medium transition"
-                        data-puzzle="13">13x13</button>
-                    <button class="puzzle-tab px-3 py-1 rounded text-xs font-medium transition"
-                        data-puzzle="14">14x14</button>
-                    <button class="puzzle-tab px-3 py-1 rounded text-xs font-medium transition"
-                        data-puzzle="15">15x15</button>
-                    <button class="puzzle-tab px-3 py-1 rounded text-xs font-medium transition"
-                        data-puzzle="16">16x16</button>
-                    <button class="puzzle-tab px-3 py-1 rounded text-xs font-medium transition"
-                        data-puzzle="17">17x17</button>
+                <!-- Mobile Title -->
+                <div class="md:hidden flex items-center mr-4">
+                    <span class="font-bold text-yellow-500 whitespace-nowrap">🏆 Leaderboard</span>
                 </div>
+
+                <button
+                    class="leaderboard-category-btn text-left px-4 py-2 md:py-3 rounded-xl transition font-bold text-gray-400 hover:bg-gray-800 whitespace-nowrap"
+                    data-category="standard">Standard</button>
+                <button
+                    class="leaderboard-category-btn text-left px-4 py-2 md:py-3 rounded-xl transition font-bold text-gray-400 hover:bg-gray-800 whitespace-nowrap"
+                    data-category="big">Big</button>
+                <button
+                    class="leaderboard-category-btn text-left px-4 py-2 md:py-3 rounded-xl transition font-bold text-gray-400 hover:bg-gray-800 whitespace-nowrap"
+                    data-category="cuboids">Cuboids</button>
+                <button
+                    class="leaderboard-category-btn text-left px-4 py-2 md:py-3 rounded-xl transition font-bold text-gray-400 hover:bg-gray-800 whitespace-nowrap"
+                    data-category="mirror">Mirror</button>
+
+                <div class="flex-1 hidden md:block"></div>
+                <button id="btn-close-leaderboard"
+                    class="hidden md:block text-center px-4 py-3 rounded-xl bg-gray-800 hover:bg-gray-700 text-white font-bold transition">Close</button>
             </div>
 
-            <div class="overflow-y-auto flex-1 p-2">
-                <table class="w-full text-left text-sm">
-                    <thead class="text-xs text-gray-500 uppercase bg-gray-900/30">
-                        <tr>
-                            <th class="p-2 rounded-l">#</th>
-                            <th class="p-2">Name</th>
-                            <th class="p-2 text-right rounded-r">Time</th>
-                        </tr>
-                    </thead>
-                    <tbody id="leaderboard-body">
-                        <!-- Rows injected by JS -->
-                    </tbody>
-                </table>
-                <div id="leaderboard-loading" class="text-center text-gray-500 py-4">Loading...</div>
-            </div>
-            <div class="p-2 text-center text-xs text-gray-600 border-t border-gray-700">
-                Tap a row to see solution details
+            <!-- Content Area -->
+            <div class="flex-1 flex flex-col bg-gray-900 relative overflow-hidden">
+                <!-- Puzzle Chips Header -->
+                <div id="leaderboard-puzzle-list" class="p-4 border-b border-gray-800 flex flex-wrap gap-2 shrink-0">
+                    <!-- Chips injected by JS -->
+                </div>
+
+                <!-- Table Container -->
+                <div class="flex-1 overflow-y-auto p-0">
+                    <div id="leaderboard-loading" class="text-center p-8 text-gray-400">
+                        <div
+                            class="animate-spin inline-block w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mb-2">
+                        </div>
+                        <p>Loading scores...</p>
+                    </div>
+
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-gray-800/50 sticky top-0 backdrop-blur-sm">
+                            <tr>
+                                <th class="p-3 text-xs font-bold text-gray-500 uppercase tracking-wider w-16">Rank</th>
+                                <th class="p-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Name</th>
+                                <th class="p-3 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Time
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody id="leaderboard-body" class="divide-y divide-gray-800">
+                            <!-- Rows injected by JS -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Mobile Close Button -->
+                <div class="md:hidden p-4 border-t border-gray-700 bg-gray-800/50 shrink-0">
+                    <button onclick="document.getElementById('btn-close-leaderboard').click()"
+                        class="w-full text-center px-4 py-3 rounded-xl bg-gray-700 hover:bg-gray-600 text-white font-bold transition">Close</button>
+                </div>
             </div>
         </div>
     </div>
@@ -422,65 +519,7 @@
         </div>
     </div>
 
-    <!-- Custom Puzzle Backdrop -->
-    <div id="custom-puzzle-backdrop" class="hidden fixed inset-0 z-40 bg-black/10 backdrop-blur-[2px]"></div>
 
-    <!-- Custom Puzzle Panel (Floating Window) -->
-    <div id="custom-puzzle-panel"
-        class="hidden absolute top-24 left-4 z-50 bg-gray-800/95 backdrop-blur-md border border-gray-700 rounded-xl shadow-2xl p-4 w-56 pointer-events-auto">
-
-        <div id="custom-puzzle-header"
-            class="flex justify-between items-center mb-3 cursor-move border-b border-gray-700 pb-2">
-            <h3 class="text-sm font-bold text-white uppercase tracking-wider">Custom Puzzle</h3>
-            <!-- Optional close button if needed, but Cancel button exists below -->
-        </div>
-
-        <div class="space-y-3 mb-4">
-            <div>
-                <div class="flex justify-between items-center mb-1">
-                    <label class="text-[10px] text-gray-400 uppercase font-bold">Dimension 1</label>
-                    <span id="val-dim1" class="text-purple-400 font-mono font-bold text-xs">3</span>
-                </div>
-                <input type="range" id="custom-dim1" min="1" max="20" value="3"
-                    class="w-full h-1.5 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-500">
-            </div>
-            <div>
-                <div class="flex justify-between items-center mb-1">
-                    <label class="text-[10px] text-gray-400 uppercase font-bold">Dimension 2</label>
-                    <span id="val-dim2" class="text-purple-400 font-mono font-bold text-xs">3</span>
-                </div>
-                <input type="range" id="custom-dim2" min="1" max="20" value="3"
-                    class="w-full h-1.5 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-500">
-            </div>
-            <div>
-                <div class="flex justify-between items-center mb-1">
-                    <label class="text-[10px] text-gray-400 uppercase font-bold">Dimension 3</label>
-                    <span id="val-dim3" class="text-purple-400 font-mono font-bold text-xs">3</span>
-                </div>
-                <input type="range" id="custom-dim3" min="1" max="20" value="3"
-                    class="w-full h-1.5 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-500">
-            </div>
-        </div>
-
-        <div class="mb-4">
-            <label class="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" id="custom-mirror-check"
-                    class="w-4 h-4 rounded bg-gray-600 border-gray-500 text-blue-600 focus:ring-blue-500 focus:ring-offset-gray-800">
-                <span class="text-xs font-bold text-gray-300 uppercase tracking-wider">Mirror Block</span>
-            </label>
-        </div>
-
-        <div class="flex flex-col gap-2">
-            <button id="btn-submit-custom"
-                class="w-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-2 rounded-lg transition shadow-lg">
-                Create Puzzle
-            </button>
-            <button id="btn-cancel-custom"
-                class="w-full bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold py-2 rounded-lg transition">
-                Cancel
-            </button>
-        </div>
-    </div>
 
     <!-- FPS Counter (Top Right) -->
     <div id="fps-counter"
