@@ -52,7 +52,9 @@ export function onMouseDown(event) {
 }
 
 export function onTouchStart(event) {
-    event.preventDefault();
+    if (event.target === state.renderer.domElement) {
+        event.preventDefault();
+    }
     onMouseDown(event);
 }
 
@@ -129,7 +131,9 @@ export function onMouseMove(event) {
 }
 
 export function onTouchMove(event) {
-    event.preventDefault();
+    if (event.target === state.renderer.domElement) {
+        event.preventDefault();
+    }
     onMouseMove(event);
 }
 

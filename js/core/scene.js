@@ -25,7 +25,7 @@ export function initScene() {
     state.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
     state.camera.position.set(6, 6, 12);
 
-    state.renderer = new THREE.WebGLRenderer({ antialias: true });
+    state.renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true, alpha: true });
     state.renderer.setSize(window.innerWidth, window.innerHeight);
     state.renderer.setPixelRatio(window.devicePixelRatio);
     container.appendChild(state.renderer.domElement);

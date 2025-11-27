@@ -2,7 +2,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, collection, addDoc, onSnapshot } from 'firebase/firestore';
 import { state } from '../shared/state.js';
-import { renderLeaderboardUI, updateActivePuzzleTab, renderLeaderboardTabs } from '../ui/ui.js';
+import { renderLeaderboardUI, updateActivePuzzleTab } from '../ui/ui.js';
 import { MirrorCube } from '../puzzles/MirrorCube.js';
 
 // --- Firebase Setup ---
@@ -74,8 +74,8 @@ export function fetchLeaderboard(puzzleSize = null) {
             if (puzzleStr === '3x3' && pType === '3') rawData.push(data);
         });
 
-        // Render Tabs
-        renderLeaderboardTabs(Array.from(allTypes), targetPuzzle);
+        // Render Tabs (Removed)
+        // renderLeaderboardTabs(Array.from(allTypes), targetPuzzle);
 
         rawData.sort((a, b) => a.timeMs - b.timeMs);
 
