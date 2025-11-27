@@ -121,7 +121,11 @@ export class MirrorCube extends StandardCube {
 
         // Generate sparkle normal map once
         if (!this.sparkleMap) {
-            this.sparkleMap = createSparkleMap();
+            const dx = this.config.dimensions.x;
+            const dy = this.config.dimensions.y;
+            const dz = this.config.dimensions.z;
+            const maxDim = Math.max(dx, dy, dz);
+            this.sparkleMap = createSparkleMap(maxDim);
         }
 
         // Loop through grid based on dimensions
@@ -205,10 +209,11 @@ export class MirrorCube extends StandardCube {
                             // Create a custom MeshStandardMaterial
                             // This ensures all PBR features (lights, normal maps, etc.) work correctly.
                             // We use onBeforeCompile to inject the custom rounded corner alpha logic.
+
                             const stickerMat = new THREE.MeshStandardMaterial({
                                 color: goldColor,
                                 roughness: 0.4,
-                                metalness: 0.6, // Reduced from 1.0 to ensure color is visible without env map
+                                metalness: 0.6,
                                 normalMap: this.sparkleMap,
                                 normalScale: new THREE.Vector2(0.5, 0.5),
                                 transparent: true,
@@ -280,7 +285,11 @@ export class MirrorCube extends StandardCube {
                         }
                     });
 
-                    group.userData = { isCubie: true };
+                    group.userData = {
+                        isCubie: true,
+                        initialPosition: group.position.clone(),
+                        initialSize: new THREE.Vector3(width, height, depth)
+                    };
                     state.cubeWrapper.add(group);
                     state.allCubies.push(group);
                 }
@@ -358,6 +367,7 @@ export class MirrorCube extends StandardCube {
             const back = offsets.back !== undefined ? offsets.back : 1.1;
             const front = offsets.front !== undefined ? offsets.front : 1.9;
 
+            const S = CUBE_SIZE + SPACING;
             const cut = 0.5 * S;
 
             // Hardcoded for 3x3 structure
@@ -374,39 +384,61 @@ export class MirrorCube extends StandardCube {
 
     isSolved() {
         // Check if the puzzle is solved by verifying shape.
-        // Since Mirror Cube pieces are unique (mostly), we check:
-        // 1. All cubies must share the same global orientation (rotation invariant).
-        // 2. When un-rotated by that global orientation, they must be at their initial positions.
+        // We check if each piece is in its initial position and if its current dimensions 
+        // (in world space, relative to the puzzle's global rotation) match its initial dimensions.
+        // This allows symmetric pieces to be rotated (e.g. 90 or 180 degrees) as long as they fit.
 
         const cubies = state.allCubies;
         if (!cubies || cubies.length === 0) return false;
 
         const epsilon = 0.1;
 
-        // Use the first cubie as a reference for the global rotation
+        // Use the first cubie to determine the global rotation of the puzzle.
+        // NOTE: This assumes the first cubie (usually a corner) is asymmetric enough 
+        // or that we can trust its orientation. 
+        // If the first cubie is perfectly symmetric (cube), this might be ambiguous.
+        // However, in a generated Mirror Cube, pieces are rarely perfect cubes unless 1x1x1.
         const refCubie = cubies[0];
         const refQ = refCubie.quaternion.clone();
         const invRefQ = refQ.clone().invert();
 
-        for (const cubie of cubies) {
-            // 1. Check Orientation Consistency
-            // Dot product of quaternions: |q1.dot(q2)| should be close to 1
-            if (Math.abs(cubie.quaternion.dot(refQ)) < 0.9) {
+        for (let i = 0; i < cubies.length; i++) {
+            const cubie = cubies[i];
+            if (!cubie.userData.initialPosition || !cubie.userData.initialSize) {
+                console.warn("MirrorCube: Missing initial data for cubie", i);
                 return false;
             }
 
-            // 2. Check Relative Position
-            // If the puzzle is just rotated globally, then:
+            // 1. Check Relative Position
             // currentPos = initialPos.applyQuaternion(globalRotation)
             // So: currentPos.applyQuaternion(inverseGlobalRotation) should == initialPos
+            const currentPos = cubie.position.clone();
+            const unrotatedPos = currentPos.applyQuaternion(invRefQ);
 
-            if (cubie.userData.initialPosition) {
-                const currentPos = cubie.position.clone();
-                const unrotatedPos = currentPos.applyQuaternion(invRefQ);
+            if (unrotatedPos.distanceTo(cubie.userData.initialPosition) > epsilon) {
+                // console.log(`MirrorCube: Position mismatch for cubie ${i}. Dist: ${unrotatedPos.distanceTo(cubie.userData.initialPosition)}`);
+                return false;
+            }
 
-                if (unrotatedPos.distanceTo(cubie.userData.initialPosition) > epsilon) {
-                    return false;
-                }
+            // 2. Check Dimensions (Shape Fit)
+            // We want to know if the piece's current orientation results in the same 
+            // bounding box dimensions as its initial orientation.
+
+            // Calculate relative rotation of this piece vs the reference (global) rotation
+            const relQ = cubie.quaternion.clone().multiply(invRefQ);
+
+            // Apply this relative rotation to the initial size vector
+            // We take absolute values because dimensions are magnitude.
+            // e.g. if size is (1, 2, 3) and rotated 90 deg around Z, it becomes (-2, 1, 3). Abs -> (2, 1, 3).
+            const currentDims = cubie.userData.initialSize.clone().applyQuaternion(relQ);
+            currentDims.x = Math.abs(currentDims.x);
+            currentDims.y = Math.abs(currentDims.y);
+            currentDims.z = Math.abs(currentDims.z);
+
+            // Compare with initial size
+            if (currentDims.distanceTo(cubie.userData.initialSize) > epsilon) {
+                // console.log(`MirrorCube: Dimension mismatch for cubie ${i}`);
+                return false;
             }
         }
 
@@ -414,23 +446,35 @@ export class MirrorCube extends StandardCube {
     }
 }
 
-function createSparkleMap() {
+function createSparkleMap(maxDim = 3) {
+    const size = 512;
     const canvas = document.createElement('canvas');
-    canvas.width = 512;
-    canvas.height = 512;
+    canvas.width = size;
+    canvas.height = size;
     const ctx = canvas.getContext('2d');
 
+    // Calculate noise scale based on cube size
+    // Larger cubes = larger grains to prevent aliasing when zoomed out
+    // For 3x3: scale 1. For 17x17: scale ~4
+    const noiseScale = Math.max(1, maxDim / 4);
+    const noiseSize = Math.floor(size / noiseScale);
+
+    // Create a temporary canvas for the noise
+    const noiseCanvas = document.createElement('canvas');
+    noiseCanvas.width = noiseSize;
+    noiseCanvas.height = noiseSize;
+    const noiseCtx = noiseCanvas.getContext('2d');
+
     // Fill with neutral normal (128, 128, 255)
-    ctx.fillStyle = 'rgb(128, 128, 255)';
-    ctx.fillRect(0, 0, 512, 512);
+    noiseCtx.fillStyle = 'rgb(128, 128, 255)';
+    noiseCtx.fillRect(0, 0, noiseSize, noiseSize);
 
     // Add noise
-    const imgData = ctx.getImageData(0, 0, 512, 512);
+    const imgData = noiseCtx.getImageData(0, 0, noiseSize, noiseSize);
     const data = imgData.data;
 
     for (let i = 0; i < data.length; i += 4) {
         // Perturb normals slightly
-        // Stronger noise for more sparkle
         const strength = 60;
         const noiseX = (Math.random() - 0.5) * strength;
         const noiseY = (Math.random() - 0.5) * strength;
@@ -440,11 +484,26 @@ function createSparkleMap() {
         data[i + 2] = 255; // Keep Z pointing up mostly
     }
 
-    ctx.putImageData(imgData, 0, 0);
+    noiseCtx.putImageData(imgData, 0, 0);
+
+    // Draw scaled noise onto main canvas with smoothing to reduce harsh pixel edges
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(noiseCanvas, 0, 0, size, size);
 
     const tex = new THREE.CanvasTexture(canvas);
     tex.wrapS = THREE.RepeatWrapping;
     tex.wrapT = THREE.RepeatWrapping;
-    tex.repeat.set(2, 2); // Repeat to make grain finer
+    tex.repeat.set(1, 1);
+
+    // Enable mipmaps to prevent aliasing at distance
+    tex.generateMipmaps = true;
+    tex.minFilter = THREE.LinearMipmapLinearFilter;
+    tex.magFilter = THREE.LinearFilter;
+
+    if (state.renderer) {
+        tex.anisotropy = state.renderer.capabilities.getMaxAnisotropy();
+    }
+
     return tex;
 }

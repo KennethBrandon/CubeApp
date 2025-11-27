@@ -316,6 +316,43 @@ export function setupUIEventListeners() {
         });
     }
 
+    // Material Property Listeners
+    const updateMirrorMaterials = () => {
+        if (state.activePuzzle instanceof MirrorCube && state.activePuzzle.stickers) {
+            const metalness = parseFloat(document.getElementById('material-metalness').value);
+            const roughness = parseFloat(document.getElementById('material-roughness').value);
+            const normalIntensity = parseFloat(document.getElementById('normal-intensity').value);
+            const sparkleEnabled = document.getElementById('toggle-sparkle-texture').checked;
+
+            // Update display values
+            document.getElementById('metalness-val').textContent = metalness.toFixed(2);
+            document.getElementById('roughness-val').textContent = roughness.toFixed(2);
+            document.getElementById('normal-intensity-val').textContent = normalIntensity.toFixed(2);
+
+            // Update all sticker materials
+            state.activePuzzle.stickers.forEach(sticker => {
+                if (sticker.material) {
+                    sticker.material.metalness = metalness;
+                    sticker.material.roughness = roughness;
+                    sticker.material.normalMap = sparkleEnabled ? state.activePuzzle.sparkleMap : null;
+                    sticker.material.normalScale.set(normalIntensity, normalIntensity);
+                    sticker.material.needsUpdate = true;
+                }
+            });
+        }
+    };
+
+    const metalnessSlider = document.getElementById('material-metalness');
+    const roughnessSlider = document.getElementById('material-roughness');
+    const normalIntensitySlider = document.getElementById('normal-intensity');
+    const sparkleToggle = document.getElementById('toggle-sparkle-texture');
+
+    if (metalnessSlider) metalnessSlider.addEventListener('input', updateMirrorMaterials);
+    if (roughnessSlider) roughnessSlider.addEventListener('input', updateMirrorMaterials);
+    if (normalIntensitySlider) normalIntensitySlider.addEventListener('input', updateMirrorMaterials);
+    if (sparkleToggle) sparkleToggle.addEventListener('change', updateMirrorMaterials);
+
+
     // Custom Puzzle Panel Logic - Live Preview
     const updateCustomDimension = (id, valId) => {
         const el = document.getElementById(id);
