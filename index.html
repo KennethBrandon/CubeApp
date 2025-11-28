@@ -194,81 +194,88 @@
             </div>
 
             <!-- Content Area -->
-            <div class="flex-1 p-6 overflow-y-auto bg-gray-900 relative">
+            <div id="puzzle-selector-content-area" class="flex-1 overflow-hidden bg-gray-900 relative flex flex-col">
+                <div id="puzzle-carousel"
+                    class="flex-1 flex overflow-x-auto snap-x snap-mandatory scrollbar-hide h-full w-full">
 
-                <!-- Standard -->
-                <div id="cat-standard"
-                    class="puzzle-category-content grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                    <div id="cat-standard-list" class="contents"></div>
-                </div>
+                    <!-- Standard -->
+                    <div id="cat-standard"
+                        class="carousel-slide min-w-full w-full h-full p-6 overflow-y-auto snap-center grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 content-start">
+                        <div id="cat-standard-list" class="contents"></div>
+                    </div>
 
-                <!-- Big -->
-                <div id="cat-big"
-                    class="puzzle-category-content hidden grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                    <div id="cat-big-list" class="contents"></div>
-                </div>
+                    <!-- Big -->
+                    <div id="cat-big"
+                        class="carousel-slide min-w-full w-full h-full p-6 overflow-y-auto snap-center grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 content-start">
+                        <div id="cat-big-list" class="contents"></div>
+                    </div>
 
-                <!-- Cuboids -->
-                <div id="cat-cuboids"
-                    class="puzzle-category-content hidden grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                    <div id="cat-cuboids-list" class="contents"></div>
-                </div>
+                    <!-- Cuboids -->
+                    <div id="cat-cuboids"
+                        class="carousel-slide min-w-full w-full h-full p-6 overflow-y-auto snap-center grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 content-start">
+                        <div id="cat-cuboids-list" class="contents"></div>
+                    </div>
 
-                <!-- Mirror -->
-                <div id="cat-mirror"
-                    class="puzzle-category-content hidden grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                    <div id="cat-mirror-list" class="contents"></div>
-                </div>
+                    <!-- Mirror -->
+                    <div id="cat-mirror"
+                        class="carousel-slide min-w-full w-full h-full p-6 overflow-y-auto snap-center grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 content-start">
+                        <div id="cat-mirror-list" class="contents"></div>
+                    </div>
 
-                <!-- Custom -->
-                <div id="cat-custom"
-                    class="puzzle-category-content hidden flex flex-col items-center justify-center h-full">
-                    <div class="bg-gray-800 p-8 rounded-2xl border border-gray-700 max-w-md w-full">
-                        <h3 class="text-2xl font-bold text-white mb-6 text-center">Create Custom Puzzle</h3>
+                    <!-- Custom -->
+                    <div id="cat-custom"
+                        class="carousel-slide min-w-full w-full h-full p-6 overflow-y-auto snap-center flex flex-col items-center justify-center">
+                        <div class="bg-gray-800 p-8 rounded-2xl border border-gray-700 max-w-md w-full">
+                            <h3 class="text-2xl font-bold text-white mb-6 text-center">Create Custom Puzzle</h3>
 
-                        <div class="space-y-6 mb-8">
-                            <div>
-                                <div class="flex justify-between items-center mb-2">
-                                    <label class="text-xs text-gray-400 uppercase font-bold">Dimension 1
-                                        (Height)</label>
-                                    <span id="custom-modal-val-d1" class="text-purple-400 font-mono font-bold">3</span>
+                            <div class="space-y-6 mb-8">
+                                <div>
+                                    <div class="flex justify-between items-center mb-2">
+                                        <label class="text-xs text-gray-400 uppercase font-bold">Dimension 1
+                                            (Height)</label>
+                                        <span id="custom-modal-val-d1"
+                                            class="text-purple-400 font-mono font-bold">3</span>
+                                    </div>
+                                    <input type="range" id="custom-modal-d1" min="1" max="20" value="3"
+                                        class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-500">
                                 </div>
-                                <input type="range" id="custom-modal-d1" min="1" max="20" value="3"
-                                    class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-500">
-                            </div>
-                            <div>
-                                <div class="flex justify-between items-center mb-2">
-                                    <label class="text-xs text-gray-400 uppercase font-bold">Dimension 2 (Width)</label>
-                                    <span id="custom-modal-val-d2" class="text-purple-400 font-mono font-bold">3</span>
+                                <div>
+                                    <div class="flex justify-between items-center mb-2">
+                                        <label class="text-xs text-gray-400 uppercase font-bold">Dimension 2
+                                            (Width)</label>
+                                        <span id="custom-modal-val-d2"
+                                            class="text-purple-400 font-mono font-bold">3</span>
+                                    </div>
+                                    <input type="range" id="custom-modal-d2" min="1" max="20" value="3"
+                                        class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-500">
                                 </div>
-                                <input type="range" id="custom-modal-d2" min="1" max="20" value="3"
-                                    class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-500">
-                            </div>
-                            <div>
-                                <div class="flex justify-between items-center mb-2">
-                                    <label class="text-xs text-gray-400 uppercase font-bold">Dimension 3 (Depth)</label>
-                                    <span id="custom-modal-val-d3" class="text-purple-400 font-mono font-bold">3</span>
+                                <div>
+                                    <div class="flex justify-between items-center mb-2">
+                                        <label class="text-xs text-gray-400 uppercase font-bold">Dimension 3
+                                            (Depth)</label>
+                                        <span id="custom-modal-val-d3"
+                                            class="text-purple-400 font-mono font-bold">3</span>
+                                    </div>
+                                    <input type="range" id="custom-modal-d3" min="1" max="20" value="3"
+                                        class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-500">
                                 </div>
-                                <input type="range" id="custom-modal-d3" min="1" max="20" value="3"
-                                    class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-500">
+
+                                <div class="pt-4 border-t border-gray-700">
+                                    <label class="flex items-center gap-3 cursor-pointer">
+                                        <input type="checkbox" id="custom-modal-mirror"
+                                            class="w-5 h-5 rounded bg-gray-600 border-gray-500 text-blue-600 focus:ring-blue-500 focus:ring-offset-gray-800">
+                                        <span class="font-bold text-gray-300">Mirror Blocks Mode</span>
+                                    </label>
+                                </div>
                             </div>
 
-                            <div class="pt-4 border-t border-gray-700">
-                                <label class="flex items-center gap-3 cursor-pointer">
-                                    <input type="checkbox" id="custom-modal-mirror"
-                                        class="w-5 h-5 rounded bg-gray-600 border-gray-500 text-blue-600 focus:ring-blue-500 focus:ring-offset-gray-800">
-                                    <span class="font-bold text-gray-300">Mirror Blocks Mode</span>
-                                </label>
-                            </div>
+                            <button id="btn-create-custom-puzzle-modal"
+                                class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-xl transition shadow-lg text-lg">
+                                Create Puzzle
+                            </button>
                         </div>
-
-                        <button id="btn-create-custom-puzzle-modal"
-                            class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-xl transition shadow-lg text-lg">
-                            Create Puzzle
-                        </button>
                     </div>
                 </div>
-
             </div>
 
             <!-- Mobile Close Button -->
@@ -367,32 +374,95 @@
             <!-- Content Area -->
             <div class="flex-1 flex flex-col bg-gray-900 relative overflow-hidden">
                 <!-- Puzzle Chips Header -->
-                <div id="leaderboard-puzzle-list" class="p-4 border-b border-gray-800 flex flex-wrap gap-2 shrink-0">
+                <div id="leaderboard-puzzle-list"
+                    class="p-4 border-b border-gray-800 flex flex-nowrap overflow-x-auto gap-2 shrink-0 scrollbar-hide">
                     <!-- Chips injected by JS -->
                 </div>
 
                 <!-- Table Container -->
-                <div class="flex-1 overflow-y-auto p-0">
-                    <div id="leaderboard-loading" class="text-center p-8 text-gray-400">
-                        <div
-                            class="animate-spin inline-block w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mb-2">
-                        </div>
-                        <p>Loading scores...</p>
+                <div id="leaderboard-carousel"
+                    class="flex-1 flex overflow-x-auto snap-x snap-mandatory scrollbar-hide h-full w-full">
+                    <!-- Standard -->
+                    <div id="lb-cat-standard"
+                        class="carousel-slide min-w-full w-full h-full overflow-y-auto snap-center">
+                        <table class="w-full text-left border-collapse">
+                            <thead class="bg-gray-800/50 sticky top-0 backdrop-blur-sm">
+                                <tr>
+                                    <th class="p-3 text-xs font-bold text-gray-500 uppercase tracking-wider w-16">Rank
+                                    </th>
+                                    <th class="p-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Name</th>
+                                    <th class="p-3 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">
+                                        Time</th>
+                                </tr>
+                            </thead>
+                            <tbody id="leaderboard-body-standard" class="divide-y divide-gray-800"></tbody>
+                        </table>
                     </div>
 
-                    <table class="w-full text-left border-collapse">
-                        <thead class="bg-gray-800/50 sticky top-0 backdrop-blur-sm">
-                            <tr>
-                                <th class="p-3 text-xs font-bold text-gray-500 uppercase tracking-wider w-16">Rank</th>
-                                <th class="p-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Name</th>
-                                <th class="p-3 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Time
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody id="leaderboard-body" class="divide-y divide-gray-800">
-                            <!-- Rows injected by JS -->
-                        </tbody>
-                    </table>
+                    <!-- Big -->
+                    <div id="lb-cat-big" class="carousel-slide min-w-full w-full h-full overflow-y-auto snap-center">
+                        <table class="w-full text-left border-collapse">
+                            <thead class="bg-gray-800/50 sticky top-0 backdrop-blur-sm">
+                                <tr>
+                                    <th class="p-3 text-xs font-bold text-gray-500 uppercase tracking-wider w-16">Rank
+                                    </th>
+                                    <th class="p-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Name</th>
+                                    <th class="p-3 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">
+                                        Time</th>
+                                </tr>
+                            </thead>
+                            <tbody id="leaderboard-body-big" class="divide-y divide-gray-800"></tbody>
+                        </table>
+                    </div>
+
+                    <!-- Cuboids -->
+                    <div id="lb-cat-cuboids"
+                        class="carousel-slide min-w-full w-full h-full overflow-y-auto snap-center">
+                        <table class="w-full text-left border-collapse">
+                            <thead class="bg-gray-800/50 sticky top-0 backdrop-blur-sm">
+                                <tr>
+                                    <th class="p-3 text-xs font-bold text-gray-500 uppercase tracking-wider w-16">Rank
+                                    </th>
+                                    <th class="p-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Name</th>
+                                    <th class="p-3 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">
+                                        Time</th>
+                                </tr>
+                            </thead>
+                            <tbody id="leaderboard-body-cuboids" class="divide-y divide-gray-800"></tbody>
+                        </table>
+                    </div>
+
+                    <!-- Mirror -->
+                    <div id="lb-cat-mirror" class="carousel-slide min-w-full w-full h-full overflow-y-auto snap-center">
+                        <table class="w-full text-left border-collapse">
+                            <thead class="bg-gray-800/50 sticky top-0 backdrop-blur-sm">
+                                <tr>
+                                    <th class="p-3 text-xs font-bold text-gray-500 uppercase tracking-wider w-16">Rank
+                                    </th>
+                                    <th class="p-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Name</th>
+                                    <th class="p-3 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">
+                                        Time</th>
+                                </tr>
+                            </thead>
+                            <tbody id="leaderboard-body-mirror" class="divide-y divide-gray-800"></tbody>
+                        </table>
+                    </div>
+
+                    <!-- Custom -->
+                    <div id="lb-cat-custom" class="carousel-slide min-w-full w-full h-full overflow-y-auto snap-center">
+                        <table class="w-full text-left border-collapse">
+                            <thead class="bg-gray-800/50 sticky top-0 backdrop-blur-sm">
+                                <tr>
+                                    <th class="p-3 text-xs font-bold text-gray-500 uppercase tracking-wider w-16">Rank
+                                    </th>
+                                    <th class="p-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Name</th>
+                                    <th class="p-3 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">
+                                        Time</th>
+                                </tr>
+                            </thead>
+                            <tbody id="leaderboard-body-custom" class="divide-y divide-gray-800"></tbody>
+                        </table>
+                    </div>
                 </div>
 
                 <!-- Mobile Close Button -->

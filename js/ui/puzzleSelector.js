@@ -37,7 +37,35 @@ export function setupPuzzleSelector() {
 
     // Custom Puzzle Form Listeners
     setupCustomPuzzleListeners();
+
+    // Carousel Scroll Listener
+    const carousel = document.getElementById('puzzle-carousel');
+    if (carousel) {
+        carousel.addEventListener('scroll', () => {
+            const scrollLeft = carousel.scrollLeft;
+            const width = carousel.offsetWidth;
+            const index = Math.round(scrollLeft / width);
+
+            const categories = ['standard', 'big', 'cuboids', 'mirror', 'custom'];
+            if (index >= 0 && index < categories.length) {
+                updateSidebarActive(categories[index]);
+            }
+        }, { passive: true });
+    }
 }
+
+function updateSidebarActive(category) {
+    document.querySelectorAll('.puzzle-category-btn').forEach(btn => {
+        if (btn.dataset.category === category) {
+            btn.classList.add('bg-blue-600', 'text-white');
+            btn.classList.remove('text-gray-400', 'hover:bg-gray-800');
+        } else {
+            btn.classList.remove('bg-blue-600', 'text-white');
+            btn.classList.add('text-gray-400', 'hover:bg-gray-800');
+        }
+    });
+}
+
 
 let selectionCallback = null;
 
@@ -60,26 +88,24 @@ function closePuzzleSelector() {
 }
 
 function showCategory(category) {
-    // Update Sidebar
-    document.querySelectorAll('.puzzle-category-btn').forEach(btn => {
-        if (btn.dataset.category === category) {
-            btn.classList.add('bg-blue-600', 'text-white');
-            btn.classList.remove('text-gray-400', 'hover:bg-gray-800');
-        } else {
-            btn.classList.remove('bg-blue-600', 'text-white');
-            btn.classList.add('text-gray-400', 'hover:bg-gray-800');
-        }
-    });
+    // Scroll to category
+    const carousel = document.getElementById('puzzle-carousel');
+    const target = document.getElementById(`cat-${category}`);
 
-    // Update Content
-    document.querySelectorAll('.puzzle-category-content').forEach(content => {
-        if (content.id === `cat-${category}`) {
-            content.classList.remove('hidden');
-        } else {
-            content.classList.add('hidden');
+    if (carousel && target) {
+        const categories = ['standard', 'big', 'cuboids', 'mirror', 'custom'];
+        const index = categories.indexOf(category);
+        if (index !== -1) {
+            carousel.scrollTo({
+                left: index * carousel.offsetWidth,
+                behavior: 'smooth'
+            });
         }
-    });
+    }
+
+    updateSidebarActive(category);
 }
+
 
 function renderPuzzleOptions() {
     // This could be dynamic, but for now the HTML structure will hold the buttons
