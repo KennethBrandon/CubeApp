@@ -53,6 +53,7 @@ export function fetchLeaderboard(puzzleSize = null) {
             // Collect type
             const pType = data.puzzleType || '3x3'; // Default to 3x3
             allTypes.add(pType);
+            state.availablePuzzleTypes.add(pType);
 
             // Filter by puzzle type
             const puzzleStr = typeof targetPuzzle === 'string' ? targetPuzzle : `${targetPuzzle}x${targetPuzzle}`;

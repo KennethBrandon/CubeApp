@@ -53,6 +53,7 @@ export const state = {
     // Firebase User
     currentUser: null,
     leaderboardUnsubscribe: null,
+    availablePuzzleTypes: new Set(),
 
     // Leaderboard Selection
     selectedLeaderboardPuzzle: null,
