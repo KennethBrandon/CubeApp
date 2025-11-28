@@ -350,9 +350,20 @@ function setupCustomPuzzleListeners() {
         const slider = document.getElementById(`custom-modal-${d}`);
         const display = document.getElementById(`custom-modal-val-${d}`);
         if (slider && display) {
+            // Prevent carousel swipe when dragging slider
+            slider.style.touchAction = 'pan-y'; // Allow vertical scroll but capture horizontal
+
             slider.addEventListener('input', (e) => {
                 display.textContent = e.target.value;
             });
+
+            // Stop propagation of touch events to prevent carousel from catching them
+            const stopPropagation = (e) => {
+                e.stopPropagation();
+            };
+            slider.addEventListener('touchstart', stopPropagation, { passive: true });
+            slider.addEventListener('touchmove', stopPropagation, { passive: true });
+            slider.addEventListener('touchend', stopPropagation, { passive: true });
         }
     });
 }
