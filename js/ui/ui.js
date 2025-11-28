@@ -1,4 +1,5 @@
 import { state } from '../shared/state.js';
+import { puzzleCategories } from './puzzleSelector.js';
 
 export function togglePanel(contentId, headerElement) {
     const content = document.getElementById(contentId);
@@ -55,7 +56,79 @@ export function showWinModal() {
 }
 
 export function renderLeaderboardUI(leaderboardData, puzzleSize = 3) {
-    const tbody = document.getElementById('leaderboard-body');
+    // Determine category to find correct tbody
+    let category = 'custom'; // Default to custom if not found in lists
+    const p = String(puzzleSize);
+
+    // Check strict lists first
+    // Normalize p to match list format if needed
+    // Standard/Big are numbers in list, but p might be "3" or "3x3x3"
+
+    let isFound = false;
+
+    // Check Standard
+    if (!isFound) {
+        // Check exact match or "NxNxN" match
+        const std = puzzleCategories.standard; // [2,3,4,5,6,7]
+        if (std.includes(parseInt(p)) && (p.length === 1 || p.match(/^\d+$/))) {
+            category = 'standard';
+            isFound = true;
+        } else if (p.includes('x')) {
+            const parts = p.split('x');
+            if (parts.length === 3 && parts[0] === parts[1] && parts[1] === parts[2]) {
+                const n = parseInt(parts[0]);
+                if (std.includes(n)) {
+                    category = 'standard';
+                    isFound = true;
+                }
+            }
+        }
+    }
+
+    // Check Big
+    if (!isFound) {
+        const big = puzzleCategories.big;
+        if (big.includes(parseInt(p)) && (p.length <= 2 || p.match(/^\d+$/))) {
+            category = 'big';
+            isFound = true;
+        } else if (p.includes('x')) {
+            const parts = p.split('x');
+            if (parts.length === 3 && parts[0] === parts[1] && parts[1] === parts[2]) {
+                const n = parseInt(parts[0]);
+                if (big.includes(n)) {
+                    category = 'big';
+                    isFound = true;
+                }
+            }
+        }
+    }
+
+    // Check Cuboids
+    if (!isFound) {
+        if (puzzleCategories.cuboids.includes(p)) {
+            category = 'cuboids';
+            isFound = true;
+        }
+    }
+
+    // Check Mirror
+    if (!isFound) {
+        if (puzzleCategories.mirror.includes(p)) {
+            category = 'mirror';
+            isFound = true;
+        }
+    }
+
+    // If still not found, it stays 'custom'
+
+    // Find the specific tbody for this category
+    let tbody = document.getElementById(`leaderboard-body-${category}`);
+
+    // If not found (e.g. custom category logic might be needed), try custom
+    if (!tbody) {
+        tbody = document.getElementById('leaderboard-body-custom');
+    }
+
     const loading = document.getElementById('leaderboard-loading');
     const title = document.getElementById('leaderboard-title');
 
