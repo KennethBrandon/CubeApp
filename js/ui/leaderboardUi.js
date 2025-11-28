@@ -38,7 +38,7 @@ export function openLeaderboardModal() {
         // ... (Simplified for now, default to standard/3x3 if unsure)
     }
 
-    showLeaderboardCategory(initialCategory);
+    showLeaderboardCategory(initialCategory, false);
 
     // Select the specific puzzle chip
     // We need to wait for chips to render
@@ -47,7 +47,7 @@ export function openLeaderboardModal() {
     }, 0);
 }
 
-function showLeaderboardCategory(category) {
+function showLeaderboardCategory(category, autoSelect = true) {
     // Update Sidebar
     document.querySelectorAll('.leaderboard-category-btn').forEach(btn => {
         if (btn.dataset.category === category) {
@@ -63,7 +63,54 @@ function showLeaderboardCategory(category) {
     const container = document.getElementById('leaderboard-puzzle-list');
     container.innerHTML = '';
 
-    const puzzles = puzzleCategories[category];
+    let puzzles = [];
+
+    if (category === 'custom') {
+        // Dynamically find custom puzzles from available types
+        const standard = new Set(puzzleCategories.standard.map(x => `${x}x${x}x${x}`));
+        // Also map single numbers just in case
+        puzzleCategories.standard.forEach(x => standard.add(String(x)));
+
+        const big = new Set(puzzleCategories.big.map(x => `${x}x${x}x${x}`));
+        const cuboids = new Set(puzzleCategories.cuboids);
+        const mirror = new Set(puzzleCategories.mirror);
+
+        // Filter available types
+        const available = state.availablePuzzleTypes || new Set();
+        available.forEach(type => {
+            // Check if it's in any known category
+            // Note: type might be "3x3" or "3" or "3x3x3"
+            // We need robust checking.
+
+            let isKnown = false;
+            if (standard.has(type)) isKnown = true;
+            if (big.has(type)) isKnown = true;
+            if (cuboids.has(type)) isKnown = true;
+            if (mirror.has(type)) isKnown = true;
+
+            // Also check for standard/big number formats
+            if (!isKnown) {
+                // If it looks like "NxNxN" and N is in standard/big
+                const parts = type.split('x');
+                if (parts.length === 3 && parts[0] === parts[1] && parts[1] === parts[2]) {
+                    const n = parseInt(parts[0]);
+                    if (puzzleCategories.standard.includes(n) || puzzleCategories.big.includes(n)) {
+                        isKnown = true;
+                    }
+                }
+            }
+
+            if (!isKnown) {
+                puzzles.push(type);
+            }
+        });
+
+        puzzles.sort(); // Alphabetical sort for custom
+
+    } else {
+        puzzles = puzzleCategories[category] || [];
+    }
+
     if (puzzles) {
         puzzles.forEach(val => {
             const btn = document.createElement('button');
@@ -80,6 +127,13 @@ function showLeaderboardCategory(category) {
                 if (val === 'mirror-3x3x3') label = '3x3 Mirror';
                 else if (val === 'mirror-2x2x2') label = '2x2 Mirror';
                 else label = val.replace('mirror-', '') + ' Mirror';
+            } else if (category === 'custom') {
+                // Format custom label nicely if possible
+                if (val.startsWith('mirror-')) {
+                    label = val.replace('mirror-', '') + ' Mirror';
+                } else {
+                    label = val;
+                }
             } else {
                 label = val;
             }
@@ -103,6 +157,16 @@ function showLeaderboardCategory(category) {
 
             container.appendChild(btn);
         });
+    }
+
+    // Auto-select logic
+    if (autoSelect && puzzles && puzzles.length > 0) {
+        let target = puzzles[0];
+        if (category === 'standard') {
+            // Prefer 3 (3x3) if available
+            if (puzzles.includes(3)) target = 3;
+        }
+        selectLeaderboardPuzzle(target);
     }
 }
 
