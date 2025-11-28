@@ -100,10 +100,10 @@ export class MirrorCube extends StandardCube {
 
     createGeometry() {
         // Clear existing geometry if any
-        state.allCubies.forEach(c => {
+        this.cubieList.forEach(c => {
             if (c.parent) c.parent.remove(c);
         });
-        state.allCubies = [];
+        this.cubieList.length = 0;
         state.activeDimensions = { ...this.config.dimensions };
 
         const goldColor = 0xFFD700; // Gold
@@ -290,8 +290,8 @@ export class MirrorCube extends StandardCube {
                         initialPosition: group.position.clone(),
                         initialSize: new THREE.Vector3(width, height, depth)
                     };
-                    state.cubeWrapper.add(group);
-                    state.allCubies.push(group);
+                    this.parent.add(group);
+                    this.cubieList.push(group);
                 }
             }
         }
@@ -388,7 +388,7 @@ export class MirrorCube extends StandardCube {
         // (in world space, relative to the puzzle's global rotation) match its initial dimensions.
         // This allows symmetric pieces to be rotated (e.g. 90 or 180 degrees) as long as they fit.
 
-        const cubies = state.allCubies;
+        const cubies = this.cubieList;
         if (!cubies || cubies.length === 0) return false;
 
         const epsilon = 0.1;

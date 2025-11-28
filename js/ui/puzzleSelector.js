@@ -6,6 +6,7 @@ import { getMirrorHeight, toggleMirrors } from '../core/environment.js';
 import { adjustCameraForCubeSize } from '../core/controls.js';
 import { playCubeAnimation } from '../animations/transitions.js';
 import { updateActivePuzzleTab } from './ui.js';
+import { initPreview, updatePreview, disposePreview } from './puzzlePreview.js';
 
 export const puzzleCategories = {
     'standard': [2, 3, 4, 5, 6, 7],
@@ -54,7 +55,12 @@ export function setupPuzzleSelector() {
     }
 }
 
+let currentActiveCategory = null;
+
 function updateSidebarActive(category) {
+    if (currentActiveCategory === category) return;
+    currentActiveCategory = category;
+
     document.querySelectorAll('.puzzle-category-btn').forEach(btn => {
         if (btn.dataset.category === category) {
             btn.classList.add('bg-blue-600', 'text-white');
@@ -64,6 +70,27 @@ function updateSidebarActive(category) {
             btn.classList.add('text-gray-400', 'hover:bg-gray-800');
         }
     });
+
+    if (category === 'custom') {
+        // Initialize preview
+        // Debounce slightly to ensure snap is settling
+        setTimeout(() => {
+            initPreview('custom-puzzle-preview');
+            // Trigger initial update based on current slider values
+            const d1 = parseInt(document.getElementById('custom-modal-d1').value);
+            const d2 = parseInt(document.getElementById('custom-modal-d2').value);
+            const d3 = parseInt(document.getElementById('custom-modal-d3').value);
+            const isMirror = document.getElementById('custom-modal-mirror').checked;
+
+            const dims = [d1, d2, d3].sort((a, b) => b - a);
+            const newDims = { x: dims[1], y: dims[0], z: dims[2] };
+
+            updatePreview(newDims, isMirror);
+        }, 50);
+    } else {
+        // Optional: Dispose if leaving custom tab to save resources
+        // disposePreview(); 
+    }
 }
 
 
@@ -85,6 +112,8 @@ function closePuzzleSelector() {
     const modal = document.getElementById('puzzle-selector-modal');
     modal.classList.add('hidden');
     selectionCallback = null;
+    disposePreview();
+    currentActiveCategory = null;
 }
 
 function showCategory(category) {
@@ -355,6 +384,17 @@ function setupCustomPuzzleListeners() {
 
             slider.addEventListener('input', (e) => {
                 display.textContent = e.target.value;
+
+                // Update Preview
+                const d1 = parseInt(document.getElementById('custom-modal-d1').value);
+                const d2 = parseInt(document.getElementById('custom-modal-d2').value);
+                const d3 = parseInt(document.getElementById('custom-modal-d3').value);
+                const isMirror = document.getElementById('custom-modal-mirror').checked;
+
+                const dims = [d1, d2, d3].sort((a, b) => b - a);
+                const newDims = { x: dims[1], y: dims[0], z: dims[2] };
+
+                updatePreview(newDims, isMirror);
             });
 
             // Stop propagation of touch events to prevent carousel from catching them
@@ -366,4 +406,20 @@ function setupCustomPuzzleListeners() {
             slider.addEventListener('touchend', stopPropagation, { passive: true });
         }
     });
+
+    // Mirror Checkbox Listener
+    const mirrorCheck = document.getElementById('custom-modal-mirror');
+    if (mirrorCheck) {
+        mirrorCheck.addEventListener('change', () => {
+            const d1 = parseInt(document.getElementById('custom-modal-d1').value);
+            const d2 = parseInt(document.getElementById('custom-modal-d2').value);
+            const d3 = parseInt(document.getElementById('custom-modal-d3').value);
+            const isMirror = mirrorCheck.checked;
+
+            const dims = [d1, d2, d3].sort((a, b) => b - a);
+            const newDims = { x: dims[1], y: dims[0], z: dims[2] };
+
+            updatePreview(newDims, isMirror);
+        });
+    }
 }

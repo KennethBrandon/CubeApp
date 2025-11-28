@@ -224,15 +224,20 @@
 
                     <!-- Custom -->
                     <div id="cat-custom"
-                        class="carousel-slide min-w-full w-full h-full p-6 overflow-y-auto snap-center flex flex-col items-center justify-center">
-                        <div class="bg-gray-800 p-8 rounded-2xl border border-gray-700 max-w-md w-full">
-                            <h3 class="text-2xl font-bold text-white mb-6 text-center">Create Custom Puzzle</h3>
+                        class="carousel-slide min-w-full w-full h-full p-4 overflow-y-auto snap-center flex flex-col items-center justify-center">
+                        <div class="bg-gray-800 p-5 rounded-2xl border border-gray-700 max-w-md w-full shadow-2xl">
+                            <h3 class="text-xl font-bold text-white mb-3 text-center">Create Custom Puzzle</h3>
 
-                            <div class="space-y-6 mb-8">
+                            <div class="space-y-3 mb-4">
+                                <div id="custom-puzzle-preview"
+                                    class="w-full h-64 bg-black/50 rounded-xl border border-gray-600 mb-2 overflow-hidden relative">
+                                    <!-- Preview Canvas will be injected here -->
+                                </div>
+
+                                <!-- Sliders -->
                                 <div>
-                                    <div class="flex justify-between items-center mb-2">
-                                        <label class="text-xs text-gray-400 uppercase font-bold">Dimension 1
-                                            (Height)</label>
+                                    <div class="flex justify-between items-center mb-1">
+                                        <label class="text-xs text-gray-400 uppercase font-bold">Height</label>
                                         <span id="custom-modal-val-d1"
                                             class="text-purple-400 font-mono font-bold">3</span>
                                     </div>
@@ -240,9 +245,8 @@
                                         class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-500">
                                 </div>
                                 <div>
-                                    <div class="flex justify-between items-center mb-2">
-                                        <label class="text-xs text-gray-400 uppercase font-bold">Dimension 2
-                                            (Width)</label>
+                                    <div class="flex justify-between items-center mb-1">
+                                        <label class="text-xs text-gray-400 uppercase font-bold">Width</label>
                                         <span id="custom-modal-val-d2"
                                             class="text-purple-400 font-mono font-bold">3</span>
                                     </div>
@@ -250,9 +254,8 @@
                                         class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-500">
                                 </div>
                                 <div>
-                                    <div class="flex justify-between items-center mb-2">
-                                        <label class="text-xs text-gray-400 uppercase font-bold">Dimension 3
-                                            (Depth)</label>
+                                    <div class="flex justify-between items-center mb-1">
+                                        <label class="text-xs text-gray-400 uppercase font-bold">Depth</label>
                                         <span id="custom-modal-val-d3"
                                             class="text-purple-400 font-mono font-bold">3</span>
                                     </div>
@@ -260,17 +263,17 @@
                                         class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-500">
                                 </div>
 
-                                <div class="pt-4 border-t border-gray-700">
+                                <div class="pt-2 border-t border-gray-700">
                                     <label class="flex items-center gap-3 cursor-pointer">
                                         <input type="checkbox" id="custom-modal-mirror"
                                             class="w-5 h-5 rounded bg-gray-600 border-gray-500 text-blue-600 focus:ring-blue-500 focus:ring-offset-gray-800">
-                                        <span class="font-bold text-gray-300">Mirror Blocks Mode</span>
+                                        <span class="font-bold text-gray-300 text-sm">Mirror Blocks Mode</span>
                                     </label>
                                 </div>
                             </div>
 
                             <button id="btn-create-custom-puzzle-modal"
-                                class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-xl transition shadow-lg text-lg">
+                                class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl transition shadow-lg text-lg">
                                 Create Puzzle
                             </button>
                         </div>
