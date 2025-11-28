@@ -9,13 +9,35 @@ export class StandardCube extends Puzzle {
     constructor(config) {
         super(config);
         // config.dimensions = { x, y, z }
+        // config.parent = THREE.Group (optional, defaults to state.cubeWrapper)
+        // config.cubieList = Array (optional, defaults to state.allCubies)
+
+        this.parent = config.parent || state.cubeWrapper;
+        this.cubieList = config.cubieList || state.allCubies;
     }
 
     createGeometry() {
-        state.allCubies.forEach(c => {
+        // Clear existing geometry from the specific parent and list
+        // Note: If we are using the global list, we might be clearing everything.
+        // But for a new instance with its own list, it clears just that list.
+
+        // If we are using the global list, we need to be careful not to break existing logic
+        // that expects state.allCubies to be the source of truth.
+        // The existing logic was: state.allCubies.forEach...
+
+        this.cubieList.forEach(c => {
             if (c.parent) c.parent.remove(c);
         });
-        state.allCubies = [];
+
+        // If we are using the global list, we empty it. 
+        // If we are using a local list passed in config, we empty that.
+        // However, we can't reassign the reference of the passed array if it's a prop.
+        // So we should splice it or just assume the caller handles the list lifecycle?
+        // Actually, for the global list, we do `state.allCubies = []`.
+        // We can't do `this.cubieList = []` if we want to affect the external reference.
+        // So let's use splice.
+        this.cubieList.length = 0;
+
         state.activeDimensions = { ...this.config.dimensions };
 
         let baseGeo = new THREE.BoxGeometry(CUBE_SIZE, CUBE_SIZE, CUBE_SIZE, 4, 4, 4);
@@ -91,8 +113,8 @@ export class StandardCube extends Puzzle {
                     });
 
                     group.userData = { isCubie: true };
-                    state.cubeWrapper.add(group);
-                    state.allCubies.push(group);
+                    this.parent.add(group);
+                    this.cubieList.push(group);
                 }
             }
         }
@@ -125,7 +147,7 @@ export class StandardCube extends Puzzle {
             let stickerCount = 0;
 
             // Check all cubies for stickers facing this direction
-            for (const group of state.allCubies) {
+            for (const group of this.cubieList) {
                 for (const child of group.children) {
                     if (child.userData.isSticker) {
                         // Calculate the sticker's world-space normal
@@ -164,7 +186,7 @@ export class StandardCube extends Puzzle {
     }
 
     getCubiesInSlice(axis, value) {
-        return state.allCubies.filter(cubie => Math.abs(cubie.position[axis] - value) < 0.01);
+        return this.cubieList.filter(cubie => Math.abs(cubie.position[axis] - value) < 0.01);
     }
 
     performMove(moveId, direction, duration = 300, sliceVal = null) {
@@ -225,7 +247,7 @@ export class StandardCube extends Puzzle {
             }
         } else {
             // Whole cube rotation
-            cubies = state.allCubies;
+            cubies = this.cubieList;
         }
 
         // Return the data needed to animate
