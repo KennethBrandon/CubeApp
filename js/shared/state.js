@@ -58,6 +58,7 @@ export const state = {
 
     // Leaderboard Selection
     selectedLeaderboardPuzzle: null,
+    lastLibraryCategory: null,
 
     // Active Puzzle Implementation
     activePuzzle: null,
