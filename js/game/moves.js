@@ -414,7 +414,7 @@ export function onKeyDown(event) {
     state.activeKeys.add(key.toLowerCase());
     state.activeKeys.add(key.toUpperCase());
 
-    if (!isCameraKey && (state.isAnimating || state.isScrambling || state.isAutoSolving)) return;
+    if (!isCameraKey && (state.isAnimating || state.isScrambling || state.isAutoSolving || state.isDragging)) return;
 
     const upperKey = key.toUpperCase();
     const shift = event.shiftKey;

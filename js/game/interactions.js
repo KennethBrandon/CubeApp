@@ -10,11 +10,11 @@ export function setupEventListeners(canvas) {
     window.addEventListener('mouseup', onMouseUp);
     canvas.addEventListener('touchstart', onTouchStart, { passive: false });
     canvas.addEventListener('touchmove', onTouchMove, { passive: false });
-    window.addEventListener('touchend', onMouseUp);
+    window.addEventListener('touchend', onTouchEnd);
 }
 
 export function onMouseDown(event) {
-    if (state.isAnimating || state.isScrambling || state.isAutoSolving) return;
+    if (state.isAnimating || state.isScrambling || state.isAutoSolving || state.isDragging) return;
 
     const intersects = getIntersects(event, state.renderer.domElement);
     const pos = getPointerPos(event);
@@ -55,7 +55,12 @@ export function onTouchStart(event) {
     if (event.target === state.renderer.domElement) {
         event.preventDefault();
     }
-    onMouseDown(event);
+    if (state.isDragging) return;
+
+    if (event.changedTouches.length > 0) {
+        state.dragTouchId = event.changedTouches[0].identifier;
+        onMouseDown(event);
+    }
 }
 
 export function onMouseMove(event) {
@@ -134,7 +139,54 @@ export function onTouchMove(event) {
     if (event.target === state.renderer.domElement) {
         event.preventDefault();
     }
-    onMouseMove(event);
+
+    // Find the touch that started the drag
+    if (state.dragTouchId !== null) {
+        for (let i = 0; i < event.changedTouches.length; i++) {
+            if (event.changedTouches[i].identifier === state.dragTouchId) {
+                // Create a synthetic event or pass the touch object that has clientX/Y
+                // onMouseMove expects an event with clientX/Y or touches[0]
+                // We can just pass the touch object directly as it has clientX/Y
+                // But onMouseMove checks event.changedTouches/touches.
+                // Let's modify getPointerPos to handle a raw touch object if needed, 
+                // OR just pass a constructed object.
+                // Actually, onMouseMove calls getPointerPos(event).
+                // Let's just call onMouseMove with the original event, but we need to make sure
+                // getPointerPos extracts the RIGHT touch.
+
+                // Better approach: Modify getPointerPos or pass the specific touch data.
+                // Let's modify onMouseMove to accept an optional position override or 
+                // just handle the logic here.
+
+                // Simplest: Call onMouseMove but ensure getPointerPos uses the right ID.
+                // But getPointerPos just takes the first touch.
+
+                // Let's construct a fake event-like object for onMouseMove
+                const touch = event.changedTouches[i];
+                const fakeEvent = {
+                    clientX: touch.clientX,
+                    clientY: touch.clientY,
+                    // Add other props if needed
+                };
+                onMouseMove(fakeEvent);
+                return;
+            }
+        }
+    } else {
+        // Fallback for mouse or single touch if logic fails
+        onMouseMove(event);
+    }
+}
+
+export function onTouchEnd(event) {
+    if (state.dragTouchId !== null) {
+        for (let i = 0; i < event.changedTouches.length; i++) {
+            if (event.changedTouches[i].identifier === state.dragTouchId) {
+                onMouseUp();
+                return;
+            }
+        }
+    }
 }
 
 export function onMouseUp() {
@@ -143,6 +195,7 @@ export function onMouseUp() {
         return;
     }
     state.isDragging = false;
+    state.dragTouchId = null;
     if (state.controls) state.controls.enabled = true;
 
     if (state.dragAxis) {
