@@ -7,6 +7,7 @@ import { adjustCameraForCubeSize } from '../core/controls.js';
 import { playCubeAnimation } from '../animations/transitions.js';
 import { updateActivePuzzleTab } from './ui.js';
 import { initPreview, updatePreview, disposePreview } from './puzzlePreview.js';
+import { overlayManager } from './overlayManager.js';
 
 export const puzzleCategories = {
     'standard': [2, 3, 4, 5, 6, 7],
@@ -103,18 +104,21 @@ export function openPuzzleSelector(callback = null) {
     } else {
         selectionCallback = null;
     }
-    const modal = document.getElementById('puzzle-selector-modal');
-    modal.classList.remove('hidden');
+
+    // Use OverlayManager
+    overlayManager.open('puzzle-selector-modal', () => {
+        // Cleanup callback on close
+        selectionCallback = null;
+        disposePreview();
+        currentActiveCategory = null;
+    });
+
     // Select default category or current puzzle's category
     showCategory(state.lastLibraryCategory || 'standard');
 }
 
 function closePuzzleSelector() {
-    const modal = document.getElementById('puzzle-selector-modal');
-    modal.classList.add('hidden');
-    selectionCallback = null;
-    disposePreview();
-    currentActiveCategory = null;
+    overlayManager.close();
 }
 
 function showCategory(category) {

@@ -14,6 +14,7 @@ import { MirrorCube } from '../puzzles/MirrorCube.js';
 import { checkSolved } from '../game/timer.js';
 import { setupPuzzleSelector, openPuzzleSelector } from './puzzleSelector.js';
 import { setupLeaderboardUI, openLeaderboardModal } from './leaderboardUi.js';
+import { overlayManager } from './overlayManager.js';
 
 export function setupUIEventListeners() {
     window.addEventListener('resize', onWindowResize);
@@ -32,18 +33,12 @@ export function setupUIEventListeners() {
     });
 
     document.getElementById('btn-close-modal').addEventListener('click', () => {
-        const modal = document.getElementById('solved-modal');
-        modal.classList.add('opacity-0');
-        setTimeout(() => {
-            modal.classList.add('hidden');
-        }, 500);
+        overlayManager.close();
     });
 
     document.getElementById('btn-play-again').addEventListener('click', () => {
-        const modal = document.getElementById('solved-modal');
-        modal.classList.add('opacity-0');
+        overlayManager.close();
         setTimeout(() => {
-            modal.classList.add('hidden');
             hardReset(true);
         }, 500);
     });
@@ -82,11 +77,11 @@ export function setupUIEventListeners() {
     });
 
     document.getElementById('btn-close-leaderboard').addEventListener('click', () => {
-        document.getElementById('leaderboard-modal').classList.add('hidden');
+        overlayManager.close();
     });
 
     document.getElementById('btn-close-detail').addEventListener('click', () => {
-        document.getElementById('detail-modal').classList.add('hidden');
+        overlayManager.close();
     });
 
 
@@ -382,7 +377,7 @@ export function setupUIEventListeners() {
 
         // Check if sequence is complete (6 taps = 3 complete cycles)
         if (state.debugSequenceCount >= 6) {
-            document.getElementById('debug-modal').classList.remove('hidden');
+            overlayManager.open('debug-modal');
             gtag('event', 'open_debug_sequence');
             state.debugSequenceCount = 0;
             lastDebugButton = null;
@@ -390,7 +385,7 @@ export function setupUIEventListeners() {
     }
 
     document.getElementById('btn-close-debug').addEventListener('click', () => {
-        document.getElementById('debug-modal').classList.add('hidden');
+        overlayManager.close();
     });
 
     document.getElementById('speed-slider').addEventListener('input', (e) => {
@@ -488,7 +483,7 @@ export function setupUIEventListeners() {
     updateAxisLockButton();
 
     document.getElementById('btn-test-victory').addEventListener('click', () => {
-        document.getElementById('debug-modal').classList.add('hidden');
+        overlayManager.close();
         setTimeout(() => {
             animateVictory();
         }, 1000);
@@ -518,7 +513,7 @@ export function setupUIEventListeners() {
             }
 
             // Close debug modal
-            document.getElementById('debug-modal').classList.add('hidden');
+            overlayManager.close();
 
             const currentDist = state.camera.position.length();
             const minD = state.controls.minDistance;
