@@ -59,18 +59,55 @@ export function openLeaderboardModal() {
     // Try to detect category from active puzzle
     if (state.selectedLeaderboardPuzzle) {
         // If we have a stored selection, use it
-        // Parse it to find category
-        const p = state.selectedLeaderboardPuzzle;
-        if (String(p).startsWith('mirror')) initialCategory = 'mirror';
-        else if (String(p).includes('x') && p.length > 5) initialCategory = 'cuboids'; // Rough guess
+        const p = String(state.selectedLeaderboardPuzzle);
+        if (p.startsWith('mirror')) initialCategory = 'mirror';
+        else if (p.includes('x') && p.length > 5) initialCategory = 'cuboids'; // Rough guess
         else if (parseInt(p) > 7) initialCategory = 'big';
         else initialCategory = 'standard';
 
         initialPuzzle = p;
     } else {
         // Default to active puzzle
-        // Logic to map active puzzle to category
-        // ... (Simplified for now, default to standard/3x3 if unsure)
+        const active = state.activePuzzle;
+        const dims = state.cubeDimensions;
+
+        if (active && active.constructor.name === 'MirrorCube') {
+            // It's a Mirror Cube
+            initialCategory = 'mirror';
+            // Construct ID
+            // Canonical format: Largest x Middle x Smallest
+            const d = [dims.x, dims.y, dims.z].sort((a, b) => b - a);
+            initialPuzzle = `mirror-${d[0]}x${d[1]}x${d[2]}`;
+
+            // Check if this specific mirror puzzle is in the standard mirror list
+            // If not, it might be a custom mirror
+            const mirrorList = puzzleCategories.mirror || [];
+            if (!mirrorList.includes(initialPuzzle)) {
+                initialCategory = 'custom';
+                // Keep the ID, but category is custom
+            }
+
+        } else if (dims.x !== dims.y || dims.y !== dims.z) {
+            // Cuboid
+            initialCategory = 'cuboids';
+            // Construct ID: "NxMxZ"
+            // Canonical format: Largest x Middle x Smallest
+            const d = [dims.x, dims.y, dims.z].sort((a, b) => b - a);
+            initialPuzzle = `${d[0]}x${d[1]}x${d[2]}`;
+
+            // Check if in cuboids list
+            const cuboidsList = puzzleCategories.cuboids || [];
+            if (!cuboidsList.includes(initialPuzzle)) {
+                initialCategory = 'custom';
+            }
+
+        } else {
+            // Standard or Big
+            const size = dims.x;
+            initialPuzzle = size;
+            if (size <= 7) initialCategory = 'standard';
+            else initialCategory = 'big';
+        }
     }
 
     // Render ALL categories initially
@@ -78,49 +115,37 @@ export function openLeaderboardModal() {
         renderCategoryContent(cat);
     });
 
-    showLeaderboardCategory(initialCategory, false);
+    // Set the selected puzzle immediately so renderPuzzleChips can see it
+    state.selectedLeaderboardPuzzle = initialPuzzle;
 
+    showLeaderboardCategory(initialCategory, false, false);
 
-    // Select the specific puzzle chip
-    // We need to wait for chips to render
-    setTimeout(() => {
-        selectLeaderboardPuzzle(initialPuzzle);
-    }, 0);
+    // Fetch data for the selected puzzle
+    fetchLeaderboard(initialPuzzle);
 }
 
-function showLeaderboardCategory(category, autoSelect = true) {
+function showLeaderboardCategory(category, autoSelect = true, smooth = true) {
     // Scroll to category
     const carousel = document.getElementById('leaderboard-carousel');
     const target = document.getElementById(`lb-cat-${category}`);
 
     if (carousel && target) {
-        // Calculate position based on index to be safe?
-        // Or just scrollIntoView? scrollIntoView might be jerky if not careful.
-        // Let's use scrollLeft based on index.
         const categories = ['standard', 'big', 'cuboids', 'mirror', 'custom'];
         const index = categories.indexOf(category);
         if (index !== -1) {
             carousel.scrollTo({
                 left: index * carousel.offsetWidth,
-                behavior: 'smooth'
+                behavior: smooth ? 'smooth' : 'auto'
             });
         }
     }
 
     updateSidebarActive(category);
-
-    // We render all on init now, but maybe re-render if needed?
-    // For now, assume static list or already rendered.
-    // But wait, 'custom' needs dynamic rendering.
-    // Let's just re-render the requested one to be safe/up-to-date.
     renderCategoryContent(category);
-
-
-    // Render Puzzle Chips for this category
-    renderPuzzleChips(category, autoSelect);
+    renderPuzzleChips(category, autoSelect, smooth);
 }
 
-function renderPuzzleChips(category, autoSelect = false) {
+function renderPuzzleChips(category, autoSelect = false, smooth = true) {
     const container = document.getElementById('leaderboard-puzzle-list');
     if (!container) return;
 
@@ -131,7 +156,6 @@ function renderPuzzleChips(category, autoSelect = false) {
     if (category === 'custom') {
         // Dynamically find custom puzzles from available types
         const standard = new Set(puzzleCategories.standard.map(x => `${x}x${x}x${x}`));
-        // Also map single numbers just in case
         puzzleCategories.standard.forEach(x => standard.add(String(x)));
 
         const big = new Set(puzzleCategories.big.map(x => `${x}x${x}x${x}`));
@@ -141,19 +165,13 @@ function renderPuzzleChips(category, autoSelect = false) {
         // Filter available types
         const available = state.availablePuzzleTypes || new Set();
         available.forEach(type => {
-            // Check if it's in any known category
-            // Note: type might be "3x3" or "3" or "3x3x3"
-            // We need robust checking.
-
             let isKnown = false;
             if (standard.has(type)) isKnown = true;
             if (big.has(type)) isKnown = true;
             if (cuboids.has(type)) isKnown = true;
             if (mirror.has(type)) isKnown = true;
 
-            // Also check for standard/big number formats
             if (!isKnown) {
-                // If it looks like "NxNxN" and N is in standard/big
                 const parts = type.split('x');
                 if (parts.length === 3 && parts[0] === parts[1] && parts[1] === parts[2]) {
                     const n = parseInt(parts[0]);
@@ -168,10 +186,40 @@ function renderPuzzleChips(category, autoSelect = false) {
             }
         });
 
+        // Ensure current selection is in the list if it belongs to custom
+        const current = String(state.selectedLeaderboardPuzzle);
+        console.log(`[LB] renderPuzzleChips custom: current=${current}, puzzles=${JSON.stringify(puzzles)}`);
+
+        if (current && !puzzles.includes(current)) {
+            // Verify it's not a known standard/mirror type
+            let isKnown = false;
+            if (standard.has(current)) isKnown = true;
+            if (big.has(current)) isKnown = true;
+            if (cuboids.has(current)) isKnown = true;
+            if (mirror.has(current)) isKnown = true;
+
+            if (!isKnown) {
+                console.log(`[LB] Adding current ${current} to custom list`);
+                puzzles.push(current);
+            } else {
+                console.log(`[LB] Current ${current} is known, skipping add`);
+            }
+        }
+
         puzzles.sort(); // Alphabetical sort for custom
 
     } else {
         puzzles = puzzleCategories[category] || [];
+
+        // Ensure current selection is in the list (e.g. for Mirror if we add dynamic mirrors later)
+        const current = String(state.selectedLeaderboardPuzzle);
+        if (category === 'mirror' && current.startsWith('mirror-') && !puzzles.includes(current)) {
+            // If we have a custom mirror that isn't in the standard list, 
+            // but we are in the mirror category (if we decided to put it there).
+            // Currently custom mirrors go to 'custom' category in my previous logic if not in list.
+            // But if we changed that, we'd handle it here.
+            // For now, safe to leave as is or add if we want to support dynamic mirrors in Mirror tab.
+        }
     }
 
     if (puzzles) {
@@ -213,6 +261,9 @@ function renderPuzzleChips(category, autoSelect = false) {
             // Highlight if matches current selection
             if (String(value) === String(state.selectedLeaderboardPuzzle)) {
                 btn.className = "px-3 py-2 rounded-xl bg-blue-600 text-white font-bold text-sm hover:bg-blue-500 transition border border-blue-500 shadow-lg flex items-center gap-2 shrink-0";
+                // Scroll into view immediately if it's the selected one
+                // Use setTimeout to ensure it's in DOM? No, we append it below.
+                // But we can scroll after appending.
             }
 
             btn.appendChild(img);
@@ -224,6 +275,18 @@ function renderPuzzleChips(category, autoSelect = false) {
             });
 
             container.appendChild(btn);
+
+            // Scroll if selected
+            if (String(value) === String(state.selectedLeaderboardPuzzle)) {
+                // Use requestAnimationFrame or setTimeout to ensure layout is ready
+                setTimeout(() => {
+                    btn.scrollIntoView({
+                        behavior: smooth ? 'smooth' : 'auto',
+                        block: 'nearest',
+                        inline: 'center'
+                    });
+                }, 0);
+            }
         });
     }
 
