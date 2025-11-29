@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Leaderboard Debug</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="importmap">
+        {
+            "imports": {
+                "firebase/app": "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js",
+                "firebase/auth": "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js",
+                "firebase/firestore": "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js"
+            }
+        }
+    </script>
+    <script>
+        // Security: Prevent access in production
+        const prodDomains = ['kennethbrandon.github.io', 'cube.redkb.com'];
+        if (prodDomains.includes(window.location.hostname)) {
+            window.location.href = "/"; // Redirect to home
+            throw new Error("Debug page disabled in production");
+        }
+    </script>
+</head>
+
+<body class="bg-gray-900 text-white p-8">
+    <h1 class="text-2xl font-bold mb-4">Leaderboard Records Dump</h1>
+    <div id="status" class="mb-4 text-yellow-400">Loading...</div>
+    <table class="w-full text-left border-collapse border border-gray-700">
+        <thead>
+            <tr class="bg-gray-800 select-none">
+                <th class="p-2 border border-gray-700 cursor-pointer hover:bg-gray-700" onclick="sortBy('name')">Name
+                    <span id="sort-name" class="text-blue-400"></span>
+                </th>
+                <th class="p-2 border border-gray-700 cursor-pointer hover:bg-gray-700" onclick="sortBy('puzzleType')">
+                    Puzzle Type (Raw) <span id="sort-puzzleType" class="text-blue-400"></span></th>
+                <th class="p-2 border border-gray-700 cursor-pointer hover:bg-gray-700" onclick="sortBy('timeMs')">Time
+                    <span id="sort-timeMs" class="text-blue-400"></span>
+                </th>
+                <th class="p-2 border border-gray-700 cursor-pointer hover:bg-gray-700" onclick="sortBy('date')">Date
+                    <span id="sort-date" class="text-blue-400"></span>
+                </th>
+            </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+    </table>
+
+    <script type="module">
+        import { initializeApp } from 'firebase/app';
+        import { getAuth, signInAnonymously } from 'firebase/auth';
+        import { getFirestore, collection, getDocs } from 'firebase/firestore';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyComkbqxc6zG22ungiEINKTFh9Dp1sxvfE",
+            authDomain: "puzzler-c6048.firebaseapp.com",
+            projectId: "puzzler-c6048",
+            storageBucket: "puzzler-c6048.firebasestorage.app",
+            messagingSenderId: "1026414975386",
+            appId: "1:1026414975386:web:647d4086d2dd512ae20223"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        let records = [];
+        let currentSort = { key: 'date', dir: 'desc' }; // Default sort by date descending
+
+        window.sortBy = (key) => {
+            if (currentSort.key === key) {
+                currentSort.dir = currentSort.dir === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSort.key = key;
+                // Default directions
+                if (key === 'timeMs' || key === 'date') currentSort.dir = 'desc'; // Usually want fastest/newest first? Actually fastest time is smallest number (asc), newest date is largest string (desc).
+                // Let's stick to a simple default
+                currentSort.dir = 'asc';
+                if (key === 'date') currentSort.dir = 'desc';
+            }
+            renderTable();
+        };
+
+        function renderTable() {
+            // Sort
+            records.sort((a, b) => {
+                let valA = a[currentSort.key];
+                let valB = b[currentSort.key];
+
+                if (valA === undefined || valA === null) valA = "";
+                if (valB === undefined || valB === null) valB = "";
+
+                // Numeric sort for timeMs
+                if (currentSort.key === 'timeMs') {
+                    valA = Number(valA);
+                    valB = Number(valB);
+                } else if (typeof valA === 'string') {
+                    valA = valA.toLowerCase();
+                    valB = valB.toLowerCase();
+                }
+
+                if (valA < valB) return currentSort.dir === 'asc' ? -1 : 1;
+                if (valA > valB) return currentSort.dir === 'asc' ? 1 : -1;
+                return 0;
+            });
+
+            // Update Headers
+            ['name', 'puzzleType', 'timeMs', 'date'].forEach(k => {
+                const el = document.getElementById(`sort-${k}`);
+                if (el) {
+                    if (currentSort.key === k) el.textContent = currentSort.dir === 'asc' ? '▲' : '▼';
+                    else el.textContent = '';
+                }
+            });
+
+            const tbody = document.getElementById('tbody');
+            tbody.innerHTML = '';
+
+            records.forEach(r => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-gray-800 transition-colors";
+                tr.innerHTML = `
+                    <td class="p-2 border border-gray-700">${r.name || 'Anonymous'}</td>
+                    <td class="p-2 border border-gray-700 font-mono text-yellow-400">${r.puzzleType || 'Unknown'}</td>
+                    <td class="p-2 border border-gray-700 font-mono text-green-400">${r.timeString || '-'}</td>
+                    <td class="p-2 border border-gray-700 text-xs text-gray-400">${r.date ? new Date(r.date).toLocaleString() : 'No Date'}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        async function run() {
+            try {
+                await signInAnonymously(auth);
+                const colRef = collection(db, 'artifacts', 'rubiks-cube-app', 'public', 'data', 'leaderboard');
+                const snapshot = await getDocs(colRef);
+
+                records = [];
+                snapshot.forEach(doc => {
+                    records.push(doc.data());
+                });
+
+                document.getElementById('status').textContent = `Loaded ${records.length} records.`;
+                renderTable();
+            } catch (e) {
+                console.error(e);
+                document.getElementById('status').textContent = "Error: " + e.message;
+            }
+        }
+
+        run();
+    </script>
+</body>
+
+</html>

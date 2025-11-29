@@ -155,54 +155,76 @@ function renderPuzzleChips(category, autoSelect = false, smooth = true) {
 
     if (category === 'custom') {
         // Dynamically find custom puzzles from available types
-        const standard = new Set(puzzleCategories.standard.map(x => `${x}x${x}x${x}`));
-        puzzleCategories.standard.forEach(x => standard.add(String(x)));
+        // Helper to normalize dimensions for comparison
+        const getSortedDims = (str) => {
+            if (!str) return "";
+            const s = String(str).trim();
+            const base = s.replace('mirror-', '');
+            const parts = base.split('x');
 
-        const big = new Set(puzzleCategories.big.map(x => `${x}x${x}x${x}`));
-        const cuboids = new Set(puzzleCategories.cuboids);
-        const mirror = new Set(puzzleCategories.mirror);
+            if (parts.length === 1) {
+                if (parts[0].match(/^\d+$/)) return `${parts[0]}x${parts[0]}x${parts[0]}`;
+                return base;
+            }
+            if (parts.length === 2 && parts[0] === parts[1]) return `${parts[0]}x${parts[0]}x${parts[0]}`;
 
+            if (parts.length === 3) {
+                if (parts.every(p => p.match(/^\d+$/))) {
+                    return parts.sort((a, b) => parseInt(b) - parseInt(a)).join('x');
+                }
+                return parts.sort().join('x');
+            }
+            return base;
+        };
+
+        const knownSorted = new Set();
+
+        // Add Standard & Big
+        [...puzzleCategories.standard, ...puzzleCategories.big].forEach(x => {
+            knownSorted.add(`${x}x${x}x${x}`);
+        });
+
+        // Add Cuboids
+        puzzleCategories.cuboids.forEach(c => {
+            knownSorted.add(getSortedDims(c));
+        });
+
+        // Add Mirror
+        puzzleCategories.mirror.forEach(m => {
+            // Mirror categories are like "mirror-3x3x3"
+            // We store the base sorted dims, but maybe we should store full string?
+            // The available types will be "mirror-..." or just "..."
+            // Let's store "mirror-" + sorted for mirror types
+            const sorted = getSortedDims(m);
+            knownSorted.add(`mirror-${sorted}`);
+        });
+
+        // puzzles is defined in outer scope
         // Filter available types
         const available = state.availablePuzzleTypes || new Set();
         available.forEach(type => {
-            let isKnown = false;
-            if (standard.has(type)) isKnown = true;
-            if (big.has(type)) isKnown = true;
-            if (cuboids.has(type)) isKnown = true;
-            if (mirror.has(type)) isKnown = true;
+            const typeStr = String(type);
+            const isMirror = typeStr.startsWith('mirror-');
+            const sortedBase = getSortedDims(typeStr);
+            const normalizedType = isMirror ? `mirror-${sortedBase}` : sortedBase;
 
-            if (!isKnown) {
-                const parts = type.split('x');
-                if (parts.length === 3 && parts[0] === parts[1] && parts[1] === parts[2]) {
-                    const n = parseInt(parts[0]);
-                    if (puzzleCategories.standard.includes(n) || puzzleCategories.big.includes(n)) {
-                        isKnown = true;
-                    }
-                }
-            }
-
-            if (!isKnown) {
-                puzzles.push(type);
+            // Check if this normalized type is in our known list
+            if (!knownSorted.has(normalizedType)) {
+                // It's truly custom!
+                puzzles.push(typeStr);
             }
         });
 
         // Ensure current selection is in the list if it belongs to custom
         const current = String(state.selectedLeaderboardPuzzle);
-        console.log(`[LB] renderPuzzleChips custom: current=${current}, puzzles=${JSON.stringify(puzzles)}`);
+        if (current) {
+            const currentIsMirror = current.startsWith('mirror-');
+            const currentSortedBase = getSortedDims(current);
+            const currentNormalized = currentIsMirror ? `mirror-${currentSortedBase}` : currentSortedBase;
 
-        if (current && !puzzles.includes(current)) {
-            // Verify it's not a known standard/mirror type
-            let isKnown = false;
-            if (standard.has(current)) isKnown = true;
-            if (big.has(current)) isKnown = true;
-            if (cuboids.has(current)) isKnown = true;
-            if (mirror.has(current)) isKnown = true;
-
-            if (!isKnown) {
+            if (!knownSorted.has(currentNormalized) && !puzzles.includes(current)) {
                 console.log(`[LB] Adding current ${current} to custom list`);
                 puzzles.push(current);
-            } else {
-                console.log(`[LB] Current ${current} is known, skipping add`);
             }
         }
 

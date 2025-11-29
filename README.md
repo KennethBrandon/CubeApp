@@ -68,6 +68,27 @@ No additional configuration needed - just push and deploy! 🚀
    ```
 3. Open `http://localhost:8000` in your browser
 
+### Debug Tools
+
+This project includes a local-only debug page for inspecting leaderboard data:
+
+- **URL**: `http://localhost:8000/debug_leaderboard.html`
+- **Purpose**: View raw database records, sort by any field, and verify data integrity.
+- **Security**: This page includes a runtime check that **blocks access** on production domains (`kennethbrandon.github.io`, `cube.redkb.com`). It will automatically redirect to the home page if accessed in production.
+
+### In-App Debug Menu
+
+There is also a hidden debug menu within the application itself, which provides controls for:
+- Showing FPS counter
+- Tuning Mirror Blocks parameters (stickers, dimensions, materials)
+- Testing victory animations
+- Creating custom puzzles by string definition
+
+**How to Access:**
+Tap the **Mirror** button (🪞) and **Lock** button (🔒) in an alternating sequence **3 times** (total 6 taps) within 3 seconds:
+`Mirror -> Lock -> Mirror -> Lock -> Mirror -> Lock`
+
+
 ## Architecture
 
 - **Frontend Hosting**: GitHub Pages (free, automatic HTTPS)
