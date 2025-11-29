@@ -60,6 +60,7 @@ let currentActiveCategory = null;
 function updateSidebarActive(category) {
     if (currentActiveCategory === category) return;
     currentActiveCategory = category;
+    state.lastLibraryCategory = category;
 
     document.querySelectorAll('.puzzle-category-btn').forEach(btn => {
         if (btn.dataset.category === category) {
@@ -105,7 +106,7 @@ export function openPuzzleSelector(callback = null) {
     const modal = document.getElementById('puzzle-selector-modal');
     modal.classList.remove('hidden');
     // Select default category or current puzzle's category
-    showCategory('standard');
+    showCategory(state.lastLibraryCategory || 'standard');
 }
 
 function closePuzzleSelector() {
