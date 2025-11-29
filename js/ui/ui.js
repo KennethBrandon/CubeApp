@@ -1,5 +1,6 @@
 import { state } from '../shared/state.js';
 import { puzzleCategories } from './puzzleSelector.js';
+import { overlayManager } from './overlayManager.js';
 
 export function togglePanel(contentId, headerElement) {
     const content = document.getElementById(contentId);
@@ -34,7 +35,6 @@ export function addToHistory(notation, isReverse) {
 }
 
 export function showWinModal() {
-    const modal = document.getElementById('solved-modal');
     document.getElementById('final-time').textContent = document.getElementById('timer').textContent;
     document.getElementById('scramble-text').textContent = state.scrambleSequence.join("  ");
     const list = document.getElementById('final-solution');
@@ -42,15 +42,7 @@ export function showWinModal() {
         list.innerHTML = `<p class="font-bold mb-2">Your Solution (${state.moveHistory.length} moves):</p>` + state.moveHistory.join(", ");
     }
 
-    // Ensure modal starts with opacity-0 for fade-in
-    modal.classList.add('opacity-0');
-    modal.classList.remove('hidden');
-
-    // Force reflow to ensure the browser registers the opacity-0 state
-    void modal.offsetWidth;
-
-    // Remove opacity-0 to trigger the fade-in transition
-    modal.classList.remove('opacity-0');
+    overlayManager.open('solved-modal');
 
     state.isGameActive = false;
 }
@@ -184,7 +176,7 @@ export function openDetailModal(entry) {
     const d = new Date(entry.date);
     document.getElementById('detail-date').textContent = d.toLocaleDateString() + ' ' + d.toLocaleTimeString();
 
-    document.getElementById('detail-modal').classList.remove('hidden');
+    overlayManager.open('detail-modal');
 }
 
 export function escapeHtml(text) {

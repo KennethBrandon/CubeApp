@@ -1,6 +1,7 @@
 import { puzzleCategories } from './puzzleSelector.js';
 import { fetchLeaderboard } from '../leaderboard/firebase.js';
 import { state } from '../shared/state.js';
+import { overlayManager } from './overlayManager.js';
 
 export function setupLeaderboardUI() {
     // Category switching
@@ -49,8 +50,7 @@ function updateSidebarActive(category) {
 
 
 export function openLeaderboardModal() {
-    const modal = document.getElementById('leaderboard-modal');
-    modal.classList.remove('hidden');
+    overlayManager.open('leaderboard-modal');
 
     // Determine initial category and puzzle
     let initialCategory = 'standard';
