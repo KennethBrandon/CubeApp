@@ -39,6 +39,7 @@ export const state = {
     dragInputAxis: null,
     isRightZone: false,
     activeKeys: new Set(),
+    dragTouchId: null,
 
     // Timer State
     startTime: 0,
