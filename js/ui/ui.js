@@ -172,6 +172,12 @@ export function renderLeaderboardUI(leaderboardData, puzzleSize = 3) {
 
 export function openDetailModal(entry) {
     document.getElementById('detail-name').textContent = entry.name;
+
+    // Format puzzle type
+    // User requested literal database value
+    const pType = entry.puzzleType || "Unknown";
+    document.getElementById('detail-puzzle-type').textContent = pType;
+
     document.getElementById('detail-scramble').textContent = entry.scramble;
     document.getElementById('detail-solution').textContent = entry.solution;
 

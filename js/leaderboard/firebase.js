@@ -56,23 +56,64 @@ export function fetchLeaderboard(puzzleSize = null) {
             state.availablePuzzleTypes.add(pType);
 
             // Filter by puzzle type
-            const puzzleStr = typeof targetPuzzle === 'string' ? targetPuzzle : `${targetPuzzle}x${targetPuzzle}`;
-            // Handle legacy 3x3 vs 3
-            // If target is "3", match "3x3" or "3x3x3"?
-            // data.puzzleType is likely "3x3x3" for new ones, "3x3" for old?
-            // Let's normalize comparison
+            // Normalize target puzzle for comparison
+            // We want to match:
+            // 1. Exact match
+            // 2. Legacy "NxN" vs "NxNxN"
+            // 3. Permutations (e.g. "3x2x2" vs "2x2x3")
 
-            // Actually, let's just use exact match for now, assuming submitScore is consistent.
-            // But wait, submitScore uses: `${puzzleSize}x${puzzleSize}` for cubic.
-            // If puzzleSize is 3, type is "3x3".
+            const targetStr = String(targetPuzzle);
+            const targetIsMirror = targetStr.startsWith('mirror-');
+            const targetBase = targetStr.replace('mirror-', '');
 
-            if (pType === puzzleStr) {
+            // Helper to get sorted dims string
+            const getSortedDims = (str) => {
+                if (!str) return "";
+                const s = String(str).trim();
+                const parts = s.split('x');
+
+                // Handle single number "3" -> "3x3x3"
+                if (parts.length === 1) {
+                    if (parts[0].match(/^\d+$/)) return `${parts[0]}x${parts[0]}x${parts[0]}`;
+                    return s;
+                }
+
+                // Handle "3x3" -> "3x3x3"
+                if (parts.length === 2 && parts[0] === parts[1]) {
+                    return `${parts[0]}x${parts[0]}x${parts[0]}`;
+                }
+
+                // Handle 3 dims - Sort numerically if possible
+                if (parts.length === 3) {
+                    // Check if all are numbers
+                    if (parts.every(p => p.match(/^\d+$/))) {
+                        return parts.sort((a, b) => parseInt(b) - parseInt(a)).join('x');
+                    }
+                    // Fallback to string sort for non-numbers
+                    return parts.sort().join('x');
+                }
+                return s;
+            };
+
+            const targetSorted = getSortedDims(targetBase);
+
+            // Check if this doc matches
+            const pTypeStr = String(pType);
+            const pTypeIsMirror = pTypeStr.startsWith('mirror-');
+
+            if (targetIsMirror !== pTypeIsMirror) return; // Must match mirror status
+
+            const pTypeBase = pTypeStr.replace('mirror-', '');
+            const pTypeSorted = getSortedDims(pTypeBase);
+
+            // Debug logging for troubleshooting (temporary)
+            // if (targetSorted.includes('2x2') && pTypeSorted.includes('2x2')) {
+            //    console.log(`[LB Match] Target: ${targetStr} (${targetSorted}) vs Record: ${pTypeStr} (${pTypeSorted}) -> Match: ${targetSorted === pTypeSorted}`);
+            // }
+
+            if (targetSorted === pTypeSorted) {
                 rawData.push(data);
             }
-
-            // Also match "3" with "3x3" if needed?
-            if (puzzleStr === '3' && pType === '3x3') rawData.push(data);
-            if (puzzleStr === '3x3' && pType === '3') rawData.push(data);
         });
 
         // Render Tabs (Removed)
@@ -95,44 +136,22 @@ export async function submitScore(name, timeMs, timeString, scramble, solution) 
     if (!state.currentUser || !name) return;
 
     // Determine puzzle type for this score
+    // ALWAYS use 3 dimensions for consistency moving forward
     let puzzleSize;
     if (state.cubeDimensions.x === state.cubeDimensions.y && state.cubeDimensions.y === state.cubeDimensions.z) {
-        puzzleSize = state.cubeSize;
+        // Standard Cubic
+        const s = state.cubeSize;
+        puzzleSize = `${s}x${s}x${s}`;
     } else {
-        // Sort dimensions descending for consistency (e.g. 3x2x1)
+        // Cuboid - Sort dimensions descending for consistency (e.g. 3x2x2)
+        // This ensures 2x2x3 and 3x2x2 are saved identically
         const dims = [state.cubeDimensions.x, state.cubeDimensions.y, state.cubeDimensions.z].sort((a, b) => b - a);
         puzzleSize = `${dims[0]}x${dims[1]}x${dims[2]}`;
     }
 
-    let puzzleType = typeof puzzleSize === 'string' ? puzzleSize : `${puzzleSize}x${puzzleSize}`;
+    let puzzleType = puzzleSize;
 
     if (state.activePuzzle instanceof MirrorCube) {
-        // Ensure we use the full dimensions string for mirror cubes (e.g. mirror-3x3x3)
-        // If puzzleType is just "3x3", convert to "3x3x3" first
-        if (puzzleType.indexOf('x') === -1) {
-            puzzleType = `${puzzleType}x${puzzleType}x${puzzleType}`;
-        } else if (puzzleType.split('x').length === 2) {
-            // Handle 2x2 case which might come as "2x2" -> "2x2x2"
-            // Actually line 84 in original code was `${puzzleSize}x${puzzleSize}` which is 2x2.
-            // We want 3 dims for mirror.
-            const parts = puzzleType.split('x');
-            puzzleType = `${parts[0]}x${parts[1]}x${parts[0]}`; // Assuming cubic if 2 dims?
-            // Wait, the logic above:
-            // if cubic -> puzzleSize = state.cubeSize (e.g. 3)
-            // else -> puzzleSize = "3x2x1"
-
-            // So if cubic, puzzleType becomes "3x3".
-            // We want "3x3x3" for mirror prefix consistency.
-            const s = state.cubeSize;
-            puzzleType = `${s}x${s}x${s}`;
-        }
-
-        // Re-evaluate puzzleType for cubic mirror to be safe
-        if (state.cubeDimensions.x === state.cubeDimensions.y && state.cubeDimensions.y === state.cubeDimensions.z) {
-            const s = state.cubeSize;
-            puzzleType = `${s}x${s}x${s}`;
-        }
-
         puzzleType = `mirror-${puzzleType}`;
     }
 
