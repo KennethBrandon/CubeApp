@@ -81,7 +81,8 @@ export function performMove(axisStr, direction, duration, sliceVal = null) {
         addToHistory(notation, false);
 
         // Start timer if not scrambling/auto-solving and not already running
-        if (!state.isScrambling && !state.isAutoSolving) {
+        // AND not a whole cube rotation (X, Y, Z)
+        if (!state.isScrambling && !state.isAutoSolving && !['X', 'Y', 'Z'].includes(axisStr)) {
             if (!state.timerRunning && state.isGameActive && state.hasBeenScrambled) {
                 startTimer();
             }
