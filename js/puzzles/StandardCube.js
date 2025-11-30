@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { Puzzle } from './Puzzle.js';
 import min2phase from '../lib/min2phase.js';
 import { state } from '../shared/state.js';
@@ -40,9 +41,9 @@ export class StandardCube extends Puzzle {
 
         state.activeDimensions = { ...this.config.dimensions };
 
-        let baseGeo = new THREE.BoxGeometry(CUBE_SIZE, CUBE_SIZE, CUBE_SIZE, 4, 4, 4);
-        baseGeo = mergeVertices(baseGeo);
-        baseGeo.computeVertexNormals();
+        // Use RoundedBoxGeometry for a "machined" look with filleted edges
+        // Radius 0.02 gives a tight, premium feel
+        const baseGeo = new RoundedBoxGeometry(CUBE_SIZE, CUBE_SIZE, CUBE_SIZE, 4, 0.02);
 
         const coreMat = new THREE.MeshStandardMaterial({
             color: CORE_COLOR,
@@ -589,6 +590,23 @@ export class StandardCube extends Puzzle {
                 snap(euler.y),
                 snap(euler.z)
             );
+        });
+    }
+
+    updateRadius(radius) {
+        // Create a single geometry instance to share
+        const newGeo = new RoundedBoxGeometry(CUBE_SIZE, CUBE_SIZE, CUBE_SIZE, 4, radius);
+
+        this.cubieList.forEach(group => {
+            // Find the core mesh (the first child usually, but let's be safe)
+            const core = group.children.find(c => !c.userData.isSticker);
+            if (core) {
+                // Dispose old geometry if it's not shared (or let GC handle it if we are careful)
+                // In this case, we are replacing it.
+                // Note: If we previously shared geometry, we should be careful not to dispose it multiple times.
+                // But here we are assigning a new one.
+                core.geometry = newGeo;
+            }
         });
     }
 }
