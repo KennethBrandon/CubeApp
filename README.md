@@ -4,8 +4,8 @@ A beautiful, interactive 3D Rubik's Cube puzzle game built with Three.js and Fir
 
 ## Features
 
-- 🎮 **Multiple Puzzle Sizes**: 2x2, 3x3, 4x4, 5x5, 6x6, 7x7, and even up to 17x17!
-- 🏆 **Live Leaderboards**: Compete with players worldwide, separate rankings for each puzzle size
+- 🎮 **Multiple Puzzle Types**: Standard cubes (2x2 to 17x17), cuboids, Mirror Blocks, and the unique 9-color Molecube!
+- 🏆 **Live Leaderboards**: Compete with players worldwide, separate rankings for each puzzle type
 - ⏱️ **Timing System**: Track your solve times with precision
 - 🎨 **Beautiful UI**: Modern design with smooth animations and dynamic camera movements
 - 🪞 **Mirror Environment**: Toggle mirrors for a premium visual experience

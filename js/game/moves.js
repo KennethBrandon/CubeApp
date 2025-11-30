@@ -28,7 +28,7 @@ export function performMove(axisStr, direction, duration, sliceVal = null) {
     else if (axisStr === 'z' || axisStr === 'Z') axisVector.set(0, 0, 1);
 
     // Handle named moves (R, L, U, D, F, B)
-    const S = CUBE_SIZE + SPACING;
+    const S = CUBE_SIZE + (state.activePuzzle ? state.activePuzzle.getSpacing() : SPACING);
     const dims = state.activeDimensions || state.cubeDimensions;
 
     // Determine maxIndex based on axis
@@ -164,7 +164,7 @@ export function finishMove(turns, axisVectorOrAxis, sliceVal) {
     } else {
         // Fallback for safety
         cubies.forEach(c => {
-            const S = CUBE_SIZE + SPACING;
+            const S = CUBE_SIZE + (state.activePuzzle ? state.activePuzzle.getSpacing() : SPACING);
             c.position.set(
                 Math.round(c.position.x / S * 2) / 2 * S,
                 Math.round(c.position.y / S * 2) / 2 * S,
@@ -268,7 +268,7 @@ export function logMove(axis, sliceVal, turns) {
     // sliceVal: position of slice
     // turns: number of 90 deg turns (1, -1, 2)
 
-    const S = CUBE_SIZE + SPACING;
+    const S = CUBE_SIZE + (state.activePuzzle ? state.activePuzzle.getSpacing() : SPACING);
     const epsilon = 0.1;
 
     // Use activeDimensions to get the correct dimension for this axis
@@ -457,7 +457,7 @@ export function onKeyDown(event) {
         if (['X', 'Y', 'Z'].includes(upperKey)) {
             sliceVal = Infinity;
         } else if (layer > 1 && !['M', 'E', 'S'].includes(upperKey)) {
-            const S = CUBE_SIZE + SPACING;
+            const S = CUBE_SIZE + (state.activePuzzle ? state.activePuzzle.getSpacing() : SPACING);
             const maxIndex = (axisDim - 1) / 2;
 
             // Calculate slice index based on face polarity

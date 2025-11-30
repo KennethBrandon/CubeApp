@@ -1,6 +1,7 @@
 import { state } from '../shared/state.js';
 import { StandardCube } from '../puzzles/StandardCube.js';
 import { MirrorCube } from '../puzzles/MirrorCube.js';
+import { Molecube } from '../puzzles/Molecube.js';
 import { hardReset } from '../game/scramble.js';
 import { getMirrorHeight, toggleMirrors } from '../core/environment.js';
 import { adjustCameraForCubeSize } from '../core/controls.js';
@@ -13,7 +14,8 @@ export const puzzleCategories = {
     'standard': [2, 3, 4, 5, 6, 7],
     'big': [8, 9, 10, 11, 12, 13, 14, 15, 16, 17],
     'cuboids': ['2x2x3', '3x3x2', '3x3x4', '3x3x5', '2x2x4', '2x2x1', '3x3x1'],
-    'mirror': ['mirror-2x2x2', 'mirror-3x3x3', 'mirror-4x4x4', 'mirror-5x5x5', 'mirror-6x6x6', 'mirror-7x7x7']
+    'mirror': ['mirror-2x2x2', 'mirror-3x3x3', 'mirror-4x4x4', 'mirror-5x5x5', 'mirror-6x6x6', 'mirror-7x7x7'],
+    'mods': ['molecube']
 };
 
 export function setupPuzzleSelector() {
@@ -48,7 +50,7 @@ export function setupPuzzleSelector() {
             const width = carousel.offsetWidth;
             const index = Math.round(scrollLeft / width);
 
-            const categories = ['standard', 'big', 'cuboids', 'mirror', 'custom'];
+            const categories = ['standard', 'big', 'cuboids', 'mirror', 'mods', 'custom'];
             if (index >= 0 && index < categories.length) {
                 updateSidebarActive(categories[index]);
             }
@@ -223,7 +225,7 @@ function showCategory(category) {
     const target = document.getElementById(`cat-${category}`);
 
     if (carousel && target) {
-        const categories = ['standard', 'big', 'cuboids', 'mirror', 'custom'];
+        const categories = ['standard', 'big', 'cuboids', 'mirror', 'mods', 'custom'];
         const index = categories.indexOf(category);
         if (index !== -1) {
             carousel.scrollTo({
@@ -288,6 +290,18 @@ function renderPuzzleOptions() {
             }
             const btn = createPuzzleButton(label, val);
             mirrorContainer.appendChild(btn);
+        });
+    }
+
+    // Render Mods
+    const modsContainer = document.getElementById('cat-mods-list');
+    if (modsContainer) {
+        modsContainer.innerHTML = '';
+        categories.mods.forEach(val => {
+            let label = val;
+            if (val === 'molecube') label = 'Molecube';
+            const btn = createPuzzleButton(label, val);
+            modsContainer.appendChild(btn);
         });
     }
 }
@@ -408,6 +422,9 @@ export function getPuzzleIconPath(value) {
     // Check Cuboids
     if (puzzleCategories.cuboids.includes(valStr)) return `assets/icons/puzzle-${valStr}.png`;
 
+    // Check Mods
+    if (puzzleCategories.mods.includes(valStr)) return `assets/icons/puzzle-${valStr}.png`;
+
     // Check Standard/Big
     let size = null;
     if (valStr.match(/^\d+$/)) size = parseInt(valStr);
@@ -439,6 +456,10 @@ export function changePuzzle(val, isCustom = false, customDims = null, isMirrorC
             newSize = 3;
             newDims = { x: 3, y: 3, z: 3 };
             PuzzleClass = MirrorCube;
+        } else if (val === 'molecube') {
+            newSize = 3;
+            newDims = { x: 3, y: 3, z: 3 };
+            PuzzleClass = Molecube;
         } else if (val === 'mirror-2x2x2') {
             newSize = 2;
             newDims = { x: 2, y: 2, z: 2 };
@@ -476,8 +497,8 @@ export function changePuzzle(val, isCustom = false, customDims = null, isMirrorC
     if (!isCustom && PuzzleClass === StandardCube && newDims.x === state.cubeDimensions.x && newDims.y === state.cubeDimensions.y && newDims.z === state.cubeDimensions.z && !(state.activePuzzle instanceof MirrorCube)) return;
 
     // Update Button Text
-    updatePuzzleButtonText(newDims, PuzzleClass === MirrorCube);
-    updatePageTitle(newDims, PuzzleClass === MirrorCube);
+    updatePuzzleButtonText(newDims, PuzzleClass === MirrorCube, val);
+    updatePageTitle(newDims, PuzzleClass === MirrorCube, val);
 
     const currentDist = state.camera.position.length();
     const minD = state.controls.minDistance;
@@ -499,6 +520,10 @@ export function changePuzzle(val, isCustom = false, customDims = null, isMirrorC
         const input = document.getElementById('mirror-height-value');
         if (slider) slider.value = newHeight;
         if (input) input.value = newHeight.toFixed(1);
+
+        if (state.activePuzzle) {
+            state.activePuzzle.dispose();
+        }
 
         state.activePuzzle = new PuzzleClass({
             dimensions: newDims
@@ -569,12 +594,14 @@ export function changePuzzle(val, isCustom = false, customDims = null, isMirrorC
     }
 }
 
-function updatePuzzleButtonText(dims, isMirror) {
+function updatePuzzleButtonText(dims, isMirror, puzzleType) {
     const btn = document.getElementById('btn-puzzle-select');
     if (!btn) return;
 
     let text = "";
-    if (dims.x === dims.y && dims.y === dims.z) {
+    if (puzzleType === 'molecube') {
+        text = "Molecube";
+    } else if (dims.x === dims.y && dims.y === dims.z) {
         text = `${dims.x}x${dims.x}x${dims.x}`;
     } else {
         // Sort for display? Or keep internal logic?
@@ -582,22 +609,28 @@ function updatePuzzleButtonText(dims, isMirror) {
         text = `${dims.y}x${dims.x}x${dims.z}`; // Y is largest in our logic usually
     }
 
-    if (isMirror) text += " Mirror";
-    else text += " Cube";
+    if (puzzleType !== 'molecube') {
+        if (isMirror) text += " Mirror";
+        else text += " Cube";
+    }
 
     btn.innerHTML = `<span class="mr-2">🧩</span> ${text} <span class="ml-2 text-xs opacity-50">▼</span>`;
 }
 
-function updatePageTitle(dims, isMirror) {
+function updatePageTitle(dims, isMirror, puzzleType) {
     let text = "";
-    if (dims.x === dims.y && dims.y === dims.z) {
+    if (puzzleType === 'molecube') {
+        text = "Molecube";
+    } else if (dims.x === dims.y && dims.y === dims.z) {
         text = `${dims.x}x${dims.x}x${dims.x}`;
     } else {
         text = `${dims.y}x${dims.x}x${dims.z}`;
     }
 
-    if (isMirror) text += " Mirror Cube";
-    else text += " Cube";
+    if (puzzleType !== 'molecube') {
+        if (isMirror) text += " Mirror Cube";
+        else text += " Cube";
+    }
 
     document.title = `${text} - Rubik's Cube App`;
 }

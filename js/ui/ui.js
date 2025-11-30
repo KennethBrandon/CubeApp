@@ -111,6 +111,14 @@ export function renderLeaderboardUI(leaderboardData, puzzleSize = 3) {
         }
     }
 
+    // Check Mods
+    if (!isFound) {
+        if (puzzleCategories.mods.includes(p)) {
+            category = 'mods';
+            isFound = true;
+        }
+    }
+
     // If still not found, it stays 'custom'
 
     // Find the specific tbody for this category
