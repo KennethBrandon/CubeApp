@@ -1,4 +1,4 @@
-import { puzzleCategories } from './puzzleSelector.js';
+import { puzzleCategories, getPuzzleIconPath } from './puzzleSelector.js';
 import { fetchLeaderboard } from '../leaderboard/firebase.js';
 import { state } from '../shared/state.js';
 import { overlayManager } from './overlayManager.js';
@@ -60,12 +60,36 @@ export function openLeaderboardModal() {
     if (state.selectedLeaderboardPuzzle) {
         // If we have a stored selection, use it
         const p = String(state.selectedLeaderboardPuzzle);
-        if (p.startsWith('mirror')) initialCategory = 'mirror';
-        else if (p.includes('x') && p.length > 5) initialCategory = 'cuboids'; // Rough guess
-        else if (parseInt(p) > 7) initialCategory = 'big';
-        else initialCategory = 'standard';
-
         initialPuzzle = p;
+
+        if (p.startsWith('mirror')) {
+            initialCategory = 'mirror';
+            // Check if it's a known mirror puzzle
+            if (!puzzleCategories.mirror.includes(p)) {
+                initialCategory = 'custom';
+            }
+        } else if (p.includes('x')) {
+            // Could be cuboid or standard/big (if NxNxN) or custom
+            const parts = p.split('x');
+            if (parts.length === 3 && parts[0] === parts[1] && parts[1] === parts[2]) {
+                // Standard or Big
+                const size = parseInt(parts[0]);
+                if (size <= 7) initialCategory = 'standard';
+                else initialCategory = 'big';
+            } else {
+                // Cuboid or Custom
+                if (puzzleCategories.cuboids.includes(p)) {
+                    initialCategory = 'cuboids';
+                } else {
+                    initialCategory = 'custom';
+                }
+            }
+        } else {
+            // Number (Standard or Big)
+            const size = parseInt(p);
+            if (size <= 7) initialCategory = 'standard';
+            else initialCategory = 'big';
+        }
     } else {
         // Default to active puzzle
         const active = state.activePuzzle;
@@ -93,12 +117,29 @@ export function openLeaderboardModal() {
             // Construct ID: "NxMxZ"
             // Canonical format: Largest x Middle x Smallest
             const d = [dims.x, dims.y, dims.z].sort((a, b) => b - a);
-            initialPuzzle = `${d[0]}x${d[1]}x${d[2]}`;
+            const sortedId = `${d[0]}x${d[1]}x${d[2]}`;
+            initialPuzzle = sortedId;
 
-            // Check if in cuboids list
+            // Check if in cuboids list (exact match)
             const cuboidsList = puzzleCategories.cuboids || [];
-            if (!cuboidsList.includes(initialPuzzle)) {
-                initialCategory = 'custom';
+            if (cuboidsList.includes(sortedId)) {
+                initialPuzzle = sortedId;
+            } else {
+                // Check if any known cuboid matches these dimensions (rotation invariant)
+                // e.g. 3x3x5 matches 5x3x3
+                let foundMatch = false;
+                for (const known of cuboidsList) {
+                    const kParts = known.split('x').map(Number).sort((a, b) => b - a);
+                    if (kParts[0] === d[0] && kParts[1] === d[1] && kParts[2] === d[2]) {
+                        initialPuzzle = known; // Use the known ID (e.g. "3x3x5")
+                        foundMatch = true;
+                        break;
+                    }
+                }
+
+                if (!foundMatch) {
+                    initialCategory = 'custom';
+                }
             }
 
         } else {
@@ -246,68 +287,74 @@ function renderPuzzleChips(category, autoSelect = false, smooth = true) {
 
     if (puzzles) {
         puzzles.forEach(val => {
-            const btn = document.createElement('button');
-            btn.className = "px-3 py-2 rounded-xl bg-gray-800 text-gray-400 font-bold text-sm hover:bg-gray-700 transition border border-gray-700 flex items-center gap-2 shrink-0";
+            try {
+                const btn = document.createElement('button');
+                btn.className = "px-3 py-2 rounded-xl bg-gray-800 text-gray-400 font-bold text-sm hover:bg-gray-700 transition border border-gray-700 flex items-center gap-2 shrink-0";
 
-            let label = val;
-            let value = val;
+                let label = val;
+                let value = val;
 
-            if (category === 'standard' || category === 'big') {
-                label = `${val}x${val}x${val}`;
-                value = val; // Keep as number for consistency with firebase.js logic? Or normalize to string?
-                // firebase.js expects number for standard cubes usually, or string "NxNxN"
-            } else if (category === 'mirror') {
-                if (val === 'mirror-3x3x3') label = '3x3 Mirror';
-                else if (val === 'mirror-2x2x2') label = '2x2 Mirror';
-                else label = val.replace('mirror-', '') + ' Mirror';
-            } else if (category === 'custom') {
-                // Format custom label nicely if possible
-                if (val.startsWith('mirror-')) {
-                    label = val.replace('mirror-', '') + ' Mirror';
+                if (category === 'standard' || category === 'big') {
+                    label = `${val}x${val}x${val}`;
+                    value = val;
+                } else if (category === 'mirror') {
+                    if (val === 'mirror-3x3x3') label = '3x3 Mirror';
+                    else if (val === 'mirror-2x2x2') label = '2x2 Mirror';
+                    else label = val.replace('mirror-', '') + ' Mirror';
+                } else if (category === 'custom') {
+                    if (val.startsWith('mirror-')) {
+                        label = val.replace('mirror-', '') + ' Mirror';
+                    } else {
+                        label = val;
+                    }
                 } else {
                     label = val;
                 }
-            } else {
-                label = val;
-            }
 
-            // Image
-            const img = document.createElement('img');
-            img.src = `assets/icons/puzzle-${value}.png`;
-            img.className = "w-8 h-8 object-contain rounded";
-            img.onerror = () => { img.style.display = 'none'; }; // Hide if missing
+                // Image or Emoji
+                const iconPath = getPuzzleIconPath(value);
+                if (iconPath && iconPath.includes('puzzle-custom.png')) {
+                    const emojiSpan = document.createElement('span');
+                    emojiSpan.textContent = "🧩";
+                    emojiSpan.className = "text-xl";
+                    btn.appendChild(emojiSpan);
+                } else {
+                    const img = document.createElement('img');
+                    img.src = iconPath;
+                    img.className = "w-8 h-8 object-contain rounded";
+                    img.onerror = () => { img.style.display = 'none'; }; // Hide if missing
+                    btn.appendChild(img);
+                }
 
-            const text = document.createElement('span');
-            text.textContent = label;
+                // Highlight if matches current selection
+                const isSelected = String(value) === String(state.selectedLeaderboardPuzzle);
+                if (isSelected) {
+                    btn.className = "px-3 py-2 rounded-xl bg-blue-600 text-white font-bold text-sm hover:bg-blue-500 transition border border-blue-500 shadow-lg flex items-center gap-2 shrink-0";
+                }
 
-            // Highlight if matches current selection
-            if (String(value) === String(state.selectedLeaderboardPuzzle)) {
-                btn.className = "px-3 py-2 rounded-xl bg-blue-600 text-white font-bold text-sm hover:bg-blue-500 transition border border-blue-500 shadow-lg flex items-center gap-2 shrink-0";
-                // Scroll into view immediately if it's the selected one
-                // Use setTimeout to ensure it's in DOM? No, we append it below.
-                // But we can scroll after appending.
-            }
+                const text = document.createElement('span');
+                text.textContent = label;
+                btn.appendChild(text);
+                btn.dataset.value = value;
 
-            btn.appendChild(img);
-            btn.appendChild(text);
-            btn.dataset.value = value;
+                btn.addEventListener('click', () => {
+                    selectLeaderboardPuzzle(value);
+                });
 
-            btn.addEventListener('click', () => {
-                selectLeaderboardPuzzle(value);
-            });
+                container.appendChild(btn);
 
-            container.appendChild(btn);
-
-            // Scroll if selected
-            if (String(value) === String(state.selectedLeaderboardPuzzle)) {
-                // Use requestAnimationFrame or setTimeout to ensure layout is ready
-                setTimeout(() => {
-                    btn.scrollIntoView({
-                        behavior: smooth ? 'smooth' : 'auto',
-                        block: 'nearest',
-                        inline: 'center'
-                    });
-                }, 0);
+                // Scroll if selected
+                if (isSelected) {
+                    setTimeout(() => {
+                        btn.scrollIntoView({
+                            behavior: smooth ? 'smooth' : 'auto',
+                            block: 'nearest',
+                            inline: 'center'
+                        });
+                    }, 0);
+                }
+            } catch (e) {
+                console.error("Error rendering chip for", val, e);
             }
         });
     }
