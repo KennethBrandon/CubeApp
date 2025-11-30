@@ -269,7 +269,38 @@ function renderPuzzleChips(category, autoSelect = false, smooth = true) {
             }
         }
 
-        puzzles.sort(); // Alphabetical sort for custom
+        puzzles.sort((a, b) => {
+            const getDims = (str) => {
+                const s = String(str).replace('mirror-', '');
+                let parts = s.split('x').map(n => parseInt(n) || 0);
+
+                if (parts.length === 1) {
+                    // "3" -> [3, 3, 3]
+                    parts = [parts[0], parts[0], parts[0]];
+                } else if (parts.length === 2) {
+                    // "3x3" -> [3, 3, 1] (Assuming flat puzzle)
+                    parts = [parts[0], parts[1], 1];
+                }
+
+                // Sort ascending: [Smallest, Middle, Largest]
+                return parts.sort((x, y) => x - y);
+            };
+
+            const dimsA = getDims(a);
+            const dimsB = getDims(b);
+
+            // Compare Smallest (index 0) - Descending
+            if (dimsA[0] !== dimsB[0]) return dimsB[0] - dimsA[0];
+
+            // Compare Middle (index 1) - Descending
+            if (dimsA[1] !== dimsB[1]) return dimsB[1] - dimsA[1];
+
+            // Compare Largest (index 2) - Descending
+            if (dimsA[2] !== dimsB[2]) return dimsB[2] - dimsA[2];
+
+            // Tie-breaker: Alphabetical
+            return String(a).localeCompare(String(b));
+        });
 
     } else {
         puzzles = puzzleCategories[category] || [];
