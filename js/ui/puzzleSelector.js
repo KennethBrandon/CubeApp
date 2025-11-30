@@ -225,16 +225,73 @@ function createPuzzleIcon(value) {
     const container = document.createElement('div');
     container.className = "w-16 h-16 flex items-center justify-center bg-gray-800 rounded-lg overflow-hidden border border-gray-600";
 
+    // Construct filename using helper
+    // Note: getPuzzleIconPath is exported but not imported here? 
+    // Wait, getPuzzleIconPath is defined in THIS file at line 242 (in previous view it was exported).
+    // Let me check if getPuzzleIconPath is available.
+    // In the current view of puzzleSelector.js, getPuzzleIconPath is NOT defined/exported in the file content I just read?
+    // Let me check the file content again.
+
+    // Ah, I see `createPuzzleIcon` at line 224.
+    // I DO NOT see `getPuzzleIconPath` in the file content I just read (lines 1-431).
+    // Wait, looking at the previous `view_file` output for `puzzleSelector.js` (Step 31), `getPuzzleIconPath` WAS there at line 242.
+    // In the NEW `view_file` output (Step 147), `getPuzzleIconPath` is MISSING?
+    // Let me check the end of the file.
+    // Step 147 shows lines 1-431. The file ends at line 431.
+    // The `createPuzzleIcon` function is at line 224.
+    // `changePuzzle` is at 248.
+    // It seems `getPuzzleIconPath` is GONE from the file entirely?
+
+    // If `getPuzzleIconPath` is missing, I need to restore it or implement the logic inline.
+    // The original code in `createPuzzleIcon` (lines 235) uses:
+    // `img.src = 'assets/icons/puzzle-${value}.png';`
+
+    // It seems the file was reverted to a state BEFORE `getPuzzleIconPath` was even extracted?
+    // Or maybe I am misremembering.
+
+    // Let's look at `leaderboardUi.js` imports.
+    // Line 1: `import { puzzleCategories } from './puzzleSelector.js';`
+    // It does NOT import `getPuzzleIconPath`.
+
+    // Okay, so I need to implement the logic to determine if it's custom.
+    // Or re-introduce `getPuzzleIconPath`.
+
+    // Let's re-introduce `getPuzzleIconPath` and use it.
+
+    // Wait, if I change `createPuzzleIcon`, I can just check if the value implies custom.
+    // But `getPuzzleIconPath` was useful for `leaderboardUi.js` too.
+
+    // Let's check `leaderboardUi.js` again.
+    // It constructs the image src manually: `img.src = 'assets/icons/puzzle-${value}.png';` (Line 276).
+
+    // So `getPuzzleIconPath` is indeed missing from both.
+
+    // I will re-implement `getPuzzleIconPath` in `puzzleSelector.js` and export it.
+    // And update `createPuzzleIcon` to use it.
+
     const img = document.createElement('img');
     img.className = "w-full h-full object-contain";
     img.alt = value;
 
-    // Construct filename
-    // Format: puzzle-{value}.png
-    // e.g. puzzle-3.png, puzzle-mirror-3x3x3.png
-    img.src = `assets/icons/puzzle-${value}.png`;
+    // Logic to determine path
+    let iconPath = `assets/icons/puzzle-${value}.png`;
 
-    // Fallback for missing images
+    // Check if custom (simple check for now based on previous logic)
+    // If value is not in standard/big/cuboids/mirror lists...
+    // But `puzzleCategories` is available.
+
+    // Let's just use the helper function I'll add.
+    iconPath = getPuzzleIconPath(value);
+
+    if (iconPath.includes('puzzle-custom.png')) {
+        container.textContent = "🧩";
+        container.className += " text-4xl";
+        return container;
+    }
+
+    img.src = iconPath;
+
+    // Fallback
     img.onerror = () => {
         img.style.display = 'none';
         container.textContent = "🧩";
@@ -243,6 +300,32 @@ function createPuzzleIcon(value) {
 
     container.appendChild(img);
     return container;
+}
+
+export function getPuzzleIconPath(value) {
+    const valStr = String(value);
+
+    // Check Mirror
+    if (puzzleCategories.mirror.includes(valStr)) return `assets/icons/puzzle-${valStr}.png`;
+
+    // Check Cuboids
+    if (puzzleCategories.cuboids.includes(valStr)) return `assets/icons/puzzle-${valStr}.png`;
+
+    // Check Standard/Big
+    let size = null;
+    if (valStr.match(/^\d+$/)) size = parseInt(valStr);
+    else if (valStr.includes('x')) {
+        const parts = valStr.split('x');
+        if (parts.length === 3 && parts[0] === parts[1] && parts[1] === parts[2]) size = parseInt(parts[0]);
+    }
+
+    if (size !== null) {
+        if (puzzleCategories.standard.includes(size) || puzzleCategories.big.includes(size)) {
+            return `assets/icons/puzzle-${size}.png`;
+        }
+    }
+
+    return `assets/icons/puzzle-custom.png`;
 }
 
 export function changePuzzle(val, isCustom = false, customDims = null, isMirrorCustom = false, skipAnimation = false) {
@@ -330,6 +413,9 @@ export function changePuzzle(val, isCustom = false, customDims = null, isMirrorC
         // Update Leaderboard Selection
         state.selectedLeaderboardPuzzle = null; // Reset so it auto-detects next time
     };
+
+    // Always reset leaderboard selection when changing puzzle
+    state.selectedLeaderboardPuzzle = null;
 
     if (skipAnimation) {
         performUpdate();
