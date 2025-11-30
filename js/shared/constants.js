@@ -1,5 +1,5 @@
 export const CUBE_SIZE = 1;
-export const SPACING = 0.02; // Gap between cubies
+export const SPACING = 0.004; // Gap between cubies (User Preference)
 export const ANIMATION_SPEED = 140; // ms per turn
 export const SCRAMBLE_MOVES = 25;
 export const SCRAMBLE_SPEED = 50;
@@ -15,7 +15,7 @@ export const COLORS = [
     0x0045ad  // Back (Blue)
 ];
 export const CORE_COLOR = 0x111111;
-export const STICKER_BORDER_RADIUS = 0.15;
+export const STICKER_BORDER_RADIUS = 0.200; // User Preference
 
 // Shaders
 export const stickerVertexShader = `
