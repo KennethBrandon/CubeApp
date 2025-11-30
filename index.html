@@ -539,6 +539,15 @@
                     </label>
                 </div>
                 <div class="flex items-center justify-between p-3 bg-gray-900/50 rounded-lg">
+                    <span class="text-gray-300">Show Radius Slider</span>
+                    <label class="relative inline-block w-12 h-6">
+                        <input type="checkbox" id="toggle-radius-slider" class="sr-only peer">
+                        <div
+                            class="w-12 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-6 peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600">
+                        </div>
+                    </label>
+                </div>
+                <div class="flex items-center justify-between p-3 bg-gray-900/50 rounded-lg">
                     <span class="text-gray-300">Show Mirror Slider</span>
                     <label class="relative inline-block w-12 h-6">
                         <input type="checkbox" id="toggle-mirror-slider" class="sr-only peer">
@@ -728,6 +737,15 @@
             <input type="range" id="mirror-height-slider" min="-10" max="10" step="0.1" value="1.7"
                 class="w-64 h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-500">
             <input type="text" id="mirror-height-value" value="1.7"
+                class="w-20 bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white text-sm font-mono text-center">
+        </div>
+
+        <!-- Radius Controls -->
+        <div id="radius-controls" class="hidden flex items-center gap-4">
+            <label class="text-white text-sm font-medium w-12 text-right">Radius:</label>
+            <input type="range" id="radius-slider" min="0" max="0.1" step="0.001" value="0.02"
+                class="w-64 h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-500">
+            <input type="text" id="radius-value" value="0.020"
                 class="w-20 bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white text-sm font-mono text-center">
         </div>
     </div>

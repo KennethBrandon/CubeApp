@@ -406,9 +406,10 @@ export function setupUIEventListeners() {
     const updateFloatingControlsVisibility = () => {
         const zoomVisible = document.getElementById('toggle-zoom-bar').checked;
         const mirrorVisible = document.getElementById('toggle-mirror-slider').checked;
+        const radiusVisible = document.getElementById('toggle-radius-slider').checked;
         const container = document.getElementById('floating-controls');
 
-        if (zoomVisible || mirrorVisible) {
+        if (zoomVisible || mirrorVisible || radiusVisible) {
             container.classList.remove('hidden');
         } else {
             container.classList.add('hidden');
@@ -426,6 +427,12 @@ export function setupUIEventListeners() {
         } else {
             document.getElementById('mirror-controls').classList.add('hidden');
         }
+
+        if (radiusVisible) {
+            document.getElementById('radius-controls').classList.remove('hidden');
+        } else {
+            document.getElementById('radius-controls').classList.add('hidden');
+        }
     };
 
     document.getElementById('toggle-zoom-bar').addEventListener('change', (e) => {
@@ -435,6 +442,29 @@ export function setupUIEventListeners() {
     document.getElementById('toggle-mirror-slider').addEventListener('change', (e) => {
         updateFloatingControlsVisibility();
         gtag('event', 'toggle_controls_ui', { control: 'mirror', state: e.target.checked ? 'on' : 'off' });
+    });
+    document.getElementById('toggle-radius-slider').addEventListener('change', (e) => {
+        updateFloatingControlsVisibility();
+        gtag('event', 'toggle_controls_ui', { control: 'radius', state: e.target.checked ? 'on' : 'off' });
+    });
+
+    document.getElementById('radius-slider').addEventListener('input', (e) => {
+        const value = parseFloat(e.target.value);
+        document.getElementById('radius-value').value = value.toFixed(3);
+        if (state.activePuzzle && state.activePuzzle.updateRadius) {
+            state.activePuzzle.updateRadius(value);
+        }
+    });
+
+    document.getElementById('radius-value').addEventListener('change', (e) => {
+        let value = parseFloat(e.target.value);
+        if (isNaN(value)) value = 0.02;
+        value = Math.max(0, Math.min(0.1, value));
+        document.getElementById('radius-slider').value = value;
+        e.target.value = value.toFixed(3);
+        if (state.activePuzzle && state.activePuzzle.updateRadius) {
+            state.activePuzzle.updateRadius(value);
+        }
     });
 
     const updateAxisLockButton = () => {
