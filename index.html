@@ -186,6 +186,9 @@
                     data-category="mirror">Mirror</button>
                 <button
                     class="puzzle-category-btn text-left px-4 py-2 md:py-3 rounded-xl transition font-bold text-gray-400 hover:bg-gray-800 whitespace-nowrap"
+                    data-category="mods">Mods</button>
+                <button
+                    class="puzzle-category-btn text-left px-4 py-2 md:py-3 rounded-xl transition font-bold text-gray-400 hover:bg-gray-800 whitespace-nowrap"
                     data-category="custom">Custom</button>
 
                 <div class="flex-1 hidden md:block"></div>
@@ -220,6 +223,12 @@
                     <div id="cat-mirror"
                         class="carousel-slide min-w-full w-full h-full p-6 overflow-y-auto snap-center grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 content-start">
                         <div id="cat-mirror-list" class="contents"></div>
+                    </div>
+
+                    <!-- Mods -->
+                    <div id="cat-mods"
+                        class="carousel-slide min-w-full w-full h-full p-6 overflow-y-auto snap-center grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 content-start">
+                        <div id="cat-mods-list" class="contents"></div>
                     </div>
 
                     <!-- Custom -->
@@ -367,6 +376,9 @@
                     data-category="mirror">Mirror</button>
                 <button
                     class="leaderboard-category-btn text-left px-4 py-2 md:py-3 rounded-xl transition font-bold text-gray-400 hover:bg-gray-800 whitespace-nowrap"
+                    data-category="mods">Mods</button>
+                <button
+                    class="leaderboard-category-btn text-left px-4 py-2 md:py-3 rounded-xl transition font-bold text-gray-400 hover:bg-gray-800 whitespace-nowrap"
                     data-category="custom">Custom</button>
 
                 <div class="flex-1 hidden md:block"></div>
@@ -448,6 +460,22 @@
                                 </tr>
                             </thead>
                             <tbody id="leaderboard-body-mirror" class="divide-y divide-gray-800"></tbody>
+                        </table>
+                    </div>
+
+                    <!-- Mods -->
+                    <div id="lb-cat-mods" class="carousel-slide min-w-full w-full h-full overflow-y-auto snap-center">
+                        <table class="w-full text-left border-collapse">
+                            <thead class="bg-gray-800/50 sticky top-0 backdrop-blur-sm">
+                                <tr>
+                                    <th class="p-3 text-xs font-bold text-gray-500 uppercase tracking-wider w-16">Rank
+                                    </th>
+                                    <th class="p-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Name</th>
+                                    <th class="p-3 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">
+                                        Time</th>
+                                </tr>
+                            </thead>
+                            <tbody id="leaderboard-body-mods" class="divide-y divide-gray-800"></tbody>
                         </table>
                     </div>
 
@@ -545,6 +573,16 @@
                         <input type="checkbox" id="toggle-cube-tuner" class="sr-only peer">
                         <div
                             class="w-12 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-6 peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600">
+                        </div>
+                    </label>
+                </div>
+                <!-- Molecube Tuner Toggle -->
+                <div class="flex items-center justify-between p-3 bg-gray-900/50 rounded-lg">
+                    <span class="text-gray-300">Show Molecube Tuner</span>
+                    <label class="relative inline-block w-12 h-6">
+                        <input type="checkbox" id="toggle-molecube-tuner" class="sr-only peer">
+                        <div
+                            class="w-12 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-6 peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600">
                         </div>
                     </label>
                 </div>
@@ -653,6 +691,44 @@
 
         <div class="mt-4 text-center">
             <button id="btn-reset-tuner-defaults"
+                class="bg-gray-700 hover:bg-gray-600 text-white text-xs py-1 px-3 rounded transition">
+                Reset to Defaults
+            </button>
+        </div>
+    </div>
+
+    <!-- Molecube Tuner UI -->
+    <div id="molecube-tuner-ui"
+        class="hidden absolute top-20 left-4 z-50 bg-black/70 backdrop-blur-md border border-gray-700 p-4 rounded-lg text-white text-sm shadow-xl w-64">
+        <div id="molecube-tuner-header"
+            class="flex justify-between items-center mb-3 cursor-move border-b border-gray-700 pb-2">
+            <h3 class="font-bold text-purple-400">Molecube Tuner</h3>
+            <button id="close-molecube-tuner" class="text-gray-400 hover:text-white">&times;</button>
+        </div>
+
+        <div class="mb-3">
+            <label class="block mb-1 text-gray-300">Ball Size: <span id="molecube-ball-size-val"
+                    class="text-white font-mono">0.500</span></label>
+            <input type="range" id="molecube-ball-size-slider" min="0.1" max="0.6" step="0.005" value="0.500"
+                class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-500">
+        </div>
+
+        <div class="mb-3">
+            <label class="block mb-1 text-gray-300">Cylinder Size: <span id="molecube-cylinder-size-val"
+                    class="text-white font-mono">0.300</span></label>
+            <input type="range" id="molecube-cylinder-size-slider" min="0.01" max="0.3" step="0.005" value="0.300"
+                class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-500">
+        </div>
+
+        <div class="mb-3">
+            <label class="block mb-1 text-gray-300">Spacing (Spread): <span id="molecube-spacing-val"
+                    class="text-white font-mono">0.020</span></label>
+            <input type="range" id="molecube-spacing-slider" min="0" max="0.5" step="0.005" value="0.020"
+                class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-500">
+        </div>
+
+        <div class="mt-4 text-center">
+            <button id="btn-reset-molecube-defaults"
                 class="bg-gray-700 hover:bg-gray-600 text-white text-xs py-1 px-3 rounded transition">
                 Reset to Defaults
             </button>

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { SPACING } from '../shared/constants.js';
 
 export class Puzzle {
     constructor(config) {
@@ -74,5 +75,20 @@ export class Puzzle {
      */
     snapCubies(cubies) {
         throw new Error("Method 'snapCubies()' must be implemented.");
+    }
+
+    /**
+     * Cleans up any resources or objects created by the puzzle.
+     */
+    dispose() {
+        // Default implementation does nothing
+    }
+
+    /**
+     * Returns the spacing between cubies.
+     * @returns {number} Spacing value.
+     */
+    getSpacing() {
+        return SPACING;
     }
 }

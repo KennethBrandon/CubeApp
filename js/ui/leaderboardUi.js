@@ -22,7 +22,7 @@ export function setupLeaderboardUI() {
             const width = carousel.offsetWidth;
             const index = Math.round(scrollLeft / width);
 
-            const categories = ['standard', 'big', 'cuboids', 'mirror', 'custom'];
+            const categories = ['standard', 'big', 'cuboids', 'mirror', 'mods', 'custom'];
             if (index >= 0 && index < categories.length) {
                 const newCategory = categories[index];
                 if (newCategory !== lastCategory) {
@@ -84,6 +84,8 @@ export function openLeaderboardModal() {
                     initialCategory = 'custom';
                 }
             }
+        } else if (p === 'molecube') {
+            initialCategory = 'mods';
         } else {
             // Number (Standard or Big)
             const size = parseInt(p);
@@ -110,6 +112,11 @@ export function openLeaderboardModal() {
                 initialCategory = 'custom';
                 // Keep the ID, but category is custom
             }
+
+        } else if (active && active.constructor.name === 'Molecube') {
+            // It's a Molecube
+            initialCategory = 'mods';
+            initialPuzzle = 'molecube';
 
         } else if (dims.x !== dims.y || dims.y !== dims.z) {
             // Cuboid
@@ -152,7 +159,7 @@ export function openLeaderboardModal() {
     }
 
     // Render ALL categories initially
-    ['standard', 'big', 'cuboids', 'mirror', 'custom'].forEach(cat => {
+    ['standard', 'big', 'cuboids', 'mirror', 'mods', 'custom'].forEach(cat => {
         renderCategoryContent(cat);
     });
 
@@ -171,7 +178,7 @@ function showLeaderboardCategory(category, autoSelect = true, smooth = true) {
     const target = document.getElementById(`lb-cat-${category}`);
 
     if (carousel && target) {
-        const categories = ['standard', 'big', 'cuboids', 'mirror', 'custom'];
+        const categories = ['standard', 'big', 'cuboids', 'mirror', 'mods', 'custom'];
         const index = categories.indexOf(category);
         if (index !== -1) {
             carousel.scrollTo({
@@ -238,6 +245,11 @@ function renderPuzzleChips(category, autoSelect = false, smooth = true) {
             // Let's store "mirror-" + sorted for mirror types
             const sorted = getSortedDims(m);
             knownSorted.add(`mirror-${sorted}`);
+        });
+
+        // Add Mods
+        puzzleCategories.mods.forEach(mod => {
+            knownSorted.add(mod);
         });
 
         // puzzles is defined in outer scope
@@ -332,6 +344,9 @@ function renderPuzzleChips(category, autoSelect = false, smooth = true) {
                     if (val === 'mirror-3x3x3') label = '3x3 Mirror';
                     else if (val === 'mirror-2x2x2') label = '2x2 Mirror';
                     else label = val.replace('mirror-', '') + ' Mirror';
+                } else if (category === 'mods') {
+                    if (val === 'molecube') label = 'Molecube';
+                    else label = val;
                 } else if (category === 'custom') {
                     if (val.startsWith('mirror-')) {
                         label = val.replace('mirror-', '') + ' Mirror';

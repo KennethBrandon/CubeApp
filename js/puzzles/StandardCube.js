@@ -68,10 +68,11 @@ export class StandardCube extends Puzzle {
                 for (let z = -offsetZ; z <= offsetZ; z++) {
 
                     const group = new THREE.Group();
+                    const S = CUBE_SIZE + this.getSpacing();
                     group.position.set(
-                        x * (CUBE_SIZE + SPACING),
-                        y * (CUBE_SIZE + SPACING),
-                        z * (CUBE_SIZE + SPACING)
+                        x * S,
+                        y * S,
+                        z * S
                     );
 
                     const core = new THREE.Mesh(baseGeo, coreMat);
@@ -209,7 +210,7 @@ export class StandardCube extends Puzzle {
         else if (axisStr === 'z') axisVector.set(0, 0, 1);
 
         // Handle named moves (R, L, U, D, F, B)
-        const S = CUBE_SIZE + SPACING;
+        const S = CUBE_SIZE + this.getSpacing();
 
         if (['R', 'L', 'U', 'D', 'F', 'B'].includes(axisStr)) {
             let maxIndex;
@@ -266,7 +267,7 @@ export class StandardCube extends Puzzle {
     }
 
     getNotation(axis, sliceVal, turns) {
-        const S = CUBE_SIZE + SPACING;
+        const S = CUBE_SIZE + this.getSpacing();
         const epsilon = 0.1;
 
         const dims = state.activeDimensions;
@@ -348,7 +349,7 @@ export class StandardCube extends Puzzle {
         // Fallback to existing random move logic
         let scrambleMoves = [];
         const axes = ['x', 'y', 'z'];
-        const S = CUBE_SIZE + SPACING;
+        const S = CUBE_SIZE + this.getSpacing();
 
         let lastAxis = '';
         let lastLayer = -999;
@@ -412,7 +413,7 @@ export class StandardCube extends Puzzle {
     parseScrambleString(scrambleString) {
         const moves = [];
         const parts = scrambleString.trim().split(/\s+/);
-        const S = CUBE_SIZE + SPACING;
+        const S = CUBE_SIZE + this.getSpacing();
         const maxIndex = (state.activeDimensions.x - 1) / 2; // Assuming cubic for WCA
 
         parts.forEach(part => {
@@ -557,7 +558,7 @@ export class StandardCube extends Puzzle {
             const axisAlignment = finalRotAxis.dot(rotAxisRaw);
             const dragAngleScale = -1 * (directionCheck > 0 ? 1 : -1) * Math.sign(axisAlignment);
 
-            const S = CUBE_SIZE + SPACING;
+            const S = CUBE_SIZE + this.getSpacing();
             const p = intersectedCubie.position[finalAxisName];
 
             // Snap to nearest layer
@@ -574,7 +575,7 @@ export class StandardCube extends Puzzle {
         return null;
     }
     snapCubies(cubies) {
-        const S = CUBE_SIZE + SPACING;
+        const S = CUBE_SIZE + this.getSpacing();
         cubies.forEach(c => {
             c.position.set(
                 Math.round(c.position.x / S * 2) / 2 * S,

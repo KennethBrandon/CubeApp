@@ -36,6 +36,23 @@ export function playCubeAnimation(reverse = false, onComplete = null, fade = tru
     state.pivot.position.set(0, 0, 0);
     state.scene.add(state.pivot); // Use scene for world-space animation
     state.allCubies.forEach(c => state.pivot.attach(c));
+
+    let coreSphere = null;
+    if (state.activePuzzle && state.activePuzzle.coreSphere) {
+        coreSphere = state.activePuzzle.coreSphere;
+    } else if (state.cubeWrapper) {
+        // Fallback: Search in cubeWrapper
+        coreSphere = state.cubeWrapper.children.find(c => c.userData && c.userData.isCore);
+    }
+
+    if (coreSphere) {
+        // Ensure it's not already attached to pivot (shouldn't be)
+        if (coreSphere.parent !== state.pivot) {
+            state.pivot.attach(coreSphere);
+            state.tempCoreSphere = coreSphere;
+        }
+    }
+
     const spinDuration = 800; // Quick animation
     const spinRotations = 2 * Math.PI * 2; // 2 full rotations
     const jumpHeight = 2.5; // Height of jump
@@ -86,6 +103,12 @@ export function playCubeAnimation(reverse = false, onComplete = null, fade = tru
                     }
                 });
             });
+
+            // Core Opacity
+            const core = state.tempCoreSphere || (state.activePuzzle && state.activePuzzle.coreSphere);
+            if (core) {
+                core.material.opacity = currentOpacity;
+            }
         }
 
         if (progress < 1) {
@@ -93,6 +116,14 @@ export function playCubeAnimation(reverse = false, onComplete = null, fade = tru
         } else {
             // Reset pivot
             state.allCubies.forEach(c => state.cubeWrapper.attach(c)); // Attach back to cubeWrapper
+
+            if (state.tempCoreSphere) {
+                state.cubeWrapper.attach(state.tempCoreSphere);
+                state.tempCoreSphere = null;
+            } else if (state.activePuzzle && state.activePuzzle.coreSphere) {
+                state.cubeWrapper.attach(state.activePuzzle.coreSphere);
+            }
+
             state.pivot.rotation.set(0, 0, 0);
             state.pivot.position.set(0, 0, 0);
 
@@ -108,6 +139,12 @@ export function playCubeAnimation(reverse = false, onComplete = null, fade = tru
                     }
                 });
             });
+
+            // Reset Core Opacity
+            const core = state.tempCoreSphere || (state.activePuzzle && state.activePuzzle.coreSphere);
+            if (core) {
+                core.material.opacity = 1.0;
+            }
 
             state.isAnimating = false;
             if (onComplete) onComplete();

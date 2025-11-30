@@ -99,6 +99,9 @@ export class ThumbnailGenerator {
         // Mirror
         puzzleCategories.mirror.forEach(val => this.queue.push({ type: 'mirror', value: val, label: val }));
 
+        // Mods
+        puzzleCategories.mods.forEach(val => this.queue.push({ type: 'mods', value: val, label: val }));
+
         console.log(`Starting generation of ${this.queue.length} thumbnails...`);
 
         // Hide UI for clean screenshots

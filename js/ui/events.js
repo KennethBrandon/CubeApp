@@ -326,6 +326,11 @@ export function setupUIEventListeners() {
         makeDraggable(cubeTunerUI, 'cube-tuner-header');
     }
 
+    const molecubeTunerUI = document.getElementById('molecube-tuner-ui');
+    if (molecubeTunerUI) {
+        makeDraggable(molecubeTunerUI, 'molecube-tuner-header');
+    }
+
 
 
     const fpsCounter = document.getElementById('fps-counter');
@@ -501,6 +506,65 @@ export function setupUIEventListeners() {
             'cubie-gap-slider': 0.004,
             'sticker-size-slider': 0.800,
             'sticker-radius-slider': 0.200
+        };
+
+        for (const [id, val] of Object.entries(defaults)) {
+            const el = document.getElementById(id);
+            if (el) {
+                el.value = val;
+                el.dispatchEvent(new Event('input'));
+            }
+        }
+    });
+
+    // Molecube Tuner Toggle
+    document.getElementById('toggle-molecube-tuner').addEventListener('change', (e) => {
+        const ui = document.getElementById('molecube-tuner-ui');
+        if (ui) {
+            if (e.target.checked) {
+                ui.classList.remove('hidden');
+            } else {
+                ui.classList.add('hidden');
+            }
+        }
+        gtag('event', 'toggle_molecube_tuner', { state: e.target.checked ? 'on' : 'off' });
+    });
+
+    document.getElementById('close-molecube-tuner').addEventListener('click', () => {
+        const ui = document.getElementById('molecube-tuner-ui');
+        if (ui) ui.classList.add('hidden');
+        const toggle = document.getElementById('toggle-molecube-tuner');
+        if (toggle) toggle.checked = false;
+    });
+
+    // Molecube Tuner Sliders
+    const updateMolecubeTuner = () => {
+        if (!state.activePuzzle) return;
+
+        const ballSize = parseFloat(document.getElementById('molecube-ball-size-slider').value);
+        const cylinderSize = parseFloat(document.getElementById('molecube-cylinder-size-slider').value);
+        const spacing = parseFloat(document.getElementById('molecube-spacing-slider').value);
+
+        document.getElementById('molecube-ball-size-val').textContent = ballSize.toFixed(3);
+        document.getElementById('molecube-cylinder-size-val').textContent = cylinderSize.toFixed(3);
+        document.getElementById('molecube-spacing-val').textContent = spacing.toFixed(3);
+
+        if (state.activePuzzle.updateMolecubeParams) {
+            state.activePuzzle.updateMolecubeParams({ ballSize, cylinderSize, spacing });
+        }
+    };
+
+    ['molecube-ball-size-slider', 'molecube-cylinder-size-slider', 'molecube-spacing-slider'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('input', updateMolecubeTuner);
+    });
+
+    document.getElementById('btn-reset-molecube-defaults').addEventListener('click', () => {
+        // Defaults
+        const defaults = {
+            'molecube-ball-size-slider': 0.500,
+            'molecube-cylinder-size-slider': 0.300,
+            'molecube-spacing-slider': 0.020
         };
 
         for (const [id, val] of Object.entries(defaults)) {
