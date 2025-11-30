@@ -133,7 +133,7 @@ export function fetchLeaderboard(puzzleSize = null) {
 }
 
 export async function submitScore(name, timeMs, timeString, scramble, solution) {
-    if (!state.currentUser || !name) return;
+    if (!state.currentUser || !name) return null;
 
     // Determine puzzle type for this score
     // ALWAYS use 3 dimensions for consistency moving forward
@@ -170,14 +170,12 @@ export async function submitScore(name, timeMs, timeString, scramble, solution) 
             userId: state.currentUser.uid
         });
 
-        document.getElementById('solved-modal').classList.add('hidden');
         state.selectedLeaderboardPuzzle = puzzleType;
-        fetchLeaderboard(puzzleType);
-        updateActivePuzzleTab(puzzleType);
-        document.getElementById('leaderboard-modal').classList.remove('hidden');
+        return puzzleType;
     } catch (e) {
         console.error("Error adding score: ", e);
         alert("Failed to submit score. Try again.");
+        return null;
     }
 }
 

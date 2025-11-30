@@ -327,7 +327,7 @@ function renderPuzzleChips(category, autoSelect = false, smooth = true) {
 
                 if (category === 'standard' || category === 'big') {
                     label = `${val}x${val}x${val}`;
-                    value = val;
+                    value = `${val}x${val}x${val}`;
                 } else if (category === 'mirror') {
                     if (val === 'mirror-3x3x3') label = '3x3 Mirror';
                     else if (val === 'mirror-2x2x2') label = '2x2 Mirror';
@@ -399,8 +399,8 @@ function renderPuzzleChips(category, autoSelect = false, smooth = true) {
         if (!exists) {
             let target = puzzles[0];
             if (category === 'standard') {
-                // Prefer 3 (3x3) if available
-                if (puzzles.includes(3)) target = 3;
+                // Prefer 3x3x3 if available
+                if (puzzles.includes(3)) target = '3x3x3';
             }
             selectLeaderboardPuzzle(target);
         }
