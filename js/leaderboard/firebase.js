@@ -4,6 +4,8 @@ import { getFirestore, collection, addDoc, onSnapshot } from 'firebase/firestore
 import { state } from '../shared/state.js';
 import { renderLeaderboardUI, updateActivePuzzleTab } from '../ui/ui.js';
 import { MirrorCube } from '../puzzles/MirrorCube.js';
+import { Molecube } from '../puzzles/Molecube.js';
+import { VoidCube } from '../puzzles/VoidCube.js';
 
 // --- Firebase Setup ---
 // We need to access the global config which is injected in index.html
@@ -136,23 +138,32 @@ export async function submitScore(name, timeMs, timeString, scramble, solution) 
     if (!state.currentUser || !name) return null;
 
     // Determine puzzle type for this score
-    // ALWAYS use 3 dimensions for consistency moving forward
-    let puzzleSize;
-    if (state.cubeDimensions.x === state.cubeDimensions.y && state.cubeDimensions.y === state.cubeDimensions.z) {
-        // Standard Cubic
-        const s = state.cubeSize;
-        puzzleSize = `${s}x${s}x${s}`;
+    let puzzleType;
+
+    // Check for special puzzle types first
+    if (state.activePuzzle instanceof Molecube) {
+        puzzleType = 'molecube';
+    } else if (state.activePuzzle instanceof VoidCube) {
+        puzzleType = 'voidcube';
     } else {
-        // Cuboid - Sort dimensions descending for consistency (e.g. 3x2x2)
-        // This ensures 2x2x3 and 3x2x2 are saved identically
-        const dims = [state.cubeDimensions.x, state.cubeDimensions.y, state.cubeDimensions.z].sort((a, b) => b - a);
-        puzzleSize = `${dims[0]}x${dims[1]}x${dims[2]}`;
-    }
+        // Standard dimensional logic
+        let puzzleSize;
+        if (state.cubeDimensions.x === state.cubeDimensions.y && state.cubeDimensions.y === state.cubeDimensions.z) {
+            // Standard Cubic
+            const s = state.cubeSize;
+            puzzleSize = `${s}x${s}x${s}`;
+        } else {
+            // Cuboid - Sort dimensions descending for consistency (e.g. 3x2x2)
+            // This ensures 2x2x3 and 3x2x2 are saved identically
+            const dims = [state.cubeDimensions.x, state.cubeDimensions.y, state.cubeDimensions.z].sort((a, b) => b - a);
+            puzzleSize = `${dims[0]}x${dims[1]}x${dims[2]}`;
+        }
 
-    let puzzleType = puzzleSize;
+        puzzleType = puzzleSize;
 
-    if (state.activePuzzle instanceof MirrorCube) {
-        puzzleType = `mirror-${puzzleType}`;
+        if (state.activePuzzle instanceof MirrorCube) {
+            puzzleType = `mirror-${puzzleType}`;
+        }
     }
 
     // Use original single collection

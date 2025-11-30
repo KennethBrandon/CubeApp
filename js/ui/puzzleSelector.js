@@ -2,6 +2,7 @@ import { state } from '../shared/state.js';
 import { StandardCube } from '../puzzles/StandardCube.js';
 import { MirrorCube } from '../puzzles/MirrorCube.js';
 import { Molecube } from '../puzzles/Molecube.js';
+import { VoidCube } from '../puzzles/VoidCube.js';
 import { hardReset } from '../game/scramble.js';
 import { getMirrorHeight, toggleMirrors } from '../core/environment.js';
 import { adjustCameraForCubeSize } from '../core/controls.js';
@@ -15,8 +16,9 @@ export const puzzleCategories = {
     'big': [8, 9, 10, 11, 12, 13, 14, 15, 16, 17],
     'cuboids': ['2x2x3', '3x3x2', '3x3x4', '3x3x5', '2x2x4', '2x2x1', '3x3x1'],
     'mirror': ['mirror-2x2x2', 'mirror-3x3x3', 'mirror-4x4x4', 'mirror-5x5x5', 'mirror-6x6x6', 'mirror-7x7x7'],
-    'mods': ['molecube']
+    'mods': ['molecube', 'voidcube']
 };
+
 
 export function setupPuzzleSelector() {
     const btn = document.getElementById('btn-puzzle-select');
@@ -300,6 +302,7 @@ function renderPuzzleOptions() {
         categories.mods.forEach(val => {
             let label = val;
             if (val === 'molecube') label = 'Molecube';
+            if (val === 'voidcube') label = 'Void Cube';
             const btn = createPuzzleButton(label, val);
             modsContainer.appendChild(btn);
         });
@@ -460,6 +463,10 @@ export function changePuzzle(val, isCustom = false, customDims = null, isMirrorC
             newSize = 3;
             newDims = { x: 3, y: 3, z: 3 };
             PuzzleClass = Molecube;
+        } else if (val === 'voidcube') {
+            newSize = 3;
+            newDims = { x: 3, y: 3, z: 3 };
+            PuzzleClass = VoidCube;
         } else if (val === 'mirror-2x2x2') {
             newSize = 2;
             newDims = { x: 2, y: 2, z: 2 };
@@ -601,6 +608,8 @@ function updatePuzzleButtonText(dims, isMirror, puzzleType) {
     let text = "";
     if (puzzleType === 'molecube') {
         text = "Molecube";
+    } else if (puzzleType === 'voidcube') {
+        text = "Void Cube";
     } else if (dims.x === dims.y && dims.y === dims.z) {
         text = `${dims.x}x${dims.x}x${dims.x}`;
     } else {
@@ -609,7 +618,7 @@ function updatePuzzleButtonText(dims, isMirror, puzzleType) {
         text = `${dims.y}x${dims.x}x${dims.z}`; // Y is largest in our logic usually
     }
 
-    if (puzzleType !== 'molecube') {
+    if (puzzleType !== 'molecube' && puzzleType !== 'voidcube') {
         if (isMirror) text += " Mirror";
         else text += " Cube";
     }
@@ -621,13 +630,15 @@ function updatePageTitle(dims, isMirror, puzzleType) {
     let text = "";
     if (puzzleType === 'molecube') {
         text = "Molecube";
+    } else if (puzzleType === 'voidcube') {
+        text = "Void Cube";
     } else if (dims.x === dims.y && dims.y === dims.z) {
         text = `${dims.x}x${dims.x}x${dims.x}`;
     } else {
         text = `${dims.y}x${dims.x}x${dims.z}`;
     }
 
-    if (puzzleType !== 'molecube') {
+    if (puzzleType !== 'molecube' && puzzleType !== 'voidcube') {
         if (isMirror) text += " Mirror Cube";
         else text += " Cube";
     }
