@@ -60,7 +60,13 @@ export function setupPuzzleSelector() {
 
     // Handle Back/Forward Navigation
     window.addEventListener('popstate', (event) => {
-        if (event.state && event.state.puzzle) {
+        // If this state is for an overlay, ignore it here.
+        // The OverlayManager handles closing the overlay.
+        if (event.state && event.state.overlayId) {
+            return;
+        }
+
+        if (event.state && (event.state.puzzle || event.state.isCustom)) {
             // Restore puzzle from history
             // We pass skipHistory=true to avoid pushing a new state
             changePuzzle(event.state.puzzle, event.state.isCustom, event.state.customDims, event.state.isMirrorCustom, false, true);
@@ -91,6 +97,15 @@ function initializePuzzleFromUrl() {
                 // Enforce Y as largest to match setupCustomPuzzleListeners
                 const sorted = dims.sort((a, b) => b - a);
                 const correctDims = { x: sorted[1], y: sorted[0], z: sorted[2] };
+
+                // Set initial history state
+                history.replaceState({
+                    puzzle: null,
+                    isCustom: true,
+                    customDims: correctDims,
+                    isMirrorCustom: isMirror
+                }, '', window.location.href);
+
                 changePuzzle(null, true, correctDims, isMirror, true, true); // skipAnimation=true, skipHistory=true
                 return;
             }
@@ -100,6 +115,15 @@ function initializePuzzleFromUrl() {
         // We can just pass the param to changePuzzle if it matches our value format
         // Our value formats are: '3x3x3', 'mirror-3x3x3', '2x2x3'
         // changePuzzle handles parsing these strings.
+
+        // Set initial history state
+        history.replaceState({
+            puzzle: puzzleParam,
+            isCustom: false,
+            customDims: null,
+            isMirrorCustom: false
+        }, '', window.location.href);
+
         changePuzzle(puzzleParam, false, null, false, true, true); // skipAnimation=true, skipHistory=true
     } else {
         // No param, ensure current state is replaced with default so we can go back to it
