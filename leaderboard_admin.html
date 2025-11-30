@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Leaderboard Debug</title>
+    <title>Leaderboard Admin</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script type="importmap">
         {
@@ -25,7 +25,7 @@
 </head>
 
 <body class="bg-gray-900 text-white p-8">
-    <h1 class="text-2xl font-bold mb-4">Leaderboard Records Dump</h1>
+    <h1 class="text-2xl font-bold mb-4">Leaderboard Admin</h1>
     <div id="status" class="mb-4 text-yellow-400">Loading...</div>
     <table class="w-full text-left border-collapse border border-gray-700">
         <thead>
@@ -64,7 +64,7 @@
     <script type="module">
         import { initializeApp } from 'firebase/app';
         import { getAuth, signInAnonymously } from 'firebase/auth';
-        import { getFirestore, collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
+        import { getFirestore, collection, getDocs, deleteDoc, updateDoc, doc } from 'firebase/firestore';
 
         const firebaseConfig = {
             apiKey: "AIzaSyComkbqxc6zG22ungiEINKTFh9Dp1sxvfE",
@@ -126,6 +126,34 @@
             }
         };
 
+        window.updatePuzzleType = async (id, newValue) => {
+            try {
+                const record = records.find(r => r.id === id);
+                if (!record) return;
+
+                // Optimistic update
+                const oldValue = record.puzzleType;
+                record.puzzleType = newValue;
+
+                const docRef = doc(db, 'artifacts', 'rubiks-cube-app', 'public', 'data', 'leaderboard', id);
+                await updateDoc(docRef, { puzzleType: newValue });
+
+                document.getElementById('status').textContent = `Updated record ${id} to "${newValue}"`;
+                document.getElementById('status').className = "mb-4 text-green-400";
+
+                // Reset status style after 3 seconds
+                setTimeout(() => {
+                    document.getElementById('status').className = "mb-4 text-yellow-400";
+                }, 3000);
+            } catch (e) {
+                console.error("Error updating record: ", e);
+                document.getElementById('status').textContent = "Error updating: " + e.message;
+                document.getElementById('status').className = "mb-4 text-red-400";
+                // Revert on error (optional, but good practice)
+                // In a real app we'd probably want to re-render to show the old value
+            }
+        };
+
         function renderTable() {
             // Sort
             records.sort((a, b) => {
@@ -166,7 +194,14 @@
                 tr.className = "hover:bg-gray-800 transition-colors";
                 tr.innerHTML = `
                     <td class="p-2 border border-gray-700">${r.name || 'Anonymous'}</td>
-                    <td class="p-2 border border-gray-700 font-mono text-yellow-400">${r.puzzleType || 'Unknown'}</td>
+                    <td class="p-2 border border-gray-700">
+                        <input 
+                            type="text" 
+                            value="${r.puzzleType || ''}" 
+                            onchange="updatePuzzleType('${r.id}', this.value)"
+                            class="bg-gray-700 text-yellow-400 font-mono px-2 py-1 rounded w-full border border-gray-600 focus:border-blue-500 focus:outline-none"
+                        />
+                    </td>
                     <td class="p-2 border border-gray-700 font-mono text-green-400">${r.timeString || '-'}</td>
                     <td class="p-2 border border-gray-700 text-xs text-gray-400">${r.date ? new Date(r.date).toLocaleString() : 'No Date'}</td>
                     <td class="p-2 border border-gray-700 text-center">
