@@ -72,7 +72,7 @@ No additional configuration needed - just push and deploy! 🚀
 
 This project includes a local-only debug page for inspecting leaderboard data:
 
-- **URL**: `http://localhost:8000/debug_leaderboard.html`
+- **URL**: `http://localhost:8000/leaderboard_admin.html`
 - **Purpose**: View raw database records, sort by any field, and verify data integrity.
 - **Security**: This page includes a runtime check that **blocks access** on production domains (`kennethbrandon.github.io`, `cube.redkb.com`). It will automatically redirect to the home page if accessed in production.
 
