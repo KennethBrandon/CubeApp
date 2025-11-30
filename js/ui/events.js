@@ -586,7 +586,7 @@ export function setupUIEventListeners() {
         e.target.value = value.toFixed(1);
     });
 
-    document.getElementById('btn-submit-score').addEventListener('click', () => {
+    document.getElementById('btn-submit-score').addEventListener('click', async () => {
         const nameInput = document.getElementById('player-name');
         const name = nameInput.value.trim();
         if (!name) {
@@ -597,7 +597,14 @@ export function setupUIEventListeners() {
         const scramble = state.scrambleSequence.join(" ");
         const solution = state.moveHistory.join(" ");
 
-        submitScore(name, state.finalTimeMs, timeStr, scramble, solution);
+        const puzzleType = await submitScore(name, state.finalTimeMs, timeStr, scramble, solution);
+
+        if (puzzleType) {
+            overlayManager.close(); // Close solved modal
+            setTimeout(() => {
+                openLeaderboardModal();
+            }, 100);
+        }
     });
 }
 
