@@ -54,9 +54,71 @@ export function setupPuzzleSelector() {
             }
         }, { passive: true });
     }
+
+    // Initialize from URL
+    initializePuzzleFromUrl();
+
+    // Handle Back/Forward Navigation
+    window.addEventListener('popstate', (event) => {
+        if (event.state && event.state.puzzle) {
+            // Restore puzzle from history
+            // We pass skipHistory=true to avoid pushing a new state
+            changePuzzle(event.state.puzzle, event.state.isCustom, event.state.customDims, event.state.isMirrorCustom, false, true);
+        } else {
+            // If no state (e.g. initial load or root), revert to default 3x3
+            // But only if we are not already there? 
+            // Actually, if we popped to a state without 'puzzle', it might be the initial page load state if we didn't replace it.
+            // Let's assume default is 3x3x3
+            changePuzzle('3x3x3', false, null, false, false, true);
+        }
+    });
+}
+
+function initializePuzzleFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    const puzzleParam = params.get('puzzle');
+
+    if (puzzleParam) {
+        // Parse param to determine type
+        // Format could be: '3x3x3', 'mirror-3x3x3', 'custom-2x3x4', 'custom-mirror-2x3x4'
+
+        // Check for Custom
+        if (puzzleParam.startsWith('custom-')) {
+            const isMirror = puzzleParam.includes('mirror');
+            const dimStr = puzzleParam.replace('custom-', '').replace('mirror-', '');
+            const dims = dimStr.split('x').map(Number);
+            if (dims.length === 3) {
+                // Enforce Y as largest to match setupCustomPuzzleListeners
+                const sorted = dims.sort((a, b) => b - a);
+                const correctDims = { x: sorted[1], y: sorted[0], z: sorted[2] };
+                changePuzzle(null, true, correctDims, isMirror, true, true); // skipAnimation=true, skipHistory=true
+                return;
+            }
+        }
+
+        // Standard / Big / Mirror / Cuboid
+        // We can just pass the param to changePuzzle if it matches our value format
+        // Our value formats are: '3x3x3', 'mirror-3x3x3', '2x2x3'
+        // changePuzzle handles parsing these strings.
+        changePuzzle(puzzleParam, false, null, false, true, true); // skipAnimation=true, skipHistory=true
+    } else {
+        // No param, ensure current state is replaced with default so we can go back to it
+        const currentVal = '3x3x3'; // Default
+        history.replaceState({
+            puzzle: currentVal,
+            isCustom: false,
+            customDims: null,
+            isMirrorCustom: false
+        }, '', `?puzzle=${currentVal}`);
+    }
+}
+
+function validateDims(dims) {
+    return !isNaN(dims.x) && !isNaN(dims.y) && !isNaN(dims.z) && dims.x > 0 && dims.y > 0 && dims.z > 0;
 }
 
 let currentActiveCategory = null;
+let pendingPuzzleChange = null; // Store puzzle change to apply after modal closes
 
 function updateSidebarActive(category) {
     if (currentActiveCategory === category) return;
@@ -111,6 +173,16 @@ export function openPuzzleSelector(callback = null) {
         selectionCallback = null;
         disposePreview();
         currentActiveCategory = null;
+
+        // Apply pending puzzle change if any
+        if (pendingPuzzleChange) {
+            const { val, isCustom, customDims, isMirrorCustom } = pendingPuzzleChange;
+            // Delay to ensure popstate from modal close doesn't overwrite this change
+            setTimeout(() => {
+                changePuzzle(val, isCustom, customDims, isMirrorCustom);
+            }, 50);
+            pendingPuzzleChange = null;
+        }
     });
 
     // Select default category or current puzzle's category
@@ -213,7 +285,8 @@ function createPuzzleButton(label, value) {
         if (selectionCallback) {
             selectionCallback(value);
         } else {
-            changePuzzle(value);
+            // Defer change until after modal closes to avoid history conflict
+            pendingPuzzleChange = { val: value, isCustom: false, customDims: null, isMirrorCustom: false };
         }
         closePuzzleSelector();
     });
@@ -328,7 +401,7 @@ export function getPuzzleIconPath(value) {
     return `assets/icons/puzzle-custom.png`;
 }
 
-export function changePuzzle(val, isCustom = false, customDims = null, isMirrorCustom = false, skipAnimation = false) {
+export function changePuzzle(val, isCustom = false, customDims = null, isMirrorCustom = false, skipAnimation = false, skipHistory = false) {
     let newSize = 3;
     let newDims = { x: 3, y: 3, z: 3 };
     let PuzzleClass = StandardCube;
@@ -364,11 +437,23 @@ export function changePuzzle(val, isCustom = false, customDims = null, isMirrorC
         }
     }
 
+    // Validation
+    if (!validateDims(newDims)) {
+        console.warn("Invalid puzzle dimensions:", newDims);
+        // Fallback to 3x3x3 if invalid
+        newSize = 3;
+        newDims = { x: 3, y: 3, z: 3 };
+        val = '3x3x3';
+        isCustom = false;
+        PuzzleClass = StandardCube;
+    }
+
     // Check if same puzzle
     if (!isCustom && PuzzleClass === StandardCube && newDims.x === state.cubeDimensions.x && newDims.y === state.cubeDimensions.y && newDims.z === state.cubeDimensions.z && !(state.activePuzzle instanceof MirrorCube)) return;
 
     // Update Button Text
     updatePuzzleButtonText(newDims, PuzzleClass === MirrorCube);
+    updatePageTitle(newDims, PuzzleClass === MirrorCube);
 
     const currentDist = state.camera.position.length();
     const minD = state.controls.minDistance;
@@ -426,7 +511,38 @@ export function changePuzzle(val, isCustom = false, customDims = null, isMirrorC
         });
     }
 
-    gtag('event', 'puzzle_change', { puzzle_type: val, custom: isCustom });
+    // Update History
+    if (!skipHistory) {
+        let urlVal = val;
+        if (isCustom) {
+            // Serialize custom puzzle
+            // Format: custom-WxHxD or custom-mirror-WxHxD
+            // Sort dimensions descending for URL: Largest x Middle x Smallest
+            const sortedDims = [newDims.x, newDims.y, newDims.z].sort((a, b) => b - a);
+            const dimStr = `${sortedDims[0]}x${sortedDims[1]}x${sortedDims[2]}`;
+            urlVal = `custom-${isMirrorCustom ? 'mirror-' : ''}${dimStr}`;
+        } else {
+            // Normalize standard/mirror URL values
+            // If val is just a number (e.g. 5), convert to 5x5x5
+            if (String(val).match(/^\d+$/)) {
+                urlVal = `${val}x${val}x${val}`;
+            }
+        }
+
+        const newUrl = `?puzzle=${urlVal}`;
+        history.pushState({
+            puzzle: val, // Keep original val for internal logic if possible, or reconstruct
+            // Actually, for custom, 'val' is null. We need to store enough to restore it.
+            // So let's store the args.
+            isCustom,
+            customDims: newDims,
+            isMirrorCustom
+        }, '', newUrl);
+    }
+
+    if (typeof gtag === 'function') {
+        gtag('event', 'puzzle_change', { puzzle_type: val, custom: isCustom });
+    }
 }
 
 function updatePuzzleButtonText(dims, isMirror) {
@@ -448,6 +564,20 @@ function updatePuzzleButtonText(dims, isMirror) {
     btn.innerHTML = `<span class="mr-2">🧩</span> ${text} <span class="ml-2 text-xs opacity-50">▼</span>`;
 }
 
+function updatePageTitle(dims, isMirror) {
+    let text = "";
+    if (dims.x === dims.y && dims.y === dims.z) {
+        text = `${dims.x}x${dims.x}x${dims.x}`;
+    } else {
+        text = `${dims.y}x${dims.x}x${dims.z}`;
+    }
+
+    if (isMirror) text += " Mirror Cube";
+    else text += " Cube";
+
+    document.title = `${text} - Rubik's Cube App`;
+}
+
 function setupCustomPuzzleListeners() {
     const btnCreate = document.getElementById('btn-create-custom-puzzle-modal');
     if (!btnCreate) return;
@@ -461,7 +591,8 @@ function setupCustomPuzzleListeners() {
         const dims = [d1, d2, d3].sort((a, b) => b - a);
         const newDims = { x: dims[1], y: dims[0], z: dims[2] };
 
-        changePuzzle(null, true, newDims, isMirror);
+        // Defer change
+        pendingPuzzleChange = { val: null, isCustom: true, customDims: newDims, isMirrorCustom: isMirror };
         closePuzzleSelector();
     });
 
