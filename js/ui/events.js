@@ -726,23 +726,36 @@ export function setupUIEventListeners() {
     });
 
     document.getElementById('btn-submit-score').addEventListener('click', async () => {
+        const submitButton = document.getElementById('btn-submit-score');
         const nameInput = document.getElementById('player-name');
         const name = nameInput.value.trim();
         if (!name) {
             alert("Please enter a name!");
             return;
         }
-        const timeStr = document.getElementById('final-time').textContent;
-        const scramble = state.scrambleSequence.join(" ");
-        const solution = state.moveHistory.join(" ");
 
-        const puzzleType = await submitScore(name, state.finalTimeMs, timeStr, scramble, solution);
+        // Disable button to prevent double-submissions
+        submitButton.disabled = true;
+        const originalText = submitButton.textContent;
+        submitButton.textContent = 'Submitting...';
 
-        if (puzzleType) {
-            overlayManager.close(); // Close solved modal
-            setTimeout(() => {
-                openLeaderboardModal();
-            }, 100);
+        try {
+            const timeStr = document.getElementById('final-time').textContent;
+            const scramble = state.scrambleSequence.join(" ");
+            const solution = state.moveHistory.join(" ");
+
+            const puzzleType = await submitScore(name, state.finalTimeMs, timeStr, scramble, solution);
+
+            if (puzzleType) {
+                overlayManager.close(); // Close solved modal
+                setTimeout(() => {
+                    openLeaderboardModal();
+                }, 100);
+            }
+        } finally {
+            // Re-enable button in all cases (success or failure)
+            submitButton.disabled = false;
+            submitButton.textContent = originalText;
         }
     });
 }
