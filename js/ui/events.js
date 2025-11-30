@@ -321,6 +321,11 @@ export function setupUIEventListeners() {
         makeDraggable(tunerUI, 'mirror-debug-header');
     }
 
+    const cubeTunerUI = document.getElementById('cube-tuner-ui');
+    if (cubeTunerUI) {
+        makeDraggable(cubeTunerUI, 'cube-tuner-header');
+    }
+
 
 
     const fpsCounter = document.getElementById('fps-counter');
@@ -406,7 +411,8 @@ export function setupUIEventListeners() {
     const updateFloatingControlsVisibility = () => {
         const zoomVisible = document.getElementById('toggle-zoom-bar').checked;
         const mirrorVisible = document.getElementById('toggle-mirror-slider').checked;
-        const radiusVisible = document.getElementById('toggle-radius-slider').checked;
+        // const radiusVisible = document.getElementById('toggle-radius-slider').checked;
+        const radiusVisible = false; // Deprecated
         const container = document.getElementById('floating-controls');
 
         if (zoomVisible || mirrorVisible || radiusVisible) {
@@ -429,9 +435,9 @@ export function setupUIEventListeners() {
         }
 
         if (radiusVisible) {
-            document.getElementById('radius-controls').classList.remove('hidden');
+            // document.getElementById('radius-controls').classList.remove('hidden');
         } else {
-            document.getElementById('radius-controls').classList.add('hidden');
+            // document.getElementById('radius-controls').classList.add('hidden');
         }
     };
 
@@ -443,27 +449,66 @@ export function setupUIEventListeners() {
         updateFloatingControlsVisibility();
         gtag('event', 'toggle_controls_ui', { control: 'mirror', state: e.target.checked ? 'on' : 'off' });
     });
-    document.getElementById('toggle-radius-slider').addEventListener('change', (e) => {
-        updateFloatingControlsVisibility();
-        gtag('event', 'toggle_controls_ui', { control: 'radius', state: e.target.checked ? 'on' : 'off' });
-    });
 
-    document.getElementById('radius-slider').addEventListener('input', (e) => {
-        const value = parseFloat(e.target.value);
-        document.getElementById('radius-value').value = value.toFixed(3);
-        if (state.activePuzzle && state.activePuzzle.updateRadius) {
-            state.activePuzzle.updateRadius(value);
+    // Cube Tuner Toggle
+    document.getElementById('toggle-cube-tuner').addEventListener('change', (e) => {
+        const ui = document.getElementById('cube-tuner-ui');
+        if (ui) {
+            if (e.target.checked) {
+                ui.classList.remove('hidden');
+            } else {
+                ui.classList.add('hidden');
+            }
         }
+        gtag('event', 'toggle_cube_tuner', { state: e.target.checked ? 'on' : 'off' });
     });
 
-    document.getElementById('radius-value').addEventListener('change', (e) => {
-        let value = parseFloat(e.target.value);
-        if (isNaN(value)) value = 0.02;
-        value = Math.max(0, Math.min(0.1, value));
-        document.getElementById('radius-slider').value = value;
-        e.target.value = value.toFixed(3);
-        if (state.activePuzzle && state.activePuzzle.updateRadius) {
-            state.activePuzzle.updateRadius(value);
+    document.getElementById('close-cube-tuner').addEventListener('click', () => {
+        const ui = document.getElementById('cube-tuner-ui');
+        if (ui) ui.classList.add('hidden');
+        const toggle = document.getElementById('toggle-cube-tuner');
+        if (toggle) toggle.checked = false;
+    });
+
+    // Cube Tuner Sliders
+    const updateCubeTuner = () => {
+        if (!state.activePuzzle) return;
+
+        const cubieRadius = parseFloat(document.getElementById('cubie-radius-slider').value);
+        const cubieGap = parseFloat(document.getElementById('cubie-gap-slider').value);
+        const stickerSize = parseFloat(document.getElementById('sticker-size-slider').value);
+        const stickerRadius = parseFloat(document.getElementById('sticker-radius-slider').value);
+
+        document.getElementById('cubie-radius-val').textContent = cubieRadius.toFixed(3);
+        document.getElementById('cubie-gap-val').textContent = cubieGap.toFixed(3);
+        document.getElementById('sticker-size-val').textContent = stickerSize.toFixed(3);
+        document.getElementById('sticker-radius-val').textContent = stickerRadius.toFixed(3);
+
+        if (state.activePuzzle.updateRadius) state.activePuzzle.updateRadius(cubieRadius);
+        if (state.activePuzzle.updateSpacing) state.activePuzzle.updateSpacing(cubieGap);
+        if (state.activePuzzle.updateStickers) state.activePuzzle.updateStickers(stickerSize, stickerRadius);
+    };
+
+    ['cubie-radius-slider', 'cubie-gap-slider', 'sticker-size-slider', 'sticker-radius-slider'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('input', updateCubeTuner);
+    });
+
+    document.getElementById('btn-reset-tuner-defaults').addEventListener('click', () => {
+        // Defaults
+        const defaults = {
+            'cubie-radius-slider': 0.074,
+            'cubie-gap-slider': 0.004,
+            'sticker-size-slider': 0.800,
+            'sticker-radius-slider': 0.200
+        };
+
+        for (const [id, val] of Object.entries(defaults)) {
+            const el = document.getElementById(id);
+            if (el) {
+                el.value = val;
+                el.dispatchEvent(new Event('input'));
+            }
         }
     });
 

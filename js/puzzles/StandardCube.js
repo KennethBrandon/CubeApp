@@ -42,8 +42,8 @@ export class StandardCube extends Puzzle {
         state.activeDimensions = { ...this.config.dimensions };
 
         // Use RoundedBoxGeometry for a "machined" look with filleted edges
-        // Radius 0.02 gives a tight, premium feel
-        const baseGeo = new RoundedBoxGeometry(CUBE_SIZE, CUBE_SIZE, CUBE_SIZE, 4, 0.02);
+        // Radius 0.074 gives a tight, premium feel (User Preference)
+        const baseGeo = new RoundedBoxGeometry(CUBE_SIZE, CUBE_SIZE, CUBE_SIZE, 4, 0.074);
 
         const coreMat = new THREE.MeshStandardMaterial({
             color: CORE_COLOR,
@@ -61,6 +61,8 @@ export class StandardCube extends Puzzle {
         const offsetY = (dimY - 1) / 2;
         const offsetZ = (dimZ - 1) / 2;
 
+        this.stickers = [];
+
         for (let x = -offsetX; x <= offsetX; x++) {
             for (let y = -offsetY; y <= offsetY; y++) {
                 for (let z = -offsetZ; z <= offsetZ; z++) {
@@ -76,7 +78,8 @@ export class StandardCube extends Puzzle {
                     core.scale.set(0.98, 0.98, 0.98);
                     group.add(core);
 
-                    const stickerGeo = new THREE.PlaneGeometry(0.88, 0.88);
+                    // Sticker Size 0.800 (User Preference)
+                    const stickerGeo = new THREE.PlaneGeometry(0.800, 0.800);
                     const stickerOffset = CUBE_SIZE / 2 + 0.001;
 
                     const faces = [
@@ -108,12 +111,13 @@ export class StandardCube extends Puzzle {
                             const sticker = new THREE.Mesh(stickerGeo, stickerMat);
                             sticker.position.set(...f.pos);
                             sticker.rotation.set(...f.rot);
-                            sticker.userData = { isSticker: true, originalColor: f.color };
+                            sticker.userData = { isSticker: true, originalColor: f.color, initialScale: 1.0 };
                             group.add(sticker);
+                            this.stickers.push(sticker);
                         }
                     });
 
-                    group.userData = { isCubie: true };
+                    group.userData = { isCubie: true, gridPos: { x, y, z } };
                     this.parent.add(group);
                     this.cubieList.push(group);
                 }
@@ -606,6 +610,35 @@ export class StandardCube extends Puzzle {
                 // Note: If we previously shared geometry, we should be careful not to dispose it multiple times.
                 // But here we are assigning a new one.
                 core.geometry = newGeo;
+            }
+        });
+    }
+
+    updateSpacing(spacing) {
+        const S = CUBE_SIZE + spacing;
+        this.cubieList.forEach(group => {
+            if (group.userData.gridPos) {
+                const { x, y, z } = group.userData.gridPos;
+                group.position.set(x * S, y * S, z * S);
+            }
+        });
+    }
+
+    updateStickers(size, radius) {
+        if (!this.stickers) return;
+        this.stickers.forEach(sticker => {
+            // Update scale
+            // Initial geometry is 0.800 x 0.800 (which is ~0.800 of CUBE_SIZE 1)
+            // The slider goes from 0.5 to 1.0.
+            // If slider is 0.800, scale should be 1.
+            // So scale = size / 0.800
+            const baseSize = 0.800;
+            const scale = size / baseSize;
+            sticker.scale.set(scale, scale, 1);
+
+            // Update radius
+            if (sticker.material.uniforms && sticker.material.uniforms.borderRadius) {
+                sticker.material.uniforms.borderRadius.value = radius;
             }
         });
     }
