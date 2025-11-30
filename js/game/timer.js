@@ -80,6 +80,20 @@ export function startInspection() {
     }, 10); // Update every 10ms
 }
 
+function updateTimerDisplay() {
+    const elapsed = Date.now() - state.startTime;
+    state.finalTimeMs = elapsed; // Store for leaderboard
+    const min = Math.floor(elapsed / 60000);
+    const sec = Math.floor((elapsed % 60000) / 1000);
+    const ms = Math.floor((elapsed % 1000) / 10);
+
+    const timerDisplay = document.getElementById('timer');
+    if (timerDisplay) {
+        timerDisplay.textContent =
+            `${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}.${ms.toString().padStart(2, '0')}`;
+    }
+}
+
 export function startTimer() {
     if (state.timerRunning) return;
     if (state.isInspection) {
@@ -97,23 +111,24 @@ export function startTimer() {
     if (timerDisplay) {
         timerDisplay.className = "text-2xl sm:text-3xl font-mono text-yellow-400 leading-none";
     }
+
+    // Update immediately to show 00:00.00
+    updateTimerDisplay();
+
     state.timerInterval = setInterval(() => {
-        const elapsed = Date.now() - state.startTime;
-        state.finalTimeMs = elapsed; // Store for leaderboard
-        const min = Math.floor(elapsed / 60000);
-        const sec = Math.floor((elapsed % 60000) / 1000);
-        const ms = Math.floor((elapsed % 1000) / 10);
-        if (timerDisplay) {
-            timerDisplay.textContent =
-                `${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}.${ms.toString().padStart(2, '0')}`;
-        }
-    }, 50);
+        updateTimerDisplay();
+    }, 10);
 }
 
 export function stopTimer() {
     state.timerRunning = false;
     clearInterval(state.timerInterval);
     clearInterval(state.inspectionInterval);
+
+    // One final update to ensure we capture the exact end time
+    if (state.startTime) {
+        updateTimerDisplay();
+    }
 }
 
 export function checkSolved() {
