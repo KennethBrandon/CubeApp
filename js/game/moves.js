@@ -237,7 +237,14 @@ export function snapPivot(targetAngle, turns, axis, sliceVal) {
         } else {
             finishMove(turns, axis, sliceVal);
             if (turns !== 0) {
-                logMove(axis, sliceVal, turns);
+                let normalizedTurns = turns;
+                // Normalize turns to positive axis direction if drag axis is negative
+                if (state.dragRotationAxis) {
+                    if (axis === 'x' && state.dragRotationAxis.x < -0.5) normalizedTurns *= -1;
+                    if (axis === 'y' && state.dragRotationAxis.y < -0.5) normalizedTurns *= -1;
+                    if (axis === 'z' && state.dragRotationAxis.z < -0.5) normalizedTurns *= -1;
+                }
+                logMove(axis, sliceVal, normalizedTurns);
             }
         }
     }
