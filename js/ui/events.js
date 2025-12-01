@@ -331,6 +331,11 @@ export function setupUIEventListeners() {
         makeDraggable(molecubeTunerUI, 'molecube-tuner-header');
     }
 
+    const acornsTunerUI = document.getElementById('acorns-tuner-ui');
+    if (acornsTunerUI) {
+        makeDraggable(acornsTunerUI, 'acorns-tuner-header');
+    }
+
 
 
     const fpsCounter = document.getElementById('fps-counter');
@@ -565,6 +570,93 @@ export function setupUIEventListeners() {
             'molecube-ball-size-slider': 0.500,
             'molecube-cylinder-size-slider': 0.300,
             'molecube-spacing-slider': 0.020
+        };
+
+        for (const [id, val] of Object.entries(defaults)) {
+            const el = document.getElementById(id);
+            if (el) {
+                el.value = val;
+                el.dispatchEvent(new Event('input'));
+            }
+        }
+    });
+
+    // Acorns Tuner Toggle
+    document.getElementById('toggle-acorns-tuner').addEventListener('change', (e) => {
+        const ui = document.getElementById('acorns-tuner-ui');
+        if (ui) {
+            if (e.target.checked) {
+                ui.classList.remove('hidden');
+            } else {
+                ui.classList.add('hidden');
+            }
+        }
+        gtag('event', 'toggle_acorns_tuner', { state: e.target.checked ? 'on' : 'off' });
+    });
+
+    document.getElementById('close-acorns-tuner').addEventListener('click', () => {
+        const ui = document.getElementById('acorns-tuner-ui');
+        if (ui) ui.classList.add('hidden');
+        const toggle = document.getElementById('toggle-acorns-tuner');
+        if (toggle) toggle.checked = false;
+    });
+
+    // Acorns Tuner Sliders
+    const updateAcornsTuner = () => {
+        try {
+            if (!state.activePuzzle) return;
+
+            const scale = parseFloat(document.getElementById('acorns-scale-slider').value);
+            const spacing = parseFloat(document.getElementById('acorns-gap-slider').value);
+            const offsetX = parseFloat(document.getElementById('acorns-offset-x-slider').value);
+            const offsetY = parseFloat(document.getElementById('acorns-offset-y-slider').value);
+            const offsetZ = parseFloat(document.getElementById('acorns-offset-z-slider').value);
+            const roughness = parseFloat(document.getElementById('acorns-roughness-slider').value);
+            const metalness = parseFloat(document.getElementById('acorns-metalness-slider').value);
+            const normalScale = parseFloat(document.getElementById('acorns-normal-scale-slider').value);
+
+
+            document.getElementById('acorns-scale-val').textContent = scale.toFixed(3);
+            document.getElementById('acorns-gap-val').textContent = spacing.toFixed(3);
+            document.getElementById('acorns-offset-x-val').textContent = offsetX.toFixed(3);
+            document.getElementById('acorns-offset-y-val').textContent = offsetY.toFixed(3);
+            document.getElementById('acorns-offset-z-val').textContent = offsetZ.toFixed(3);
+            document.getElementById('acorns-roughness-val').textContent = roughness.toFixed(2);
+            document.getElementById('acorns-metalness-val').textContent = metalness.toFixed(2);
+            document.getElementById('acorns-normal-scale-val').textContent = normalScale.toFixed(2);
+
+            if (state.activePuzzle.updateAcornsParams) {
+                state.activePuzzle.updateAcornsParams({
+                    scale,
+                    spacing,
+                    offset: { x: offsetX, y: offsetY, z: offsetZ },
+                    roughness,
+                    metalness,
+                    normalScale
+                });
+            }
+        } catch (e) {
+            console.error('Error in updateAcornsTuner:', e);
+        }
+    };
+
+    ['acorns-scale-slider', 'acorns-gap-slider', 'acorns-offset-x-slider', 'acorns-offset-y-slider', 'acorns-offset-z-slider',
+        'acorns-roughness-slider', 'acorns-metalness-slider', 'acorns-normal-scale-slider'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener('input', updateAcornsTuner);
+        });
+
+    document.getElementById('btn-reset-acorns-defaults').addEventListener('click', () => {
+        // Defaults
+        const defaults = {
+            'acorns-scale-slider': 2.600,
+            'acorns-gap-slider': 0.005,
+            'acorns-offset-x-slider': 0.000,
+            'acorns-offset-y-slider': 3.300,
+            'acorns-offset-z-slider': 0.000,
+            'acorns-roughness-slider': 0.60,
+            'acorns-metalness-slider': 0.46,
+            'acorns-normal-scale-slider': 0.50
         };
 
         for (const [id, val] of Object.entries(defaults)) {

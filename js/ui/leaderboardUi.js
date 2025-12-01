@@ -84,7 +84,7 @@ export function openLeaderboardModal() {
                     initialCategory = 'custom';
                 }
             }
-        } else if (p === 'molecube' || p === 'voidcube') {
+        } else if (p === 'molecube' || p === 'voidcube' || p === 'acorns') {
             initialCategory = 'mods';
         } else {
             // Number (Standard or Big)
@@ -122,6 +122,11 @@ export function openLeaderboardModal() {
             // It's a Void Cube
             initialCategory = 'mods';
             initialPuzzle = 'voidcube';
+
+        } else if (active && active.constructor.name === 'AcornsMod') {
+            // It's an Acorns Mod
+            initialCategory = 'mods';
+            initialPuzzle = 'acorns';
 
         } else if (dims.x !== dims.y || dims.y !== dims.z) {
             // Cuboid
@@ -352,6 +357,7 @@ function renderPuzzleChips(category, autoSelect = false, smooth = true) {
                 } else if (category === 'mods') {
                     if (val === 'molecube') label = 'Molecube';
                     else if (val === 'voidcube') label = 'Void Cube';
+                    else if (val === 'acorns') label = 'Acorns Mod';
                     else label = val;
                 } else if (category === 'custom') {
                     if (val.startsWith('mirror-')) {

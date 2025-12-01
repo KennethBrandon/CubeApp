@@ -136,7 +136,7 @@ export class StandardCube extends Puzzle {
 
     isSolved() {
         // Check all 6 directions for uniform colors
-        // This is rotation-invariant - it checks sticker orientations, not world positions
+        // This is rotation-invariant - it checks sticker orientations relative to cube, not world
         const directions = [
             new THREE.Vector3(1, 0, 0),   // Right
             new THREE.Vector3(-1, 0, 0),  // Left
@@ -156,10 +156,11 @@ export class StandardCube extends Puzzle {
             for (const group of this.cubieList) {
                 for (const child of group.children) {
                     if (child.userData.isSticker) {
-                        // Calculate the sticker's world-space normal
+                        // Calculate the sticker's normal in local cube space (relative to cubeWrapper)
                         const normal = new THREE.Vector3(0, 0, 1);
                         normal.applyQuaternion(child.quaternion);
                         normal.applyQuaternion(group.quaternion);
+                        // Don't apply cubeWrapper rotation - we want local cube space
 
                         // Check if this sticker is facing the current direction
                         const dotProduct = normal.dot(faceDir);
