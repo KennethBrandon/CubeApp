@@ -500,8 +500,8 @@ export function changePuzzle(val, isCustom = false, customDims = null, isMirrorC
         PuzzleClass = StandardCube;
     }
 
-    // Check if same puzzle
-    if (!isCustom && PuzzleClass === StandardCube && newDims.x === state.cubeDimensions.x && newDims.y === state.cubeDimensions.y && newDims.z === state.cubeDimensions.z && !(state.activePuzzle instanceof MirrorCube)) return;
+    // Check if same puzzle (use constructor to check exact class, not instanceof which matches subclasses)
+    if (!isCustom && state.activePuzzle.constructor === PuzzleClass && newDims.x === state.cubeDimensions.x && newDims.y === state.cubeDimensions.y && newDims.z === state.cubeDimensions.z) return;
 
     // Update Button Text
     updatePuzzleButtonText(newDims, PuzzleClass === MirrorCube, val);
