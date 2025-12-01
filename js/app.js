@@ -13,10 +13,12 @@ import { StandardCube } from './puzzles/StandardCube.js';
 
 import { thumbnailGenerator } from './utils/ThumbnailGenerator.js';
 
+
 // Expose functions to window for UI interactions (HTML onclick attributes)
 window.togglePanel = togglePanel;
 window.openDetailModal = openDetailModal;
 window.generateThumbnails = () => thumbnailGenerator.generateAll();
+
 
 function init() {
     // Initialize Scene & Renderer

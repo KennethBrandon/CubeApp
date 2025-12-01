@@ -136,25 +136,18 @@ export function checkSolved() {
     if (state.isScrambling || state.isAutoSolving) return;
     if (!state.activePuzzle) return;
 
-    const isMirrorCube = state.activePuzzle.constructor.name === 'MirrorCube';
-
     // Conditions required for a valid game win
     const isGameValid = state.isGameActive &&
         state.moveHistory.length > 0 &&
         !state.isInspection &&
         state.hasBeenScrambled;
 
-    // If it's not a valid game AND not a mirror cube (which we want to debug), return early
-    if (!isGameValid && !isMirrorCube) return;
+    if (!isGameValid) return;
 
     const isSolved = state.activePuzzle.isSolved();
 
-    if (isMirrorCube) {
-        console.log("MirrorCube CheckSolved:", isSolved);
-    }
-
-    if (isSolved && isGameValid) {
-        console.log("Puzzle Solved!");
+    if (isSolved) {
+        console.log("🎉 Puzzle Solved! Victory!");
         stopTimer();
         state.isGameActive = false;
         animateVictory();

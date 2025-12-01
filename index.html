@@ -37,7 +37,9 @@
                 "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
                 "firebase/app": "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js",
                 "firebase/auth": "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js",
-                "firebase/firestore": "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js"
+                "firebase/firestore": "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js",
+                "three-mesh-bvh": "https://cdn.jsdelivr.net/npm/three-mesh-bvh@0.7.3/build/index.module.js",
+                "three-bvh-csg": "https://cdn.jsdelivr.net/npm/three-bvh-csg@0.0.16/build/index.module.js"
             }
         }
     </script>
@@ -576,6 +578,16 @@
                         </div>
                     </label>
                 </div>
+                <!-- Acorns Tuner Toggle -->
+                <div class="flex items-center justify-between p-3 bg-gray-900/50 rounded-lg">
+                    <span class="text-gray-300">Show Acorns Tuner</span>
+                    <label class="relative inline-block w-12 h-6">
+                        <input type="checkbox" id="toggle-acorns-tuner" class="sr-only peer">
+                        <div
+                            class="w-12 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-6 peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600">
+                        </div>
+                    </label>
+                </div>
                 <!-- Molecube Tuner Toggle -->
                 <div class="flex items-center justify-between p-3 bg-gray-900/50 rounded-lg">
                     <span class="text-gray-300">Show Molecube Tuner</span>
@@ -729,6 +741,79 @@
 
         <div class="mt-4 text-center">
             <button id="btn-reset-molecube-defaults"
+                class="bg-gray-700 hover:bg-gray-600 text-white text-xs py-1 px-3 rounded transition">
+                Reset to Defaults
+            </button>
+        </div>
+    </div>
+
+    <!-- Acorns Mod Tuner UI -->
+    <div id="acorns-tuner-ui"
+        class="hidden absolute top-20 left-4 z-50 bg-black/70 backdrop-blur-md border border-gray-700 p-4 rounded-lg text-white text-sm shadow-xl w-64">
+        <div id="acorns-tuner-header"
+            class="flex justify-between items-center mb-3 cursor-move border-b border-gray-700 pb-2">
+            <h3 class="font-bold text-green-400">Acorns Tuner</h3>
+            <button id="close-acorns-tuner" class="text-gray-400 hover:text-white">&times;</button>
+        </div>
+
+        <div class="mb-3">
+            <label class="block mb-1 text-gray-300">Scale (Zoom): <span id="acorns-scale-val"
+                    class="text-white font-mono">2.600</span></label>
+            <input type="range" id="acorns-scale-slider" min="1.0" max="3.0" step="0.05" value="2.600"
+                class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-green-500">
+        </div>
+
+        <div class="mb-3">
+            <label class="block mb-1 text-gray-300">Gap (Spacing): <span id="acorns-gap-val"
+                    class="text-white font-mono">0.005</span></label>
+            <input type="range" id="acorns-gap-slider" min="-0.5" max="0.5" step="0.001" value="0.005"
+                class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-green-500">
+        </div>
+
+        <div class="mb-3">
+            <label class="block mb-1 text-gray-300">Offset X: <span id="acorns-offset-x-val"
+                    class="text-white font-mono">0.000</span></label>
+            <input type="range" id="acorns-offset-x-slider" min="-15.0" max="15.0" step="0.01" value="0.000"
+                class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-500">
+        </div>
+
+        <div class="mb-3">
+            <label class="block mb-1 text-gray-300">Offset Y: <span id="acorns-offset-y-val"
+                    class="text-white font-mono">3.300</span></label>
+            <input type="range" id="acorns-offset-y-slider" min="-15.0" max="15.0" step="0.01" value="3.300"
+                class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-500">
+        </div>
+
+        <div class="mb-3">
+            <label class="block mb-1 text-gray-300">Offset Z: <span id="acorns-offset-z-val"
+                    class="text-white font-mono">0.000</span></label>
+            <input type="range" id="acorns-offset-z-slider" min="-15.0" max="15.0" step="0.01" value="0.000"
+                class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-500">
+        </div>
+
+        <div class="mb-3">
+            <label class="block mb-1 text-gray-300">Roughness: <span id="acorns-roughness-val"
+                    class="text-white font-mono">0.60</span></label>
+            <input type="range" id="acorns-roughness-slider" min="0.0" max="1.0" step="0.01" value="0.60"
+                class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-yellow-500">
+        </div>
+
+        <div class="mb-3">
+            <label class="block mb-1 text-gray-300">Metalness: <span id="acorns-metalness-val"
+                    class="text-white font-mono">0.46</span></label>
+            <input type="range" id="acorns-metalness-slider" min="0.0" max="1.0" step="0.01" value="0.46"
+                class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-gray-400">
+        </div>
+
+        <div class="mb-3">
+            <label class="block mb-1 text-gray-300">Speckle Scale: <span id="acorns-normal-scale-val"
+                    class="text-white font-mono">0.50</span></label>
+            <input type="range" id="acorns-normal-scale-slider" min="0.0" max="1.0" step="0.01" value="0.50"
+                class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-500">
+        </div>
+
+        <div class="mt-4 text-center">
+            <button id="btn-reset-acorns-defaults"
                 class="bg-gray-700 hover:bg-gray-600 text-white text-xs py-1 px-3 rounded transition">
                 Reset to Defaults
             </button>
