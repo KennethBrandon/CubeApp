@@ -285,34 +285,33 @@ export class StandardCube extends Puzzle {
             else if (axis === 'z') char = 'z';
         } else {
             if (axis === 'x') {
-                if (Math.abs(index - maxIndex) < epsilon) { char = 'R'; notationTurns *= -1; }
+                if (Math.abs(index - maxIndex) < epsilon) { char = 'R'; }
                 else if (Math.abs(index + maxIndex) < epsilon) { char = 'L'; }
                 else {
                     if (axisDim % 2 !== 0 && Math.abs(index) < epsilon) char = 'M';
                     else {
-                        if (index > 0) { char = Math.round(maxIndex - index + 1) + 'R'; notationTurns *= -1; }
+                        if (index > 0) { char = Math.round(maxIndex - index + 1) + 'R'; }
                         else { char = Math.round(maxIndex - Math.abs(index) + 1) + 'L'; }
                     }
                 }
             } else if (axis === 'y') {
-                if (Math.abs(index - maxIndex) < epsilon) { char = 'U'; notationTurns *= -1; }
+                if (Math.abs(index - maxIndex) < epsilon) { char = 'U'; }
                 else if (Math.abs(index + maxIndex) < epsilon) { char = 'D'; }
                 else {
                     if (axisDim % 2 !== 0 && Math.abs(index) < epsilon) char = 'E';
                     else {
-                        if (index > 0) { char = Math.round(maxIndex - index + 1) + 'U'; notationTurns *= -1; }
+                        if (index > 0) { char = Math.round(maxIndex - index + 1) + 'U'; }
                         else { char = Math.round(maxIndex - Math.abs(index) + 1) + 'D'; }
                     }
                 }
             } else if (axis === 'z') {
-                if (Math.abs(index - maxIndex) < epsilon) { char = 'F'; notationTurns *= -1; }
+                if (Math.abs(index - maxIndex) < epsilon) { char = 'F'; }
                 else if (Math.abs(index + maxIndex) < epsilon) { char = 'B'; }
                 else {
                     if (axisDim % 2 !== 0 && Math.abs(index) < epsilon) {
                         char = 'S';
-                        notationTurns *= -1;
                     } else {
-                        if (index > 0) { char = Math.round(maxIndex - index + 1) + 'F'; notationTurns *= -1; }
+                        if (index > 0) { char = Math.round(maxIndex - index + 1) + 'F'; }
                         else { char = Math.round(maxIndex - Math.abs(index) + 1) + 'B'; }
                     }
                 }
@@ -459,11 +458,7 @@ export class StandardCube extends Puzzle {
             // F (slice > 0) -> dir=-1 is CW
             // B (slice < 0) -> dir=1 is CW
 
-            if (['R', 'U', 'F'].includes(char)) {
-                internalDir = -1;
-            } else {
-                internalDir = 1;
-            }
+            internalDir = 1;
 
             // Apply modifier
             if (dir === -1) internalDir *= -1; // ' reverses direction
