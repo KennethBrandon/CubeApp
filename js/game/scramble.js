@@ -50,6 +50,11 @@ export async function startScramble() {
 
 
 export function handleResetClick() {
+    // Prevent reset during victory animation (or single moves), but allow interrupting auto-solve/scramble
+    if (state.isAnimating && !state.isAutoSolving && !state.isScrambling) {
+        return;
+    }
+
     if (state.isAutoSolving || state.isScrambling || (state.moveHistory.length === 0 && state.scrambleSequence.length === 0)) {
         soundManager.playResetSound();
         hardReset(true); // Keep camera on manual reset
