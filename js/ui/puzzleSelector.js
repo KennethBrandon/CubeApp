@@ -11,6 +11,7 @@ import { playCubeAnimation } from '../animations/transitions.js';
 import { updateActivePuzzleTab } from './ui.js';
 import { initPreview, updatePreview, disposePreview } from './puzzlePreview.js';
 import { overlayManager } from './overlayManager.js';
+import { ensurePuzzleSelectorModal } from './components/PuzzleSelectorModal.js';
 
 export const puzzleCategories = {
     'standard': [2, 3, 4, 5, 6, 7],
@@ -32,33 +33,14 @@ export function setupPuzzleSelector() {
         closeBtn.addEventListener('click', closePuzzleSelector);
     }
 
-    // Category switching
-    document.querySelectorAll('.puzzle-category-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            showCategory(e.target.dataset.category);
-        });
-    });
+    // Category switching and Carousel listeners are now attached lazily in openPuzzleSelector
+    // when the modal is created.
 
-    // Initial render of options
-    renderPuzzleOptions();
+    // Initial render of options is also deferred.
+    // renderPuzzleOptions();
 
-    // Custom Puzzle Form Listeners
-    setupCustomPuzzleListeners();
-
-    // Carousel Scroll Listener
-    const carousel = document.getElementById('puzzle-carousel');
-    if (carousel) {
-        carousel.addEventListener('scroll', () => {
-            const scrollLeft = carousel.scrollLeft;
-            const width = carousel.offsetWidth;
-            const index = Math.round(scrollLeft / width);
-
-            const categories = ['standard', 'big', 'cuboids', 'mirror', 'mods', 'custom'];
-            if (index >= 0 && index < categories.length) {
-                updateSidebarActive(categories[index]);
-            }
-        }, { passive: true });
-    }
+    // Custom Puzzle Form Listeners are also deferred.
+    // setupCustomPuzzleListeners();
 
     // Initialize from URL
     initializePuzzleFromUrl();
@@ -194,6 +176,36 @@ export function openPuzzleSelector(callback = null) {
         selectionCallback = callback;
     } else {
         selectionCallback = null;
+    }
+
+    // Ensure modal exists
+    const created = ensurePuzzleSelectorModal();
+    if (created) {
+        // If we just created it, we need to attach listeners and render options
+        setupCustomPuzzleListeners();
+        renderPuzzleOptions();
+
+        // Also attach category switching listeners which were in setupPuzzleSelector
+        document.querySelectorAll('.puzzle-category-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                showCategory(e.target.dataset.category);
+            });
+        });
+
+        // And scroll listener
+        const carousel = document.getElementById('puzzle-carousel');
+        if (carousel) {
+            carousel.addEventListener('scroll', () => {
+                const scrollLeft = carousel.scrollLeft;
+                const width = carousel.offsetWidth;
+                const index = Math.round(scrollLeft / width);
+
+                const categories = ['standard', 'big', 'cuboids', 'mirror', 'mods', 'custom'];
+                if (index >= 0 && index < categories.length) {
+                    updateSidebarActive(categories[index]);
+                }
+            }, { passive: true });
+        }
     }
 
     // Use OverlayManager

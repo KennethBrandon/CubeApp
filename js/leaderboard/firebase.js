@@ -127,7 +127,8 @@ export function fetchLeaderboard(puzzleSize = null) {
         leaderboardData.length = 0;
         leaderboardData.push(...rawData.slice(0, 20));
 
-        if (!document.getElementById('leaderboard-modal').classList.contains('hidden')) {
+        const lbModal = document.getElementById('leaderboard-modal');
+        if (lbModal && !lbModal.classList.contains('hidden')) {
             renderLeaderboardUI(leaderboardData, targetPuzzle);
         }
     }, (error) => {

@@ -53,8 +53,8 @@ function init() {
         debugBtn.innerText = 'd';
         debugBtn.className = 'fixed bottom-4 left-32 z-50 bg-red-600 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold shadow-lg hover:bg-red-500 transition transform hover:scale-110';
         debugBtn.onclick = () => {
-            import('./ui/overlayManager.js').then(module => {
-                module.overlayManager.open('debug-modal');
+            import('./ui/components/DebugMenu.js').then(module => {
+                module.showDebugMenu();
             });
         };
         document.body.appendChild(debugBtn);
