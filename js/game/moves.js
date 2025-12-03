@@ -256,8 +256,8 @@ export function attachSliceToPivot() {
     state.pivot.position.set(0, 0, 0);
     state.cubeWrapper.add(state.pivot);
     let cubies;
-    if (state.isBackgroundDrag && state.dragSliceValue === Infinity) {
-        console.log("Attaching ALL cubies (Background Drag)");
+    if (state.dragSliceValue === Infinity) {
+        console.log("Attaching ALL cubies (Whole Cube Rotation)");
         cubies = state.allCubies;
     } else {
         const epsilon = 0.5;
@@ -290,7 +290,7 @@ export function logMove(axis, sliceVal, turns) {
     // sliceVal ranges from -maxIndex*S to +maxIndex*S
     let index = sliceVal / S;
 
-    if (state.isBackgroundDrag) {
+    if (state.isBackgroundDrag || sliceVal === Infinity) {
         // Whole cube rotations
         if (axis === 'x') char = 'x';
         else if (axis === 'y') char = 'y';
