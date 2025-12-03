@@ -557,8 +557,18 @@ export class StandardCube extends Puzzle {
             const S = CUBE_SIZE + this.getSpacing();
             const p = intersectedCubie.position[finalAxisName];
 
-            // Snap to nearest layer
-            const dragSliceValue = Math.round(p / S * 2) / 2 * S;
+            // Check if the axis has only 1 layer
+            const dims = state.activeDimensions;
+            const axisDim = dims[finalAxisName];
+
+            let dragSliceValue;
+            if (axisDim === 1) {
+                // If dimension is 1, treat as whole cube rotation
+                dragSliceValue = Infinity;
+            } else {
+                // Snap to nearest layer
+                dragSliceValue = Math.round(p / S * 2) / 2 * S;
+            }
 
             return {
                 dragAxis: finalAxisName,
