@@ -4,6 +4,7 @@ node_modules/
 # Build outputs
 dist/
 build/
+www/
 
 # Environment variables (if you add any later)
 .env
