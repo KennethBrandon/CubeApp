@@ -12,6 +12,11 @@
             height: 100vh;
         }
 
+        /* Safe Area Support */
+        .safe-mt {
+            margin-top: env(safe-area-inset-top);
+        }
+
         /* Scrollbar for history */
         ::-webkit-scrollbar {
             width: 8px;
