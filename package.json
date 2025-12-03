@@ -1,0 +1,27 @@
+{
+  "name": "cubeapp",
+  "version": "1.0.0",
+  "description": "A beautiful, interactive 3D Rubik's Cube puzzle game built with Three.js and Firebase. Features multiple cube sizes, live leaderboards, and smooth animations.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "mkdir -p www && cp index.html favicon.svg www/ && cp -r js assets www/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/KennethBrandon/CubeApp.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/KennethBrandon/CubeApp/issues"
+  },
+  "homepage": "https://github.com/KennethBrandon/CubeApp#readme",
+  "dependencies": {
+    "@capacitor/android": "^7.4.4",
+    "@capacitor/cli": "^7.4.4",
+    "@capacitor/core": "^7.4.4"
+  }
+}
