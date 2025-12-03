@@ -26,13 +26,19 @@ export class AcornsMod extends StandardCube {
         // This ensures the puzzle logic works immediately while we load
         this.createPlaceholders();
 
-        // Load the STL
-        const loader = new STLLoader();
-        loader.load('assets/3d/Acorns Logo.stl', (geometry) => {
-            this.processSTL(geometry, null, null, { x: 0, y: 3.3, z: 0 });
-        }, undefined, (error) => {
-            console.error('Error loading Acorns STL:', error);
-        });
+        // Check if we already have the geometry cached
+        if (this.originalGeometry) {
+            // Synchronous rebuild - prevents flash
+            this.processSTL(this.originalGeometry, null, null, { x: 0, y: 3.3, z: 0 });
+        } else {
+            // Load the STL (Async)
+            const loader = new STLLoader();
+            loader.load('assets/3d/Acorns Logo.stl', (geometry) => {
+                this.processSTL(geometry, null, null, { x: 0, y: 3.3, z: 0 });
+            }, undefined, (error) => {
+                console.error('Error loading Acorns STL:', error);
+            });
+        }
     }
 
     createPlaceholders() {
