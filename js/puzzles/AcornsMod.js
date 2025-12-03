@@ -52,17 +52,17 @@ export class AcornsMod extends StandardCube {
                     const hitBox = new THREE.Mesh(hitGeo, hitMat);
                     group.add(hitBox);
 
-                    // Temporary visual box (wireframe or semi-transparent)
-                    const visGeo = new THREE.BoxGeometry(CUBE_SIZE * 0.9, CUBE_SIZE * 0.9, CUBE_SIZE * 0.9);
-                    const visMat = new THREE.MeshStandardMaterial({
-                        color: 0x74C947,
-                        wireframe: true,
-                        transparent: true,
-                        opacity: 0.3
-                    });
-                    const visBox = new THREE.Mesh(visGeo, visMat);
-                    visBox.userData = { isPlaceholder: true };
-                    group.add(visBox);
+                    // Temporary visual box (wireframe or semi-transparent) - REMOVED to prevent flash
+                    // const visGeo = new THREE.BoxGeometry(CUBE_SIZE * 0.9, CUBE_SIZE * 0.9, CUBE_SIZE * 0.9);
+                    // const visMat = new THREE.MeshStandardMaterial({
+                    //     color: 0x74C947,
+                    //     wireframe: true,
+                    //     transparent: true,
+                    //     opacity: 0.3
+                    // });
+                    // const visBox = new THREE.Mesh(visGeo, visMat);
+                    // visBox.userData = { isPlaceholder: true };
+                    // group.add(visBox);
 
                     group.userData = { isCubie: true, gridPos: { x, y, z } };
                     this.parent.add(group);
