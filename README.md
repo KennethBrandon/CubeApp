@@ -1,6 +1,6 @@
-# Rubik's Cube Web App
+# Cube App
 
-A beautiful, interactive 3D Rubik's Cube puzzle game built with Three.js and Firebase. Features multiple cube sizes, live leaderboards, and smooth animations.
+A beautiful, interactive 3D Cube puzzle game built with Three.js and Firebase. Features multiple cube sizes, live leaderboards, and smooth animations.
 
 ## Features
 

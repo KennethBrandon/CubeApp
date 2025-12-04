@@ -1,7 +1,7 @@
 {
   "name": "cubeapp",
   "version": "1.0.0",
-  "description": "A beautiful, interactive 3D Rubik's Cube puzzle game built with Three.js and Firebase. Features multiple cube sizes, live leaderboards, and smooth animations.",
+  "description": "A beautiful, interactive 3D Cube puzzle game built with Three.js and Firebase. Features multiple cube sizes, live leaderboards, and smooth animations.",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",

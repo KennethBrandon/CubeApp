@@ -36,7 +36,7 @@ export class Molecube extends StandardCube {
         // 8. Pink (New)
         // 9. Black (New)
 
-        // Standard Rubik's Colors
+        // Standard Cube Colors
         const COLORS = {
             U: 0xFFFFFF, // White
             D: 0xFFD500, // Yellow
@@ -64,10 +64,10 @@ export class Molecube extends StandardCube {
         // Wait, user said:
         // "The 7th color has 2 corners with that color"
         // "The 8th and 9th color have three edges with that color"
-        // "Let's use the normal rubik's colors for the centers, we can add two pink corners, 3 black edges, and 3 white edges."
+        // "Let's use the normal cube colors for the centers, we can add two pink corners, 3 black edges, and 3 white edges."
 
         // Re-reading user request carefully:
-        // "Let's use the normal rubik's colors for the centers" -> W, Y, R, O, G, B (6 colors)
+        // "Let's use the normal cube colors for the centers" -> W, Y, R, O, G, B (6 colors)
         // "we can add two pink corners" -> Pink is 7th color? Or is it one of the "normal" ones?
         // "3 black edges" -> Black is 8th?
         // "3 white edges" -> White is already a center color.

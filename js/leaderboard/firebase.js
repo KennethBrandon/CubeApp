@@ -15,7 +15,7 @@ const firebaseConfig = JSON.parse(window.__firebase_config);
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const appId = typeof window.__app_id !== 'undefined' ? window.__app_id : 'rubiks-cube';
+const appId = typeof window.__app_id !== 'undefined' ? window.__app_id : 'cube-app';
 
 // Auth Flow - Using Anonymous Authentication (no setup required)
 export const initAuth = async () => {
