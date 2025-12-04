@@ -670,7 +670,7 @@ function updatePageTitle(dims, isMirror, puzzleType) {
         else text += " Cube";
     }
 
-    document.title = `${text} - Rubik's Cube App`;
+    document.title = `${text} - Cube App`;
 }
 
 function setupCustomPuzzleListeners() {

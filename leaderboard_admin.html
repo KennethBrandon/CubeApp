@@ -116,7 +116,7 @@
             closeDeleteModal(); // Close immediately to prevent double clicks
 
             try {
-                await deleteDoc(doc(db, 'artifacts', 'rubiks-cube-app', 'public', 'data', 'leaderboard', id));
+                await deleteDoc(doc(db, 'artifacts', 'cube-app', 'public', 'data', 'leaderboard', id));
                 records = records.filter(r => r.id !== id);
                 renderTable();
                 document.getElementById('status').textContent = `Record deleted. ${records.length} records remaining.`;
@@ -135,7 +135,7 @@
                 const oldValue = record.puzzleType;
                 record.puzzleType = newValue;
 
-                const docRef = doc(db, 'artifacts', 'rubiks-cube-app', 'public', 'data', 'leaderboard', id);
+                const docRef = doc(db, 'artifacts', 'cube-app', 'public', 'data', 'leaderboard', id);
                 await updateDoc(docRef, { puzzleType: newValue });
 
                 document.getElementById('status').textContent = `Updated record ${id} to "${newValue}"`;
@@ -215,7 +215,7 @@
         async function run() {
             try {
                 await signInAnonymously(auth);
-                const colRef = collection(db, 'artifacts', 'rubiks-cube-app', 'public', 'data', 'leaderboard');
+                const colRef = collection(db, 'artifacts', 'cube-app', 'public', 'data', 'leaderboard');
                 const snapshot = await getDocs(colRef);
 
                 records = [];
