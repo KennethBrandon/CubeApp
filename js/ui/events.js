@@ -18,6 +18,8 @@ import { setupPuzzleSelector, openPuzzleSelector } from './puzzleSelector.js';
 import { setupLeaderboardUI, openLeaderboardModal } from './leaderboardUi.js';
 import { overlayManager } from './overlayManager.js';
 
+import { isOnline } from '../utils/network.js';
+
 export function setupUIEventListeners() {
     window.addEventListener('resize', onWindowResize);
     window.addEventListener('keydown', onKeyDown);
@@ -179,6 +181,11 @@ export function setupUIEventListeners() {
 
     document.getElementById('btn-submit-score').addEventListener('click', async () => {
         const submitButton = document.getElementById('btn-submit-score');
+        if (!isOnline()) {
+            alert("You are offline. Cannot submit score.");
+            return;
+        }
+
         const nameInput = document.getElementById('player-name');
         const name = nameInput.value.trim();
         if (!name) {

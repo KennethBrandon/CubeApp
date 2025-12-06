@@ -63,5 +63,7 @@ export const state = {
     // Active Puzzle Implementation
     activePuzzle: null,
     cubeWrapper: null,
-    debugSequenceCount: 0
+    debugSequenceCount: 0,
+    isSimulatedOffline: false,
+    isNetworkOnline: true
 };

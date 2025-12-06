@@ -54,6 +54,11 @@ function createLeaderboardModal() {
 
             <!-- Content Area -->
             <div class="flex-1 flex flex-col bg-gray-900 relative overflow-hidden">
+                <!-- Offline Warning -->
+                <div id="leaderboard-offline-warning" class="hidden bg-red-900/80 text-red-200 px-4 py-2 text-center font-bold border-b border-red-700">
+                    You are currently offline. Leaderboard may be outdated.
+                </div>
+
                 <!-- Puzzle Chips Header -->
                 <div id="leaderboard-puzzle-list"
                     class="p-4 border-b border-gray-800 flex flex-nowrap overflow-x-auto gap-2 shrink-0 scrollbar-hide">

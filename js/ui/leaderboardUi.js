@@ -2,6 +2,7 @@ import { puzzleCategories, getPuzzleIconPath } from './puzzleSelector.js';
 import { fetchLeaderboard } from '../leaderboard/firebase.js';
 import { state } from '../shared/state.js';
 import { overlayManager } from './overlayManager.js';
+import { isOnline } from '../utils/network.js';
 
 export function setupLeaderboardUI() {
     // Category switching
@@ -33,6 +34,29 @@ export function setupLeaderboardUI() {
             }
         }, { passive: true });
     }
+
+    // Dynamic online/offline listeners for the modal
+    const handleOnlineStatus = () => {
+        const warning = document.getElementById('leaderboard-offline-warning');
+        if (warning) {
+            if (!isOnline()) {
+                warning.classList.remove('hidden');
+            } else {
+                warning.classList.add('hidden');
+            }
+        }
+    };
+
+    window.addEventListener('online', handleOnlineStatus);
+    window.addEventListener('offline', handleOnlineStatus);
+    // Also listen for our custom simulation event if we dispatch one, 
+    // OR we can just dispatch the standard online/offline events from the debug menu.
+    // Let's assume we dispatch standard events or a custom one. 
+    // For now, let's add a custom event listener just in case we want to be specific, 
+    // but dispatching 'offline' on window is cleaner if it works.
+    // Actually, dispatching 'offline' on window might be tricky if the browser overrides it.
+    // Let's listen for 'network-status-change' as a safe bet.
+    window.addEventListener('network-status-change', handleOnlineStatus);
 }
 
 
@@ -51,6 +75,15 @@ function updateSidebarActive(category) {
 
 export function openLeaderboardModal() {
     overlayManager.open('leaderboard-modal');
+
+    const offlineWarning = document.getElementById('leaderboard-offline-warning');
+    if (offlineWarning) {
+        if (!isOnline()) {
+            offlineWarning.classList.remove('hidden');
+        } else {
+            offlineWarning.classList.add('hidden');
+        }
+    }
 
     // Determine initial category and puzzle
     let initialCategory = 'standard';

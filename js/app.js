@@ -10,6 +10,7 @@ import { togglePanel, openDetailModal } from './ui/ui.js';
 import { state } from './shared/state.js';
 
 import { StandardCube } from './puzzles/StandardCube.js';
+import { initNetworkMonitoring } from './utils/network.js';
 
 import { thumbnailGenerator } from './utils/ThumbnailGenerator.js';
 
@@ -59,6 +60,9 @@ function init() {
         };
         document.body.appendChild(debugBtn);
     }
+
+    // Initialize Network Monitoring
+    initNetworkMonitoring();
 
     // Initialize Firebase Auth
     initAuth();
