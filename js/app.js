@@ -50,15 +50,7 @@ function init() {
     // Check for debug mode
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('d') === 'true') {
-        const debugBtn = document.createElement('button');
-        debugBtn.innerText = 'd';
-        debugBtn.className = 'fixed bottom-4 left-32 z-50 bg-red-600 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold shadow-lg hover:bg-red-500 transition transform hover:scale-110';
-        debugBtn.onclick = () => {
-            import('./ui/components/DebugMenu.js').then(module => {
-                module.showDebugMenu();
-            });
-        };
-        document.body.appendChild(debugBtn);
+        enableDebugButton();
     }
 
     // Initialize Network Monitoring
@@ -69,6 +61,21 @@ function init() {
 
     // Start Animation Loop
     animate();
+}
+
+export function enableDebugButton() {
+    if (document.getElementById('btn-debug-floating')) return;
+
+    const debugBtn = document.createElement('button');
+    debugBtn.id = 'btn-debug-floating';
+    debugBtn.innerText = 'd';
+    debugBtn.className = 'fixed bottom-4 left-32 z-50 bg-red-600 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold shadow-lg hover:bg-red-500 transition transform hover:scale-110';
+    debugBtn.onclick = () => {
+        import('./ui/components/DebugMenu.js').then(module => {
+            module.showDebugMenu();
+        });
+    };
+    document.body.appendChild(debugBtn);
 }
 
 // Start the application
