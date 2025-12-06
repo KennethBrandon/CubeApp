@@ -103,6 +103,16 @@ function createDebugMenu() {
                 </div>
 
                 <div class="flex items-center justify-between p-3 bg-gray-900/50 rounded-lg">
+                    <span class="text-gray-300">Simulate Offline</span>
+                    <label class="relative inline-block w-12 h-6">
+                        <input type="checkbox" id="toggle-simulate-offline" class="sr-only peer">
+                        <div
+                            class="w-12 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-6 peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-600">
+                        </div>
+                    </label>
+                </div>
+
+                <div class="flex items-center justify-between p-3 bg-gray-900/50 rounded-lg">
                     <span class="text-gray-300">Custom Puzzle</span>
                     <div class="flex gap-2">
                         <input type="text" id="custom-puzzle-input" placeholder="NxNxN"
@@ -207,8 +217,12 @@ function attachDebugListeners() {
         gtag('event', 'test_victory');
     });
 
-
-
+    document.getElementById('toggle-simulate-offline').addEventListener('change', (e) => {
+        state.isSimulatedOffline = e.target.checked;
+        // Dispatch custom event to notify UI components
+        window.dispatchEvent(new Event('network-status-change'));
+        gtag('event', 'toggle_simulate_offline', { state: e.target.checked ? 'on' : 'off' });
+    });
 
     document.getElementById('btn-create-custom-puzzle').addEventListener('click', () => {
         const input = document.getElementById('custom-puzzle-input');
