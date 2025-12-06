@@ -6,13 +6,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Cube App</title>
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="js/lib/tailwindcss.js"></script>
     <link rel="stylesheet" href="assets/styles/main.css">
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-PBWS3T1BYZ"></script>
     <script>
         const prodDomains = ['kennethbrandon.github.io', 'cube.redkb.com'];
-        const isProd = prodDomains.includes(window.location.hostname);
+        // Check if running in Capacitor (mobile app) or on a production domain
+        const isCapacitor = window.Capacitor !== undefined;
+        const isProdDomain = prodDomains.includes(window.location.hostname);
+        const isProd = isProdDomain || isCapacitor;
+
         const gaId = isProd ? 'G-PBWS3T1BYZ' : 'G-1L04D324RN';
 
         // Load the correct script dynamically if not prod (since the default src above is prod)
@@ -25,21 +29,24 @@
         function gtag() { dataLayer.push(arguments); }
         gtag('js', new Date());
 
-        gtag('config', gaId);
+        // Configure with custom dimension for platform type
+        gtag('config', gaId, {
+            'platform_type': isCapacitor ? 'mobile_app' : 'web'
+        });
 
-        console.log(`Analytics initialized in ${isProd ? 'PRODUCTION' : 'DEVELOPMENT'} mode with ID: ${gaId}`);
+        console.log(`Analytics initialized in ${isProd ? 'PRODUCTION' : 'DEVELOPMENT'} mode with ID: ${gaId} (Platform: ${isCapacitor ? 'Mobile App' : 'Web'})`);
     </script>
     <!-- Import Map for Three.js -->
     <script type="importmap">
         {
             "imports": {
-                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
-                "firebase/app": "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js",
-                "firebase/auth": "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js",
-                "firebase/firestore": "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js",
-                "three-mesh-bvh": "https://cdn.jsdelivr.net/npm/three-mesh-bvh@0.7.3/build/index.module.js",
-                "three-bvh-csg": "https://cdn.jsdelivr.net/npm/three-bvh-csg@0.0.16/build/index.module.js"
+                "three": "./js/lib/three.module.js",
+                "three/addons/": "./js/lib/three/addons/",
+                "firebase/app": "./js/lib/firebase-app.js",
+                "firebase/auth": "./js/lib/firebase-auth.js",
+                "firebase/firestore": "./js/lib/firebase-firestore.js",
+                "three-mesh-bvh": "./js/lib/three-mesh-bvh.js",
+                "three-bvh-csg": "./js/lib/three-bvh-csg.js"
             }
         }
     </script>
