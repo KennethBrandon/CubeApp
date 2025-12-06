@@ -207,3 +207,18 @@ export function updateActivePuzzleTab(activeType) {
 }
 
 // renderLeaderboardTabs removed as tabs are no longer used
+
+export function enableDebugButton() {
+    if (document.getElementById('btn-debug-floating')) return;
+
+    const debugBtn = document.createElement('button');
+    debugBtn.id = 'btn-debug-floating';
+    debugBtn.innerText = 'd';
+    debugBtn.className = 'fixed bottom-4 left-32 z-50 bg-red-600 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold shadow-lg hover:bg-red-500 transition transform hover:scale-110';
+    debugBtn.onclick = () => {
+        import('./components/DebugMenu.js').then(module => {
+            module.showDebugMenu();
+        });
+    };
+    document.body.appendChild(debugBtn);
+}
