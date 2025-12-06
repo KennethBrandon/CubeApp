@@ -105,9 +105,12 @@ export class ThumbnailGenerator {
         console.log(`Starting generation of ${this.queue.length} thumbnails...`);
 
         // Hide UI for clean screenshots
-        document.getElementById('puzzle-selector-modal').classList.add('hidden');
-        document.getElementById('leaderboard-modal').classList.add('hidden');
-        document.getElementById('debug-modal').classList.add('hidden');
+        // Hide UI for clean screenshots
+        const uiIds = ['puzzle-selector-modal', 'leaderboard-modal', 'debug-modal'];
+        uiIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.classList.add('hidden');
+        });
 
         // Process queue
         await this.processQueue();
