@@ -95,6 +95,15 @@ function createDebugMenu() {
                 </div>
 
                 <div class="flex items-center justify-between p-3 bg-gray-900/50 rounded-lg">
+                    <span class="text-gray-300">Return Speed (ms)</span>
+                    <div class="flex items-center gap-2">
+                        <input type="range" id="snap-speed-slider" min="10" max="500" step="10" value="30"
+                            class="w-24 h-1.5 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-500">
+                        <span id="snap-speed-value" class="text-xs font-mono text-blue-400 w-8 text-right">30</span>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between p-3 bg-gray-900/50 rounded-lg">
                     <span class="text-gray-300">Test Victory</span>
                     <button id="btn-test-victory"
                         class="bg-green-600 hover:bg-green-500 text-white text-xs font-bold py-1 px-3 rounded transition">
@@ -207,6 +216,12 @@ function attachDebugListeners() {
         const val = parseInt(e.target.value);
         state.animationSpeed = val;
         document.getElementById('speed-value').textContent = val;
+    });
+
+    document.getElementById('snap-speed-slider').addEventListener('input', (e) => {
+        const val = parseInt(e.target.value);
+        state.snapSpeed = val;
+        document.getElementById('snap-speed-value').textContent = val;
     });
 
     document.getElementById('btn-test-victory').addEventListener('click', () => {

@@ -225,7 +225,7 @@ export function snapPivot(targetAngle, turns, axis, sliceVal) {
 
     function loop() {
         const now = Date.now();
-        let progress = (now - startTime) / SNAP_SPEED;
+        let progress = (now - startTime) / state.snapSpeed;
         if (progress > 1) progress = 1;
         const ease = 1 - Math.pow(1 - progress, 3);
         const current = startAngle + (targetAngle - startAngle) * ease;
