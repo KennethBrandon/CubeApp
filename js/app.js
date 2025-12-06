@@ -6,7 +6,7 @@ import { createEnvironment, createMirrors } from './core/environment.js';
 import { setupEventListeners as setupInteractionListeners } from './game/interactions.js';
 import { setupUIEventListeners } from './ui/events.js';
 import { initAuth } from './leaderboard/firebase.js';
-import { togglePanel, openDetailModal } from './ui/ui.js';
+import { togglePanel, openDetailModal, enableDebugButton } from './ui/ui.js';
 import { state } from './shared/state.js';
 
 import { StandardCube } from './puzzles/StandardCube.js';
@@ -53,6 +53,14 @@ function init() {
         enableDebugButton();
     }
 
+    // Hide controls on mobile app (Capacitor)
+    if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) {
+        const controlsPanel = document.getElementById('controls-panel-container');
+        if (controlsPanel) {
+            controlsPanel.style.display = 'none';
+        }
+    }
+
     // Initialize Network Monitoring
     initNetworkMonitoring();
 
@@ -63,20 +71,8 @@ function init() {
     animate();
 }
 
-export function enableDebugButton() {
-    if (document.getElementById('btn-debug-floating')) return;
 
-    const debugBtn = document.createElement('button');
-    debugBtn.id = 'btn-debug-floating';
-    debugBtn.innerText = 'd';
-    debugBtn.className = 'fixed bottom-4 left-32 z-50 bg-red-600 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold shadow-lg hover:bg-red-500 transition transform hover:scale-110';
-    debugBtn.onclick = () => {
-        import('./ui/components/DebugMenu.js').then(module => {
-            module.showDebugMenu();
-        });
-    };
-    document.body.appendChild(debugBtn);
-}
 
+// Start the application
 // Start the application
 init();

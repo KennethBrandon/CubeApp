@@ -1,5 +1,5 @@
 import { state } from '../shared/state.js';
-import { enableDebugButton } from '../app.js';
+import { enableDebugButton } from './ui.js';
 import { showDebugMenu } from './components/DebugMenu.js';
 import { showLeaderboard } from './components/LeaderboardModal.js';
 import { startScramble, handleResetClick, hardReset } from '../game/scramble.js';
