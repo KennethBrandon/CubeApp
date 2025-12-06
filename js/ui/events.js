@@ -1,4 +1,5 @@
 import { state } from '../shared/state.js';
+import { enableDebugButton } from '../app.js';
 import { showDebugMenu } from './components/DebugMenu.js';
 import { showLeaderboard } from './components/LeaderboardModal.js';
 import { startScramble, handleResetClick, hardReset } from '../game/scramble.js';
@@ -136,6 +137,9 @@ export function setupUIEventListeners() {
             gtag('event', 'open_debug_sequence');
             state.debugSequenceCount = 0;
             lastDebugButton = null;
+
+            // Show persistent debug button
+            enableDebugButton();
         }
     }
 
