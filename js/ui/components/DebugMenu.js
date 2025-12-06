@@ -97,9 +97,9 @@ function createDebugMenu() {
                 <div class="flex items-center justify-between p-3 bg-gray-900/50 rounded-lg">
                     <span class="text-gray-300">Return Speed (ms)</span>
                     <div class="flex items-center gap-2">
-                        <input type="range" id="snap-speed-slider" min="10" max="500" step="10" value="30"
+                        <input type="range" id="snap-speed-slider" min="10" max="500" step="10" value="80"
                             class="w-24 h-1.5 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-500">
-                        <span id="snap-speed-value" class="text-xs font-mono text-blue-400 w-8 text-right">30</span>
+                        <span id="snap-speed-value" class="text-xs font-mono text-blue-400 w-8 text-right">80</span>
                     </div>
                 </div>
 

@@ -223,9 +223,17 @@ export function snapPivot(targetAngle, turns, axis, sliceVal) {
     // Determine rotation axis
     let rotAxis = state.dragRotationAxis;
 
+    // Calculate duration based on distance
+    const distance = Math.abs(targetAngle - startAngle);
+    const maxDistance = Math.PI / 4; // 45 degrees
+    // Interpolate: 0 distance = 0ms, 45 deg = state.snapSpeed
+    // Ensure a minimum duration of 1 frame (approx 16ms) if distance > 0 to avoid division by zero or instant snaps that might look glitchy
+    let duration = (distance / maxDistance) * state.snapSpeed;
+    if (duration < 16 && distance > 0.001) duration = 16;
+
     function loop() {
         const now = Date.now();
-        let progress = (now - startTime) / state.snapSpeed;
+        let progress = duration > 0 ? (now - startTime) / duration : 1;
         if (progress > 1) progress = 1;
         const ease = 1 - Math.pow(1 - progress, 3);
         const current = startAngle + (targetAngle - startAngle) * ease;
