@@ -54,7 +54,7 @@ export function playSolveAnimation(onComplete = null) {
             // Detach and reset
             state.pivot.updateMatrixWorld();
             const cubies = state.pivot.children.slice();
-            cubies.forEach(c => state.scene.attach(c));
+            cubies.forEach(c => state.cubeWrapper.attach(c));
 
             state.pivot.rotation.set(0, 0, 0);
             state.pivot.position.set(0, 0, 0);

@@ -20,6 +20,7 @@ export const state = {
     showMirrors: false,
     backMirrorHeightOffset: 1.7,
     animationSpeed: 140,
+    snapSpeed: 30,
     freeRotation: true,
 
     // Interaction State
