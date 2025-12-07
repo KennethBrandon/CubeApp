@@ -21,6 +21,13 @@ export function showAcornsTuner() {
     document.getElementById('acorns-tuner-ui').classList.remove('hidden');
 }
 
+export function showTheChildTuner() {
+    if (!document.getElementById('thechild-tuner-ui')) {
+        createTheChildTuner();
+    }
+    document.getElementById('thechild-tuner-ui').classList.remove('hidden');
+}
+
 export function showMirrorTuner() {
     if (!document.getElementById('mirror-debug-ui')) {
         createMirrorTuner();
@@ -414,6 +421,170 @@ function attachAcornsTunerListeners() {
     });
 }
 
+function createTheChildTuner() {
+    const html = `
+    <div id="thechild-tuner-ui"
+        class="hidden absolute top-20 left-4 z-50 bg-black/70 backdrop-blur-md border border-gray-700 p-4 rounded-lg text-white text-sm shadow-xl w-64">
+        <div id="thechild-tuner-header"
+            class="flex justify-between items-center mb-3 cursor-move border-b border-gray-700 pb-2">
+            <h3 class="font-bold text-green-400">The Child Tuner</h3>
+            <button id="close-thechild-tuner" class="text-gray-400 hover:text-white">&times;</button>
+        </div>
+
+        <div class="mb-3">
+            <label class="block mb-1 text-gray-300">Scale (Zoom): <span id="thechild-scale-val"
+                    class="text-white font-mono">3.350</span></label>
+            <input type="range" id="thechild-scale-slider" min="1.0" max="5.0" step="0.05" value="3.350"
+                class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-green-500">
+        </div>
+
+        <div class="mb-3">
+            <label class="block mb-1 text-gray-300">Gap (Spacing): <span id="thechild-gap-val"
+                    class="text-white font-mono">0.005</span></label>
+            <input type="range" id="thechild-gap-slider" min="-0.5" max="0.5" step="0.001" value="0.005"
+                class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-green-500">
+        </div>
+
+        <div class="mb-3">
+            <label class="block mb-1 text-gray-300">Outer Scale: <span id="thechild-outer-scale-val"
+                    class="text-white font-mono">2.950</span></label>
+            <input type="range" id="thechild-outer-scale-slider" min="1.0" max="5.0" step="0.05" value="2.950"
+                class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-red-500">
+        </div>
+
+        <div class="mb-3">
+            <label class="block mb-1 text-gray-300">Fillet Radius: <span id="thechild-fillet-val"
+                    class="text-white font-mono">0.140</span></label>
+            <input type="range" id="thechild-fillet-slider" min="0.0" max="0.5" step="0.01" value="0.140"
+                class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-500">
+        </div>
+
+        <div class="mb-3">
+            <label class="block mb-1 text-gray-300">Offset X: <span id="thechild-offset-x-val"
+                    class="text-white font-mono">2.660</span></label>
+            <input type="range" id="thechild-offset-x-slider" min="-15.0" max="15.0" step="0.01" value="2.660"
+                class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-500">
+        </div>
+
+        <div class="mb-3">
+            <label class="block mb-1 text-gray-300">Offset Y: <span id="thechild-offset-y-val"
+                    class="text-white font-mono">0.000</span></label>
+            <input type="range" id="thechild-offset-y-slider" min="-15.0" max="15.0" step="0.01" value="0.000"
+                class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-500">
+        </div>
+
+        <div class="mb-3">
+            <label class="block mb-1 text-gray-300">Offset Z: <span id="thechild-offset-z-val"
+                    class="text-white font-mono">3.040</span></label>
+            <input type="range" id="thechild-offset-z-slider" min="-15.0" max="15.0" step="0.01" value="3.040"
+                class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-500">
+        </div>
+
+        <div class="mb-3">
+            <label class="block mb-1 text-gray-300">Roughness: <span id="thechild-roughness-val"
+                    class="text-white font-mono">0.60</span></label>
+            <input type="range" id="thechild-roughness-slider" min="0.0" max="1.0" step="0.01" value="0.60"
+                class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-yellow-500">
+        </div>
+        
+        <div class="mb-3">
+            <label class="block mb-1 text-gray-300">Metalness: <span id="thechild-metalness-val"
+                    class="text-white font-mono">0.46</span></label>
+            <input type="range" id="thechild-metalness-slider" min="0.0" max="1.0" step="0.01" value="0.46"
+                class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-gray-400">
+        </div>
+
+        <div class="mb-3">
+            <label class="block mb-1 text-gray-300">Speckle Scale: <span id="thechild-normal-scale-val"
+                    class="text-white font-mono">0.50</span></label>
+            <input type="range" id="thechild-normal-scale-slider" min="0.0" max="1.0" step="0.01" value="0.50"
+                class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-500">
+        </div>
+
+        <div class="mt-4 text-center">
+            <button id="btn-reset-thechild-defaults"
+                class="bg-gray-700 hover:bg-gray-600 text-white text-xs py-1 px-3 rounded transition">
+                Reset to Defaults
+            </button>
+        </div>
+    </div>`;
+    document.body.insertAdjacentHTML('beforeend', html);
+    makeDraggable(document.getElementById('thechild-tuner-ui'), 'thechild-tuner-header');
+    attachTheChildTunerListeners();
+}
+
+function attachTheChildTunerListeners() {
+    document.getElementById('close-thechild-tuner').addEventListener('click', () => {
+        document.getElementById('thechild-tuner-ui').classList.add('hidden');
+        const toggle = document.getElementById('toggle-thechild-tuner');
+        if (toggle) toggle.checked = false;
+    });
+
+    const updateTheChildTuner = () => {
+        if (!state.activePuzzle) return;
+        const scale = parseFloat(document.getElementById('thechild-scale-slider').value);
+        const spacing = parseFloat(document.getElementById('thechild-gap-slider').value);
+        const offsetX = parseFloat(document.getElementById('thechild-offset-x-slider').value);
+        const offsetY = parseFloat(document.getElementById('thechild-offset-y-slider').value);
+        const offsetZ = parseFloat(document.getElementById('thechild-offset-z-slider').value);
+        const outerScale = parseFloat(document.getElementById('thechild-outer-scale-slider').value);
+        const filletRadius = parseFloat(document.getElementById('thechild-fillet-slider').value);
+        const roughness = parseFloat(document.getElementById('thechild-roughness-slider').value);
+        const metalness = parseFloat(document.getElementById('thechild-metalness-slider').value);
+        const normalScale = parseFloat(document.getElementById('thechild-normal-scale-slider').value);
+
+        document.getElementById('thechild-scale-val').textContent = scale.toFixed(3);
+        document.getElementById('thechild-gap-val').textContent = spacing.toFixed(3);
+        document.getElementById('thechild-outer-scale-val').textContent = outerScale.toFixed(3);
+        document.getElementById('thechild-fillet-val').textContent = filletRadius.toFixed(3);
+        document.getElementById('thechild-offset-x-val').textContent = offsetX.toFixed(3);
+        document.getElementById('thechild-offset-y-val').textContent = offsetY.toFixed(3);
+        document.getElementById('thechild-offset-z-val').textContent = offsetZ.toFixed(3);
+        document.getElementById('thechild-roughness-val').textContent = roughness.toFixed(2);
+        document.getElementById('thechild-metalness-val').textContent = metalness.toFixed(2);
+        document.getElementById('thechild-normal-scale-val').textContent = normalScale.toFixed(2);
+
+        if (state.activePuzzle.updateTheChildParams) {
+            state.activePuzzle.updateTheChildParams({
+                scale,
+                spacing,
+                outerScale,
+                filletRadius,
+                offset: { x: offsetX, y: offsetY, z: offsetZ },
+                roughness,
+                metalness,
+                normalScale
+            });
+        }
+    };
+
+    ['thechild-scale-slider', 'thechild-gap-slider', 'thechild-outer-scale-slider', 'thechild-fillet-slider', 'thechild-offset-x-slider', 'thechild-offset-y-slider', 'thechild-offset-z-slider',
+        'thechild-roughness-slider', 'thechild-metalness-slider', 'thechild-normal-scale-slider'].forEach(id => {
+            document.getElementById(id).addEventListener('input', updateTheChildTuner);
+        });
+
+    document.getElementById('btn-reset-thechild-defaults').addEventListener('click', () => {
+        const defaults = {
+            'thechild-scale-slider': 3.350,
+            'thechild-gap-slider': 0.005,
+            'thechild-outer-scale-slider': 2.950,
+            'thechild-fillet-slider': 0.140,
+            'thechild-offset-x-slider': 2.660,
+            'thechild-offset-y-slider': 0.000,
+            'thechild-offset-z-slider': 3.040,
+            'thechild-roughness-slider': 0.60,
+            'thechild-metalness-slider': 0.46,
+            'thechild-normal-scale-slider': 0.50
+        };
+        for (const [id, val] of Object.entries(defaults)) {
+            const el = document.getElementById(id);
+            if (el) {
+                el.value = val;
+                el.dispatchEvent(new Event('input'));
+            }
+        }
+    });
+}
 function createMirrorTuner() {
     const html = `
     <div id="mirror-debug-ui"

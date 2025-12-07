@@ -7,6 +7,7 @@ import { MirrorCube } from '../puzzles/MirrorCube.js';
 import { Molecube } from '../puzzles/Molecube.js';
 import { VoidCube } from '../puzzles/VoidCube.js';
 import { AcornsMod } from '../puzzles/AcornsMod.js';
+import { TheChildMod } from '../puzzles/TheChildMod.js';
 
 // --- Firebase Setup ---
 // We need to access the global config which is injected in index.html
@@ -149,6 +150,8 @@ export async function submitScore(name, timeMs, timeString, scramble, solution) 
         puzzleType = 'voidcube';
     } else if (state.activePuzzle instanceof AcornsMod) {
         puzzleType = 'acorns';
+    } else if (state.activePuzzle instanceof TheChildMod) {
+        puzzleType = 'thechild';
     } else {
         // Standard dimensional logic
         let puzzleSize;
