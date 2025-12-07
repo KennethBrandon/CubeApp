@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { StandardCube } from './StandardCube.js';
 import { STLLoader } from 'three/addons/loaders/STLLoader.js';
 import { Brush, Evaluator, INTERSECTION } from 'three-bvh-csg';
+import { MeshBVH } from 'three-mesh-bvh';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { CUBE_SIZE, SPACING } from '../shared/constants.js';
 import { state } from '../shared/state.js';
@@ -12,6 +13,7 @@ export class TheChildMod extends StandardCube {
         this.config.dimensions = { x: 2, y: 3, z: 2 };
         this.isLoaded = false;
         this.spacing = 0.005; // Default spacing
+        this.cubieGeometryCache = new Map(); // Cache for processed cubie geometries
     }
 
     createGeometry() {
@@ -29,14 +31,26 @@ export class TheChildMod extends StandardCube {
         // Check if we already have the geometry cached
         if (this.originalGeometry) {
             // Synchronous rebuild - prevents flash
-            this.processSTL(this.originalGeometry, null, null, { x: 2.66, y: 0, z: 3.04 });
+            this.processSTL(this.originalGeometry, null, null, { x: 2.71, y: 1.53, z: -2.38 });
         } else {
-            // Load the STL (Async)
+            // Load the STL and Colors (Async)
             const loader = new STLLoader();
-            loader.load('assets/3d/baby_yoda.stl', (geometry) => {
-                this.processSTL(geometry, null, null, { x: 2.66, y: 0, z: 3.04 });
-            }, undefined, (error) => {
-                console.error('Error loading Baby Yoda STL:', error);
+            const fileLoader = new THREE.FileLoader();
+
+            Promise.all([
+                new Promise((resolve, reject) => loader.load('assets/3d/baby_yoda_detailed.stl', resolve, undefined, reject)),
+                new Promise((resolve) => {
+                    fileLoader.load('assets/3d/baby_yoda_detailed_colors.json',
+                        (data) => resolve(JSON.parse(data)),
+                        undefined,
+                        () => resolve(null) // Resolve null if file doesn't exist
+                    );
+                })
+            ]).then(([geometry, colorData]) => {
+                this.colorData = colorData; // Store for re-processing
+                this.processSTL(geometry, null, null, { x: 2.71, y: 1.53, z: -2.38 });
+            }).catch(error => {
+                console.error('Error loading Baby Yoda assets:', error);
             });
         }
     }
@@ -102,6 +116,12 @@ export class TheChildMod extends StandardCube {
         // Fix Orientation: Rotate -90 degrees on X axis if needed (standard for many STLs)
         geometry.rotateX(-Math.PI / 2);
 
+        // Rotate if needed (around Y-axis)
+        const rotationY = this.currentRotation !== undefined ? this.currentRotation : -45;
+        if (rotationY !== 0) {
+            geometry.rotateY(rotationY * Math.PI / 180); // Convert degrees to radians
+        }
+
         // Apply Offset (User Preference)
         if (offsetOverride) {
             geometry.translate(offsetOverride.x, offsetOverride.y, offsetOverride.z);
@@ -129,8 +149,24 @@ export class TheChildMod extends StandardCube {
         // Generate UVs for Normal Map
         this.applyBoxUV(geometry);
 
-        // Remove incompatible attributes (color)
-        geometry.deleteAttribute('color');
+        // Apply Colors if loaded
+        if (this.colorData) {
+            const count = geometry.attributes.position.count;
+            const colorDataArray = new Float32Array(this.colorData);
+            console.log(`[TheChildMod] Loaded color data. Vertices: ${count}, Color entries: ${colorDataArray.length / 3}`);
+            // Ensure color data matches vertex count (simple check)
+            if (count === colorDataArray.length / 3) {
+                geometry.setAttribute('color', new THREE.BufferAttribute(colorDataArray, 3));
+                console.log('[TheChildMod] Color attribute applied successfully.');
+            } else {
+                console.warn('[TheChildMod] Vertex count mismatch! Colors not applied.');
+                // Remove incompatible attributes (color) if no data
+                geometry.deleteAttribute('color');
+            }
+        } else {
+            // Remove incompatible attributes (color) if no data
+            geometry.deleteAttribute('color');
+        }
 
         // Convert to Brush for CSG
         // Use Sparkle Map
@@ -144,7 +180,8 @@ export class TheChildMod extends StandardCube {
         const normalScale = this.currentNormalScale !== undefined ? this.currentNormalScale : 0.5;
 
         const material = new THREE.MeshStandardMaterial({
-            color: 0x74C947, // Yoda Green
+            color: this.colorData ? 0xFFFFFF : 0x74C947, // White if vertex colors, else Yoda Green
+            vertexColors: !!this.colorData && geometry.attributes.color !== undefined,
             roughness: roughness,
             metalness: metalness,
             normalMap: this.sparkleMap,
@@ -179,8 +216,33 @@ export class TheChildMod extends StandardCube {
         this.currentSpacing = newGap;
 
         const boxSize = CUBE_SIZE * (this.currentBoxScale || 1.0);
-        const evaluator = new Evaluator();
-        evaluator.attributes = ['position', 'normal', 'uv'];
+
+        // Generate cache key based on parameters that affect geometry
+        const cacheKey = JSON.stringify({
+            scale: scaleOverride,
+            spacing: spacingOverride,
+            offset: offsetOverride,
+            outerScale: this.currentOuterScale || 2.95,
+            filletRadius: this.currentFilletRadius !== undefined ? this.currentFilletRadius : 0.14,
+            rotation: rotationY
+        });
+
+        // Check if we have cached geometries for these parameters
+        const useCachedGeometries = this.cubieGeometryCache.has(cacheKey);
+
+        let evaluator, sourceBVH;
+
+        if (!useCachedGeometries) {
+            // First time with these parameters - perform CSG operations
+            evaluator = new Evaluator();
+            evaluator.attributes = ['position', 'normal', 'uv', 'color'];
+
+            // Create BVH for the source geometry to enable fast closest-point queries
+            sourceBVH = new MeshBVH(geometry);
+
+            // Initialize cache entry for this configuration
+            this.cubieGeometryCache.set(cacheKey, new Map());
+        }
 
         this.cubieList.forEach(group => {
             const { x, y, z } = group.userData.gridPos;
@@ -201,71 +263,170 @@ export class TheChildMod extends StandardCube {
                 group.updateMatrixWorld(true);
             }
 
-            // Define the cutting box for this piece
-            // Selective Scaling: Only extend outer faces
-            const scale = this.currentOuterScale || 2.95;
-            const halfSize = CUBE_SIZE / 2;
+            // Create a unique key for this cubie position
+            const cubieKey = `${x},${y},${z}`;
 
-            // Determine bounds relative to piece center
-            // Default: [-halfSize, halfSize]
-            let xMin = -halfSize;
-            let xMax = halfSize;
-            let yMin = -halfSize;
-            let yMax = halfSize;
-            let zMin = -halfSize;
-            let zMax = halfSize;
+            // Get the cache for this configuration (either existing or newly created)
+            const cacheForThisConfig = this.cubieGeometryCache.get(cacheKey);
+            let resultGeometry = null;
 
-            // Check boundaries (2x3x2)
-            // xRange = [-0.5, 0.5]
-            if (x <= -0.5) xMin *= scale;
-            if (x >= 0.5) xMax *= scale;
-
-            // yRange = [-1, 0, 1]
-            if (y <= -1) yMin *= scale;
-            if (y >= 1) yMax *= scale;
-
-            // zRange = [-0.5, 0.5]
-            if (z <= -0.5) zMin *= scale;
-            if (z >= 0.5) zMax *= scale;
-
-            const width = xMax - xMin;
-            const height = yMax - yMin;
-            const depth = zMax - zMin;
-
-            const xCenter = (xMin + xMax) / 2;
-            const yCenter = (yMin + yMax) / 2;
-            const zCenter = (zMin + zMax) / 2;
-
-            let boxGeo;
-            const radius = this.currentFilletRadius !== undefined ? this.currentFilletRadius : 0.14;
-
-            if (radius > 0) {
-                // RoundedBoxGeometry( width, height, depth, segments, radius )
-                boxGeo = new RoundedBoxGeometry(width, height, depth, 4, radius);
+            if (useCachedGeometries && cacheForThisConfig.has(cubieKey)) {
+                // Use cached geometry - just clone it
+                resultGeometry = cacheForThisConfig.get(cubieKey).clone();
+                console.log(`[TheChildMod] Using cached geometry for cubie ${cubieKey}`);
             } else {
-                boxGeo = new THREE.BoxGeometry(width, height, depth);
+                // Need to perform CSG operation
+                console.log(`[TheChildMod] Computing geometry for cubie ${cubieKey}`);
+
+                // Define the cutting box for this piece
+                // Selective Scaling: Only extend outer faces
+                const scale = this.currentOuterScale || 2.95;
+                const halfSize = CUBE_SIZE / 2;
+
+                // Determine bounds relative to piece center
+                // Default: [-halfSize, halfSize]
+                let xMin = -halfSize;
+                let xMax = halfSize;
+                let yMin = -halfSize;
+                let yMax = halfSize;
+                let zMin = -halfSize;
+                let zMax = halfSize;
+
+                // Check boundaries (2x3x2)
+                // xRange = [-0.5, 0.5]
+                if (x <= -0.5) xMin *= scale;
+                if (x >= 0.5) xMax *= scale;
+
+                // yRange = [-1, 0, 1]
+                if (y <= -1) yMin *= scale;
+                if (y >= 1) yMax *= scale;
+
+                // zRange = [-0.5, 0.5]
+                if (z <= -0.5) zMin *= scale;
+                if (z >= 0.5) zMax *= scale;
+
+                const width = xMax - xMin;
+                const height = yMax - yMin;
+                const depth = zMax - zMin;
+
+                const xCenter = (xMin + xMax) / 2;
+                const yCenter = (yMin + yMax) / 2;
+                const zCenter = (zMin + zMax) / 2;
+
+                let boxGeo;
+                const radius = this.currentFilletRadius !== undefined ? this.currentFilletRadius : 0.14;
+
+                if (radius > 0) {
+                    // RoundedBoxGeometry( width, height, depth, segments, radius )
+                    boxGeo = new RoundedBoxGeometry(width, height, depth, 4, radius);
+                } else {
+                    boxGeo = new THREE.BoxGeometry(width, height, depth);
+                }
+
+                boxGeo.translate(xCenter, yCenter, zCenter);
+
+                boxGeo = boxGeo.toNonIndexed();
+                // boxGeo.deleteAttribute('color'); // Don't delete, let it interpolate or default? 
+                // Actually, boxGeo needs color attribute to match sourceBrush for CSG if source has it.
+                // If source has color, box must have color attribute too (even if unused/white) to avoid errors in some CSG implementations,
+                // or at least to produce correct results. 
+                // three-bvh-csg usually handles missing attributes by filling with 0, but let's be safe.
+                const sourceColorAttr = geometry.attributes.color;
+
+                if (sourceColorAttr) {
+                    const boxCount = boxGeo.attributes.position.count;
+                    const boxColors = new Float32Array(boxCount * 3).fill(1); // White interior
+                    boxGeo.setAttribute('color', new THREE.BufferAttribute(boxColors, 3));
+                }
+
+                const boxBrush = new Brush(boxGeo);
+
+                boxBrush.position.set(
+                    x * CUBE_SIZE,
+                    y * CUBE_SIZE,
+                    z * CUBE_SIZE
+                );
+                boxBrush.updateMatrixWorld();
+
+                try {
+                    const result = evaluator.evaluate(sourceBrush, boxBrush, INTERSECTION);
+
+                    // --- Color Transfer Logic ---
+                    if (result.geometry) {
+                        const resGeom = result.geometry;
+                        const posAttr = resGeom.attributes.position;
+
+                        // Ensure color attribute exists
+                        if (!resGeom.attributes.color) {
+                            resGeom.setAttribute('color', new THREE.BufferAttribute(new Float32Array(posAttr.count * 3), 3));
+                        }
+
+                        if (sourceColorAttr) {
+                            const tempVec = new THREE.Vector3();
+                            const targetColor = new THREE.Color();
+
+                            // Iterate over all vertices of the cut piece
+                            let hitCount = 0;
+                            let missCount = 0;
+
+                            for (let i = 0; i < posAttr.count; i++) {
+                                tempVec.fromBufferAttribute(posAttr, i);
+
+                                // Find the closest point on the original source geometry
+                                const hit = sourceBVH.closestPointToPoint(tempVec);
+
+                                if (hit) {
+                                    hitCount++;
+                                    // Get the indices of the vertices of the closest face
+                                    const faceIndex = hit.faceIndex;
+                                    const i1 = geometry.index ? geometry.index.getX(faceIndex * 3) : faceIndex * 3;
+                                    const i2 = geometry.index ? geometry.index.getX(faceIndex * 3 + 1) : faceIndex * 3 + 1;
+                                    const i3 = geometry.index ? geometry.index.getX(faceIndex * 3 + 2) : faceIndex * 3 + 2;
+
+                                    // Get colors of the face vertices
+                                    const c1 = new THREE.Color().fromBufferAttribute(sourceColorAttr, i1);
+                                    const c2 = new THREE.Color().fromBufferAttribute(sourceColorAttr, i2);
+                                    const c3 = new THREE.Color().fromBufferAttribute(sourceColorAttr, i3);
+
+                                    // Calculate barycentric coordinates to interpolate color
+                                    const p1 = new THREE.Vector3().fromBufferAttribute(geometry.attributes.position, i1);
+                                    const p2 = new THREE.Vector3().fromBufferAttribute(geometry.attributes.position, i2);
+                                    const p3 = new THREE.Vector3().fromBufferAttribute(geometry.attributes.position, i3);
+
+                                    const bary = THREE.Triangle.getBarycoord(hit.point, p1, p2, p3, new THREE.Vector3());
+
+                                    // Interpolate color using barycentric coordinates
+                                    targetColor.setRGB(
+                                        c1.r * bary.x + c2.r * bary.y + c3.r * bary.z,
+                                        c1.g * bary.x + c2.g * bary.y + c3.g * bary.z,
+                                        c1.b * bary.x + c2.b * bary.y + c3.b * bary.z
+                                    );
+
+                                    // Apply to the result vertex
+                                    resGeom.attributes.color.setXYZ(i, targetColor.r, targetColor.g, targetColor.b);
+                                } else {
+                                    missCount++;
+                                }
+                            }
+                            console.log(`[TheChildMod] Color transfer: ${hitCount} hits, ${missCount} misses.`);
+                            resGeom.attributes.color.needsUpdate = true;
+                        }
+
+                        // Store the geometry in cache for future use
+                        resultGeometry = resGeom.clone();
+                        cacheForThisConfig.set(cubieKey, resultGeometry.clone());
+                    }
+                } catch (e) {
+                    console.error("CSG Error for piece", x, y, z, e);
+                }
             }
 
-            boxGeo.translate(xCenter, yCenter, zCenter);
-
-            boxGeo = boxGeo.toNonIndexed();
-            boxGeo.deleteAttribute('color');
-
-            const boxBrush = new Brush(boxGeo);
-
-            boxBrush.position.set(
-                x * CUBE_SIZE,
-                y * CUBE_SIZE,
-                z * CUBE_SIZE
-            );
-            boxBrush.updateMatrixWorld();
-
-            try {
-                const result = evaluator.evaluate(sourceBrush, boxBrush, INTERSECTION);
-                result.material = material;
+            // Create mesh from geometry (either cached or freshly computed)
+            if (resultGeometry) {
+                const mesh = new THREE.Mesh(resultGeometry, material);
 
                 // Position correction
-                result.position.set(-x * CUBE_SIZE, -y * CUBE_SIZE, -z * CUBE_SIZE);
+                mesh.position.set(-x * CUBE_SIZE, -y * CUBE_SIZE, -z * CUBE_SIZE);
 
                 // Remove placeholder if it exists
                 const placeholder = group.children.find(c => c.userData.isPlaceholder);
@@ -273,9 +434,7 @@ export class TheChildMod extends StandardCube {
                     group.remove(placeholder);
                 }
 
-                group.add(result);
-            } catch (e) {
-                console.error("CSG Error for piece", x, y, z, e);
+                group.add(mesh);
             }
         });
 
@@ -328,15 +487,17 @@ export class TheChildMod extends StandardCube {
 
     updateTheChildParams(params) {
         try {
-            const { scale, spacing, offset, roughness, metalness, normalScale, outerScale, filletRadius } = params;
+            const { scale, rotation, spacing, offset, roughness, metalness, normalScale, outerScale, filletRadius } = params;
 
             const geomChanged = (scale !== undefined && scale !== this.currentScale) ||
+                (rotation !== undefined && rotation !== this.currentRotation) ||
                 (spacing !== undefined && spacing !== this.currentSpacing) ||
                 (offset && (offset.x !== this.currentOffset?.x || offset.y !== this.currentOffset?.y || offset.z !== this.currentOffset?.z)) ||
                 (outerScale !== undefined && outerScale !== this.currentOuterScale) ||
                 (filletRadius !== undefined && filletRadius !== this.currentFilletRadius);
 
             if (scale !== undefined && !isNaN(scale)) this.currentScale = scale;
+            if (rotation !== undefined && !isNaN(rotation)) this.currentRotation = rotation;
             if (offset) this.currentOffset = { ...offset };
             if (roughness !== undefined && !isNaN(roughness)) this.currentRoughness = roughness;
             if (metalness !== undefined && !isNaN(metalness)) this.currentMetalness = metalness;

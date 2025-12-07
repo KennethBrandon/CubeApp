@@ -439,6 +439,13 @@ function createTheChildTuner() {
         </div>
 
         <div class="mb-3">
+            <label class="block mb-1 text-gray-300">Y-Axis Rotation: <span id="thechild-rotation-val"
+                    class="text-white font-mono">-45</span>°</label>
+            <input type="range" id="thechild-rotation-slider" min="-180" max="180" step="1" value="-45"
+                class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-cyan-500">
+        </div>
+
+        <div class="mb-3">
             <label class="block mb-1 text-gray-300">Gap (Spacing): <span id="thechild-gap-val"
                     class="text-white font-mono">0.005</span></label>
             <input type="range" id="thechild-gap-slider" min="-0.5" max="0.5" step="0.001" value="0.005"
@@ -461,44 +468,44 @@ function createTheChildTuner() {
 
         <div class="mb-3">
             <label class="block mb-1 text-gray-300">Offset X: <span id="thechild-offset-x-val"
-                    class="text-white font-mono">2.660</span></label>
-            <input type="range" id="thechild-offset-x-slider" min="-15.0" max="15.0" step="0.01" value="2.660"
+                    class="text-white font-mono">2.710</span></label>
+            <input type="range" id="thechild-offset-x-slider" min="-15.0" max="15.0" step="0.01" value="2.710"
                 class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-500">
         </div>
 
         <div class="mb-3">
             <label class="block mb-1 text-gray-300">Offset Y: <span id="thechild-offset-y-val"
-                    class="text-white font-mono">0.000</span></label>
-            <input type="range" id="thechild-offset-y-slider" min="-15.0" max="15.0" step="0.01" value="0.000"
+                    class="text-white font-mono">1.530</span></label>
+            <input type="range" id="thechild-offset-y-slider" min="-15.0" max="15.0" step="0.01" value="1.530"
                 class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-500">
         </div>
 
         <div class="mb-3">
             <label class="block mb-1 text-gray-300">Offset Z: <span id="thechild-offset-z-val"
-                    class="text-white font-mono">3.040</span></label>
-            <input type="range" id="thechild-offset-z-slider" min="-15.0" max="15.0" step="0.01" value="3.040"
+                    class="text-white font-mono">-2.380</span></label>
+            <input type="range" id="thechild-offset-z-slider" min="-15.0" max="15.0" step="0.01" value="-2.380"
                 class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-500">
         </div>
 
         <div class="mb-3">
             <label class="block mb-1 text-gray-300">Roughness: <span id="thechild-roughness-val"
-                    class="text-white font-mono">0.60</span></label>
-            <input type="range" id="thechild-roughness-slider" min="0.0" max="1.0" step="0.01" value="0.60"
+                    class="text-white font-mono">0.02</span></label>
+            <input type="range" id="thechild-roughness-slider" min="0.0" max="1.0" step="0.01" value="0.02"
                 class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-yellow-500">
         </div>
         
         <div class="mb-3">
             <label class="block mb-1 text-gray-300">Metalness: <span id="thechild-metalness-val"
-                    class="text-white font-mono">0.46</span></label>
-            <input type="range" id="thechild-metalness-slider" min="0.0" max="1.0" step="0.01" value="0.46"
+                    class="text-white font-mono">0.32</span></label>
+            <input type="range" id="thechild-metalness-slider" min="0.0" max="1.0" step="0.01" value="0.32"
                 class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-gray-400">
         </div>
 
         <div class="mb-3">
             <label class="block mb-1 text-gray-300">Speckle Scale: <span id="thechild-normal-scale-val"
-                    class="text-white font-mono">0.50</span></label>
-            <input type="range" id="thechild-normal-scale-slider" min="0.0" max="1.0" step="0.01" value="0.50"
-                class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-500">
+                    class="text-white font-mono">0.60</span></label>
+            <input type="range" id="thechild-normal-scale-slider" min="0.0" max="2.0" step="0.01" value="0.60"
+                class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-pink-500">
         </div>
 
         <div class="mt-4 text-center">
@@ -523,6 +530,7 @@ function attachTheChildTunerListeners() {
     const updateTheChildTuner = () => {
         if (!state.activePuzzle) return;
         const scale = parseFloat(document.getElementById('thechild-scale-slider').value);
+        const rotation = parseFloat(document.getElementById('thechild-rotation-slider').value);
         const spacing = parseFloat(document.getElementById('thechild-gap-slider').value);
         const offsetX = parseFloat(document.getElementById('thechild-offset-x-slider').value);
         const offsetY = parseFloat(document.getElementById('thechild-offset-y-slider').value);
@@ -534,6 +542,7 @@ function attachTheChildTunerListeners() {
         const normalScale = parseFloat(document.getElementById('thechild-normal-scale-slider').value);
 
         document.getElementById('thechild-scale-val').textContent = scale.toFixed(3);
+        document.getElementById('thechild-rotation-val').textContent = rotation.toFixed(0);
         document.getElementById('thechild-gap-val').textContent = spacing.toFixed(3);
         document.getElementById('thechild-outer-scale-val').textContent = outerScale.toFixed(3);
         document.getElementById('thechild-fillet-val').textContent = filletRadius.toFixed(3);
@@ -547,6 +556,7 @@ function attachTheChildTunerListeners() {
         if (state.activePuzzle.updateTheChildParams) {
             state.activePuzzle.updateTheChildParams({
                 scale,
+                rotation,
                 spacing,
                 outerScale,
                 filletRadius,
@@ -558,7 +568,7 @@ function attachTheChildTunerListeners() {
         }
     };
 
-    ['thechild-scale-slider', 'thechild-gap-slider', 'thechild-outer-scale-slider', 'thechild-fillet-slider', 'thechild-offset-x-slider', 'thechild-offset-y-slider', 'thechild-offset-z-slider',
+    ['thechild-scale-slider', 'thechild-rotation-slider', 'thechild-gap-slider', 'thechild-outer-scale-slider', 'thechild-fillet-slider', 'thechild-offset-x-slider', 'thechild-offset-y-slider', 'thechild-offset-z-slider',
         'thechild-roughness-slider', 'thechild-metalness-slider', 'thechild-normal-scale-slider'].forEach(id => {
             document.getElementById(id).addEventListener('input', updateTheChildTuner);
         });
@@ -566,15 +576,16 @@ function attachTheChildTunerListeners() {
     document.getElementById('btn-reset-thechild-defaults').addEventListener('click', () => {
         const defaults = {
             'thechild-scale-slider': 3.350,
+            'thechild-rotation-slider': -45,
             'thechild-gap-slider': 0.005,
             'thechild-outer-scale-slider': 2.950,
             'thechild-fillet-slider': 0.140,
-            'thechild-offset-x-slider': 2.660,
-            'thechild-offset-y-slider': 0.000,
-            'thechild-offset-z-slider': 3.040,
-            'thechild-roughness-slider': 0.60,
-            'thechild-metalness-slider': 0.46,
-            'thechild-normal-scale-slider': 0.50
+            'thechild-offset-x-slider': 2.710,
+            'thechild-offset-y-slider': 1.530,
+            'thechild-offset-z-slider': -2.380,
+            'thechild-roughness-slider': 0.02,
+            'thechild-metalness-slider': 0.32,
+            'thechild-normal-scale-slider': 0.60
         };
         for (const [id, val] of Object.entries(defaults)) {
             const el = document.getElementById(id);
