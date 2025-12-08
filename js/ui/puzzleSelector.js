@@ -538,7 +538,7 @@ export function changePuzzle(val, isCustom = false, customDims = null, isMirrorC
         zoomRatio = (currentDist - minD) / (maxD - minD);
     }
 
-    const performUpdate = () => {
+    const performUpdate = async () => {
         state.cubeSize = newSize;
         state.cubeDimensions = newDims;
 
@@ -565,7 +565,7 @@ export function changePuzzle(val, isCustom = false, customDims = null, isMirrorC
             dimensions: newDims
         });
 
-        hardReset(true);
+        await hardReset(true);
 
         // Mirror Debug
         const debugRow = document.getElementById('mirror-debug-row');
@@ -590,8 +590,8 @@ export function changePuzzle(val, isCustom = false, customDims = null, isMirrorC
     if (skipAnimation) {
         performUpdate();
     } else {
-        playCubeAnimation(false, () => {
-            performUpdate();
+        playCubeAnimation(false, async () => {
+            await performUpdate();
             playCubeAnimation(true);
         });
     }

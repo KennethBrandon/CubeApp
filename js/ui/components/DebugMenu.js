@@ -291,7 +291,7 @@ function attachDebugListeners() {
                 zoomRatio = (currentDist - minD) / (maxD - minD);
             }
 
-            playCubeAnimation(false, () => {
+            playCubeAnimation(false, async () => {
                 state.cubeSize = newSize;
                 state.cubeDimensions = newDims;
                 const newHeight = getMirrorHeight(newSize);
@@ -303,7 +303,7 @@ function attachDebugListeners() {
                     dimensions: newDims
                 });
 
-                hardReset(true);
+                await hardReset(true);
                 adjustCameraForCubeSize(zoomRatio);
                 playCubeAnimation(true);
             });

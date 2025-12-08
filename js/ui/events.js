@@ -41,10 +41,10 @@ export function setupUIEventListeners() {
         overlayManager.close();
     });
 
-    document.getElementById('btn-play-again').addEventListener('click', () => {
+    document.getElementById('btn-play-again').addEventListener('click', async () => {
         overlayManager.close();
-        setTimeout(() => {
-            hardReset(true);
+        setTimeout(async () => {
+            await hardReset(true);
         }, 500);
     });
 

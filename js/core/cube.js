@@ -3,12 +3,12 @@ import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 import { state } from '../shared/state.js';
 import { CUBE_SIZE, SPACING, COLORS, CORE_COLOR, STICKER_BORDER_RADIUS, stickerVertexShader, stickerFragmentShader } from '../shared/constants.js';
 
-export function createCube() {
+export async function createCube() {
     if (!state.activePuzzle) {
         console.error("activePuzzle not set!");
         return;
     }
-    state.activePuzzle.createGeometry();
+    await state.activePuzzle.createGeometry();
 }
 
 export function getCubiesInSlice(axis, value) {

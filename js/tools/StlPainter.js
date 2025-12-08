@@ -1,6 +1,10 @@
 import * as THREE from 'three';
 import { STLLoader } from 'three/addons/loaders/STLLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { Brush, Evaluator, INTERSECTION } from 'three-bvh-csg';
+import { MeshBVH } from 'three-mesh-bvh';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { CUBE_SIZE } from '../shared/constants.js';
 
 class StlPainter {
     constructor() {
@@ -19,6 +23,16 @@ class StlPainter {
         this.brushColor = new THREE.Color('#74C947');
         this.brushSize = 0.5;
         this.colorData = null; // Float32Array for colors
+
+        // Cubie Cutter State
+        this.cubieParams = {
+            filletRadius: 0.14,
+            outerScale: 2.95,
+            rotation: -45,
+            scale: 3.35,
+            offset: { x: 2.71, y: 1.53, z: -2.38 }
+        };
+        this.generatedCubies = null; // Will hold array of {position, geometry} objects
 
         this.init();
         this.setupEvents();
@@ -191,6 +205,42 @@ class StlPainter {
             }
             this.updateBrushCursor(e);
         });
+
+        // Cubie Cutter Controls
+        const btnGenerateCubies = document.getElementById('btn-generate-cubies');
+        const btnExportCubies = document.getElementById('btn-export-cubies');
+
+        if (btnGenerateCubies) {
+            btnGenerateCubies.addEventListener('click', () => this.generateCubies());
+        }
+
+        if (btnExportCubies) {
+            btnExportCubies.addEventListener('click', () => this.exportCubies());
+        }
+
+        // Parameter inputs
+        ['filletRadius', 'outerScale', 'rotation', 'scale'].forEach(param => {
+            const input = document.getElementById(`cubie-${param}`);
+            if (input) {
+                input.addEventListener('input', (e) => {
+                    this.cubieParams[param] = parseFloat(e.target.value);
+                    const valueDisplay = document.getElementById(`cubie-${param}-val`);
+                    if (valueDisplay) valueDisplay.textContent = e.target.value;
+                });
+            }
+        });
+
+        ['offsetX', 'offsetY', 'offsetZ'].forEach(axis => {
+            const input = document.getElementById(`cubie-${axis}`);
+            if (input) {
+                input.addEventListener('input', (e) => {
+                    const key = axis.replace('offset', '').toLowerCase();
+                    this.cubieParams.offset[key] = parseFloat(e.target.value);
+                    const valueDisplay = document.getElementById(`cubie-${axis}-val`);
+                    if (valueDisplay) valueDisplay.textContent = e.target.value;
+                });
+            }
+        });
     }
 
     addToPalette(color) {
@@ -353,21 +403,12 @@ class StlPainter {
             this.mesh.material.dispose();
         }
 
-        // Center and Rotate (match TheChildMod logic)
-        geometry.computeBoundingBox();
-        const center = new THREE.Vector3();
-        geometry.boundingBox.getCenter(center);
-        geometry.translate(-center.x, -center.y, -center.z);
-        geometry.rotateX(-Math.PI / 2);
-
-        // Ensure vertex colors exist
+        // Apply color data to geometry FIRST (before storing original)
         const count = geometry.attributes.position.count;
 
-        // If we have pre-loaded color data, use it
         if (this.colorData && this.colorData.length === count * 3) {
             geometry.setAttribute('color', new THREE.BufferAttribute(this.colorData, 3));
-            // Extract and add colors to palette
-            this.extractColorsFromData();
+            console.log('[StlPainter] Applied color data to geometry');
         } else {
             // Initialize with default green
             const colors = new Float32Array(count * 3);
@@ -380,9 +421,24 @@ class StlPainter {
             geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
         }
 
+        // Store original geometry WITH COLORS before transformations for cubie generation
+        this.originalGeometry = geometry.clone();
+
+        // Center and Rotate (match TheChildMod logic)
+        geometry.computeBoundingBox();
+        const center = new THREE.Vector3();
+        geometry.boundingBox.getCenter(center);
+        geometry.translate(-center.x, -center.y, -center.z);
+        geometry.rotateX(-Math.PI / 2);
+
+        // Extract and add colors to palette if we have color data
+        if (this.colorData && this.colorData.length === count * 3) {
+            this.extractColorsFromData();
+        }
+
         const material = new THREE.MeshStandardMaterial({
             vertexColors: true,
-            color: (this.colorData && this.colorData.length === count * 3) ? 0xFFFFFF : 0xFFFFFF, // Always white base if using vertex colors
+            color: 0xFFFFFF,
             roughness: 0.6,
             metalness: 0.4
         });
@@ -581,6 +637,373 @@ class StlPainter {
         if (this.renderer && this.scene && this.camera) {
             this.renderer.render(this.scene, this.camera);
         }
+    }
+
+    applyBoxUV(geometry) {
+        geometry.computeBoundingBox();
+        const bbox = geometry.boundingBox;
+        const size = new THREE.Vector3();
+        bbox.getSize(size);
+        const min = bbox.min;
+
+        const positionAttribute = geometry.attributes.position;
+        if (!geometry.attributes.normal) geometry.computeVertexNormals();
+
+        const uvAttribute = new THREE.BufferAttribute(new Float32Array(positionAttribute.count * 2), 2);
+
+        for (let i = 0; i < positionAttribute.count; i++) {
+            const x = positionAttribute.getX(i);
+            const y = positionAttribute.getY(i);
+            const z = positionAttribute.getZ(i);
+
+            const nx = Math.abs(geometry.attributes.normal.getX(i));
+            const ny = Math.abs(geometry.attributes.normal.getY(i));
+            const nz = Math.abs(geometry.attributes.normal.getZ(i));
+
+            let u = 0, v = 0;
+
+            if (nx >= ny && nx >= nz) {
+                u = (z - min.z) / size.z;
+                v = (y - min.y) / size.y;
+            } else if (ny >= nx && ny >= nz) {
+                u = (x - min.x) / size.x;
+                v = (z - min.z) / size.z;
+            } else {
+                u = (x - min.x) / size.x;
+                v = (y - min.y) / size.y;
+            }
+
+            uvAttribute.setXY(i, u, v);
+        }
+
+        geometry.setAttribute('uv', uvAttribute);
+    }
+
+    async generateCubies() {
+        if (!this.originalGeometry) {
+            alert('Please load an STL model first!');
+            return;
+        }
+
+        const loadingOverlay = document.getElementById('loading-overlay');
+        const btnGenerate = document.getElementById('btn-generate-cubies');
+        const btnExport = document.getElementById('btn-export-cubies');
+
+        try {
+            if (loadingOverlay) loadingOverlay.classList.remove('hidden');
+            if (btnGenerate) btnGenerate.disabled = true;
+
+            console.log('[Cubie Cutter] Starting cubie generation...');
+
+            // Clone and prepare the geometry (same as TheChildMod.processSTL)
+            // Use ORIGINAL geometry before StlPainter transformations
+            const geometry = this.originalGeometry.clone();
+
+            geometry.computeBoundingBox();
+            const center = new THREE.Vector3();
+            geometry.boundingBox.getCenter(center);
+            geometry.translate(-center.x, -center.y, -center.z);
+            geometry.rotateX(-Math.PI / 2);
+
+            // Apply rotation
+            if (this.cubieParams.rotation !== 0) {
+                geometry.rotateY(this.cubieParams.rotation * Math.PI / 180);
+            }
+
+            // Apply offset
+            if (this.cubieParams.offset) {
+                geometry.translate(
+                    this.cubieParams.offset.x,
+                    this.cubieParams.offset.y,
+                    this.cubieParams.offset.z
+                );
+            }
+
+            // Scale
+            geometry.computeBoundingBox();
+            const size = new THREE.Vector3();
+            geometry.boundingBox.getSize(size);
+            const maxDim = Math.max(size.x, size.y, size.z);
+            const targetSize = this.cubieParams.scale * CUBE_SIZE;
+            const scale = targetSize / maxDim;
+            geometry.scale(scale, scale, scale);
+            geometry.computeBoundingBox();
+
+            if (!geometry.attributes.normal) {
+                geometry.computeVertexNormals();
+            }
+
+            // Generate UVs for Normal Map
+            this.applyBoxUV(geometry);
+
+            // Create source brush
+            const material = new THREE.MeshStandardMaterial({ color: 0x74C947 });
+            const sourceBrush = new Brush(geometry, material);
+            sourceBrush.updateMatrixWorld();
+
+            // Create evaluator
+            const evaluator = new Evaluator();
+            evaluator.attributes = ['position', 'normal', 'uv'];
+            if (this.colorData && geometry.attributes.color) {
+                evaluator.attributes.push('color');
+            }
+
+            // Create BVH for color transfer
+            const sourceBVH = new MeshBVH(geometry);
+
+            // Define cubie positions for 2x3x2 grid
+            const xRange = [-0.5, 0.5];
+            const yRange = [-1, 0, 1];
+            const zRange = [-0.5, 0.5];
+            const cubies = [];
+
+            let cubieIndex = 0;
+            const totalCubies = xRange.length * yRange.length * zRange.length;
+
+            for (let x of xRange) {
+                for (let y of yRange) {
+                    for (let z of zRange) {
+                        cubieIndex++;
+                        console.log(`[Cubie Cutter] Processing cubie ${cubieIndex}/${totalCubies}: (${x}, ${y}, ${z})`);
+
+                        // Create cutting box (same logic as TheChildMod)
+                        const outerScale = this.cubieParams.outerScale;
+                        const halfSize = CUBE_SIZE / 2;
+
+                        let xMin = -halfSize;
+                        let xMax = halfSize;
+                        let yMin = -halfSize;
+                        let yMax = halfSize;
+                        let zMin = -halfSize;
+                        let zMax = halfSize;
+
+                        if (x <= -0.5) xMin *= outerScale;
+                        if (x >= 0.5) xMax *= outerScale;
+                        if (y <= -1) yMin *= outerScale;
+                        if (y >= 1) yMax *= outerScale;
+                        if (z <= -0.5) zMin *= outerScale;
+                        if (z >= 0.5) zMax *= outerScale;
+
+                        const width = xMax - xMin;
+                        const height = yMax - yMin;
+                        const depth = zMax - zMin;
+                        const xCenter = (xMin + xMax) / 2;
+                        const yCenter = (yMin + yMax) / 2;
+                        const zCenter = (zMin + zMax) / 2;
+
+                        let boxGeo;
+                        const radius = this.cubieParams.filletRadius;
+
+                        if (radius > 0) {
+                            boxGeo = new RoundedBoxGeometry(width, height, depth, 4, radius);
+                        } else {
+                            boxGeo = new THREE.BoxGeometry(width, height, depth);
+                        }
+
+                        boxGeo.translate(xCenter, yCenter, zCenter);
+                        boxGeo = boxGeo.toNonIndexed();
+
+                        // Add color attribute if source has it
+                        if (geometry.attributes.color) {
+                            const boxCount = boxGeo.attributes.position.count;
+                            const boxColors = new Float32Array(boxCount * 3).fill(1);
+                            boxGeo.setAttribute('color', new THREE.BufferAttribute(boxColors, 3));
+                        }
+
+                        const boxBrush = new Brush(boxGeo);
+                        boxBrush.position.set(x * CUBE_SIZE, y * CUBE_SIZE, z * CUBE_SIZE);
+                        boxBrush.updateMatrixWorld();
+
+                        // Perform CSG operation
+                        const result = evaluator.evaluate(sourceBrush, boxBrush, INTERSECTION);
+
+                        if (result.geometry) {
+                            const resGeom = result.geometry;
+
+                            // Color transfer (if applicable)
+                            if (geometry.attributes.color) {
+                                const posAttr = resGeom.attributes.position;
+
+                                if (!resGeom.attributes.color) {
+                                    resGeom.setAttribute('color', new THREE.BufferAttribute(new Float32Array(posAttr.count * 3), 3));
+                                }
+
+                                const tempVec = new THREE.Vector3();
+                                const targetColor = new THREE.Color();
+
+                                for (let i = 0; i < posAttr.count; i++) {
+                                    tempVec.fromBufferAttribute(posAttr, i);
+                                    const hit = sourceBVH.closestPointToPoint(tempVec);
+
+                                    if (hit) {
+                                        const faceIndex = hit.faceIndex;
+                                        const i1 = geometry.index ? geometry.index.getX(faceIndex * 3) : faceIndex * 3;
+                                        const i2 = geometry.index ? geometry.index.getX(faceIndex * 3 + 1) : faceIndex * 3 + 1;
+                                        const i3 = geometry.index ? geometry.index.getX(faceIndex * 3 + 2) : faceIndex * 3 + 2;
+
+                                        const c1 = new THREE.Color().fromBufferAttribute(geometry.attributes.color, i1);
+                                        const c2 = new THREE.Color().fromBufferAttribute(geometry.attributes.color, i2);
+                                        const c3 = new THREE.Color().fromBufferAttribute(geometry.attributes.color, i3);
+
+                                        const p1 = new THREE.Vector3().fromBufferAttribute(geometry.attributes.position, i1);
+                                        const p2 = new THREE.Vector3().fromBufferAttribute(geometry.attributes.position, i2);
+                                        const p3 = new THREE.Vector3().fromBufferAttribute(geometry.attributes.position, i3);
+
+                                        const bary = THREE.Triangle.getBarycoord(hit.point, p1, p2, p3, new THREE.Vector3());
+
+                                        targetColor.setRGB(
+                                            c1.r * bary.x + c2.r * bary.y + c3.r * bary.z,
+                                            c1.g * bary.x + c2.g * bary.y + c3.g * bary.z,
+                                            c1.b * bary.x + c2.b * bary.y + c3.b * bary.z
+                                        );
+
+                                        resGeom.attributes.color.setXYZ(i, targetColor.r, targetColor.g, targetColor.b);
+                                    }
+                                }
+                                resGeom.attributes.color.needsUpdate = true;
+                            }
+
+                            cubies.push({
+                                position: { x, y, z },
+                                geometry: resGeom
+                            });
+                        }
+                    }
+                }
+            }
+
+            this.generatedCubies = cubies;
+            console.log(`[Cubie Cutter] Successfully generated ${cubies.length} cubies!`);
+
+            if (btnExport) btnExport.disabled = false;
+            alert(`Successfully generated ${cubies.length} cubies!`);
+
+        } catch (error) {
+            console.error('[Cubie Cutter] Error generating cubies:', error);
+            alert(`Error generating cubies: ${error.message}`);
+        } finally {
+            if (loadingOverlay) loadingOverlay.classList.add('hidden');
+            if (btnGenerate) btnGenerate.disabled = false;
+        }
+    }
+
+    async exportCubies() {
+        if (!this.generatedCubies || this.generatedCubies.length === 0) {
+            alert('Please generate cubies first!');
+            return;
+        }
+
+        console.log('[Cubie Cutter] Exporting cubies as binary files...');
+
+        // Helper function to download with delay
+        const downloadFile = (blob, filename) => {
+            return new Promise((resolve) => {
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = filename;
+                link.style.display = 'none';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+                // Clean up and delay
+                setTimeout(() => {
+                    URL.revokeObjectURL(url);
+                    resolve();
+                }, 300); // 300ms delay between downloads
+            });
+        };
+
+        // Export config file (still JSON for readability)
+        const config = {
+            sourceModel: 'baby_yoda_detailed.stl',
+            ...this.cubieParams,
+            dimensions: { x: 2, y: 3, z: 2 },
+            timestamp: new Date().toISOString(),
+            format: 'binary_v1'
+        };
+
+        const configJson = JSON.stringify(config, null, 2);
+        const configBlob = new Blob([configJson], { type: 'application/json' });
+        await downloadFile(configBlob, 'config.json');
+        console.log('[Cubie Cutter] Exported config.json');
+
+        // Export each cubie as binary
+        for (let i = 0; i < this.generatedCubies.length; i++) {
+            const { position, geometry } = this.generatedCubies[i];
+
+            // Calculate total size needed
+            const posCount = geometry.attributes.position.count;
+            const hasUV = !!geometry.attributes.uv;
+            const hasColor = !!geometry.attributes.color;
+
+            // Header: 4 bytes (vertexCount) + 2 bytes (flags)
+            // Position: posCount * 3 * 4 bytes (float32)
+            // Normal: posCount * 3 * 4 bytes (float32)
+            // UV (optional): posCount * 2 * 4 bytes (float32)
+            // Color (optional): posCount * 3 * 4 bytes (float32)
+
+            let totalSize = 6; // header
+            totalSize += posCount * 3 * 4; // position
+            totalSize += posCount * 3 * 4; // normal
+            if (hasUV) totalSize += posCount * 2 * 4;
+            if (hasColor) totalSize += posCount * 3 * 4;
+
+            const buffer = new ArrayBuffer(totalSize);
+            const view = new DataView(buffer);
+            let offset = 0;
+
+            // Write header
+            view.setUint32(offset, posCount, true); // vertex count (little-endian)
+            offset += 4;
+
+            const flags = (hasUV ? 1 : 0) | (hasColor ? 2 : 0);
+            view.setUint16(offset, flags, true);
+            offset += 2;
+
+            // Write position data
+            const posArray = geometry.attributes.position.array;
+            for (let j = 0; j < posArray.length; j++) {
+                view.setFloat32(offset, posArray[j], true);
+                offset += 4;
+            }
+
+            // Write normal data
+            const normalArray = geometry.attributes.normal.array;
+            for (let j = 0; j < normalArray.length; j++) {
+                view.setFloat32(offset, normalArray[j], true);
+                offset += 4;
+            }
+
+            // Write UV data if present
+            if (hasUV) {
+                const uvArray = geometry.attributes.uv.array;
+                for (let j = 0; j < uvArray.length; j++) {
+                    view.setFloat32(offset, uvArray[j], true);
+                    offset += 4;
+                }
+            }
+
+            // Write color data if present
+            if (hasColor) {
+                const colorArray = geometry.attributes.color.array;
+                for (let j = 0; j < colorArray.length; j++) {
+                    view.setFloat32(offset, colorArray[j], true);
+                    offset += 4;
+                }
+            }
+
+            const blob = new Blob([buffer], { type: 'application/octet-stream' });
+            const filename = `cubie_${position.x}_${position.y}_${position.z}.bin`;
+
+            await downloadFile(blob, filename);
+            const sizeMB = (totalSize / 1024 / 1024).toFixed(2);
+            console.log(`[Cubie Cutter] Exported ${filename} - ${sizeMB}MB (${i + 1}/${this.generatedCubies.length})`);
+        }
+
+        console.log(`[Cubie Cutter] Exported ${this.generatedCubies.length} cubie files + config.json`);
+        alert(`Exported ${this.generatedCubies.length} binary cubie files + config.json!\n\nBinary format is ~10x smaller and loads much faster than JSON.`);
     }
 
     async populateModelList() {

@@ -432,80 +432,50 @@ function createTheChildTuner() {
         </div>
 
         <div class="mb-3">
-            <label class="block mb-1 text-gray-300">Scale (Zoom): <span id="thechild-scale-val"
-                    class="text-white font-mono">3.350</span></label>
-            <input type="range" id="thechild-scale-slider" min="1.0" max="5.0" step="0.05" value="3.350"
-                class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-green-500">
-        </div>
-
-        <div class="mb-3">
-            <label class="block mb-1 text-gray-300">Y-Axis Rotation: <span id="thechild-rotation-val"
-                    class="text-white font-mono">-45</span>°</label>
-            <input type="range" id="thechild-rotation-slider" min="-180" max="180" step="1" value="-45"
-                class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-cyan-500">
-        </div>
-
-        <div class="mb-3">
             <label class="block mb-1 text-gray-300">Gap (Spacing): <span id="thechild-gap-val"
                     class="text-white font-mono">0.005</span></label>
             <input type="range" id="thechild-gap-slider" min="-0.5" max="0.5" step="0.001" value="0.005"
                 class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-green-500">
         </div>
 
-        <div class="mb-3">
-            <label class="block mb-1 text-gray-300">Outer Scale: <span id="thechild-outer-scale-val"
-                    class="text-white font-mono">2.950</span></label>
-            <input type="range" id="thechild-outer-scale-slider" min="1.0" max="5.0" step="0.05" value="2.950"
-                class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-red-500">
-        </div>
+        <div class="mb-3 pt-3 border-t border-gray-700">
+            <h4 class="font-bold mb-2 text-blue-400">Touch Targets</h4>
+            
+            <label class="flex items-center gap-2 cursor-pointer mb-3">
+                <input type="checkbox" id="thechild-show-targets-toggle"
+                    class="w-4 h-4 rounded bg-gray-600 border-gray-500 text-blue-600">
+                <span class="text-xs font-bold text-gray-300">Show Touch Targets</span>
+            </label>
 
-        <div class="mb-3">
-            <label class="block mb-1 text-gray-300">Fillet Radius: <span id="thechild-fillet-val"
-                    class="text-white font-mono">0.140</span></label>
-            <input type="range" id="thechild-fillet-slider" min="0.0" max="0.5" step="0.01" value="0.140"
-                class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-500">
-        </div>
-
-        <div class="mb-3">
-            <label class="block mb-1 text-gray-300">Offset X: <span id="thechild-offset-x-val"
-                    class="text-white font-mono">2.710</span></label>
-            <input type="range" id="thechild-offset-x-slider" min="-15.0" max="15.0" step="0.01" value="2.710"
+            <label class="block mb-1 text-gray-300">Touch Target Scale: <span id="thechild-target-scale-val"
+                    class="text-white font-mono">1.80</span>x</label>
+            <input type="range" id="thechild-target-scale-slider" min="0.5" max="2.0" step="0.05" value="1.8"
                 class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-500">
         </div>
 
-        <div class="mb-3">
-            <label class="block mb-1 text-gray-300">Offset Y: <span id="thechild-offset-y-val"
-                    class="text-white font-mono">1.530</span></label>
-            <input type="range" id="thechild-offset-y-slider" min="-15.0" max="15.0" step="0.01" value="1.530"
-                class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-500">
-        </div>
+        <div class="mb-3 pt-3 border-t border-gray-700">
+            <h4 class="font-bold mb-2 text-yellow-400">Material Properties</h4>
+            
+            <div class="mb-3">
+                <label class="block mb-1 text-gray-300">Roughness: <span id="thechild-roughness-val"
+                        class="text-white font-mono">0.02</span></label>
+                <input type="range" id="thechild-roughness-slider" min="0.0" max="1.0" step="0.01" value="0.02"
+                    class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-yellow-500">
+            </div>
+            
+            <div class="mb-3">
+                <label class="block mb-1 text-gray-300">Metalness: <span id="thechild-metalness-val"
+                        class="text-white font-mono">0.32</span></label>
+                <input type="range" id="thechild-metalness-slider" min="0.0" max="1.0" step="0.01" value="0.32"
+                    class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-gray-400">
+            </div>
 
-        <div class="mb-3">
-            <label class="block mb-1 text-gray-300">Offset Z: <span id="thechild-offset-z-val"
-                    class="text-white font-mono">-2.380</span></label>
-            <input type="range" id="thechild-offset-z-slider" min="-15.0" max="15.0" step="0.01" value="-2.380"
-                class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-500">
-        </div>
-
-        <div class="mb-3">
-            <label class="block mb-1 text-gray-300">Roughness: <span id="thechild-roughness-val"
-                    class="text-white font-mono">0.02</span></label>
-            <input type="range" id="thechild-roughness-slider" min="0.0" max="1.0" step="0.01" value="0.02"
-                class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-yellow-500">
-        </div>
-        
-        <div class="mb-3">
-            <label class="block mb-1 text-gray-300">Metalness: <span id="thechild-metalness-val"
-                    class="text-white font-mono">0.32</span></label>
-            <input type="range" id="thechild-metalness-slider" min="0.0" max="1.0" step="0.01" value="0.32"
-                class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-gray-400">
-        </div>
-
-        <div class="mb-3">
-            <label class="block mb-1 text-gray-300">Speckle Scale: <span id="thechild-normal-scale-val"
-                    class="text-white font-mono">0.60</span></label>
-            <input type="range" id="thechild-normal-scale-slider" min="0.0" max="2.0" step="0.01" value="0.60"
-                class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-pink-500">
+            <div class="mb-3">
+                <label class="block mb-1 text-gray-300">Speckle Scale: <span id="thechild-normal-scale-val"
+                        class="text-white font-mono">0.60</span></label>
+                <input type="range" id="thechild-normal-scale-slider" min="0.0" max="2.0" step="0.01" value="0.60"
+                    class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-pink-500">
+            </div>
         </div>
 
         <div class="mt-4 text-center">
@@ -529,38 +499,24 @@ function attachTheChildTunerListeners() {
 
     const updateTheChildTuner = () => {
         if (!state.activePuzzle) return;
-        const scale = parseFloat(document.getElementById('thechild-scale-slider').value);
-        const rotation = parseFloat(document.getElementById('thechild-rotation-slider').value);
         const spacing = parseFloat(document.getElementById('thechild-gap-slider').value);
-        const offsetX = parseFloat(document.getElementById('thechild-offset-x-slider').value);
-        const offsetY = parseFloat(document.getElementById('thechild-offset-y-slider').value);
-        const offsetZ = parseFloat(document.getElementById('thechild-offset-z-slider').value);
-        const outerScale = parseFloat(document.getElementById('thechild-outer-scale-slider').value);
-        const filletRadius = parseFloat(document.getElementById('thechild-fillet-slider').value);
+        const showTargets = document.getElementById('thechild-show-targets-toggle').checked;
+        const targetScale = parseFloat(document.getElementById('thechild-target-scale-slider').value);
         const roughness = parseFloat(document.getElementById('thechild-roughness-slider').value);
         const metalness = parseFloat(document.getElementById('thechild-metalness-slider').value);
         const normalScale = parseFloat(document.getElementById('thechild-normal-scale-slider').value);
 
-        document.getElementById('thechild-scale-val').textContent = scale.toFixed(3);
-        document.getElementById('thechild-rotation-val').textContent = rotation.toFixed(0);
         document.getElementById('thechild-gap-val').textContent = spacing.toFixed(3);
-        document.getElementById('thechild-outer-scale-val').textContent = outerScale.toFixed(3);
-        document.getElementById('thechild-fillet-val').textContent = filletRadius.toFixed(3);
-        document.getElementById('thechild-offset-x-val').textContent = offsetX.toFixed(3);
-        document.getElementById('thechild-offset-y-val').textContent = offsetY.toFixed(3);
-        document.getElementById('thechild-offset-z-val').textContent = offsetZ.toFixed(3);
+        document.getElementById('thechild-target-scale-val').textContent = targetScale.toFixed(2);
         document.getElementById('thechild-roughness-val').textContent = roughness.toFixed(2);
         document.getElementById('thechild-metalness-val').textContent = metalness.toFixed(2);
         document.getElementById('thechild-normal-scale-val').textContent = normalScale.toFixed(2);
 
         if (state.activePuzzle.updateTheChildParams) {
             state.activePuzzle.updateTheChildParams({
-                scale,
-                rotation,
                 spacing,
-                outerScale,
-                filletRadius,
-                offset: { x: offsetX, y: offsetY, z: offsetZ },
+                showTouchTargets: showTargets,
+                touchTargetScale: targetScale,
                 roughness,
                 metalness,
                 normalScale
@@ -568,21 +524,17 @@ function attachTheChildTunerListeners() {
         }
     };
 
-    ['thechild-scale-slider', 'thechild-rotation-slider', 'thechild-gap-slider', 'thechild-outer-scale-slider', 'thechild-fillet-slider', 'thechild-offset-x-slider', 'thechild-offset-y-slider', 'thechild-offset-z-slider',
+    ['thechild-gap-slider', 'thechild-target-scale-slider',
         'thechild-roughness-slider', 'thechild-metalness-slider', 'thechild-normal-scale-slider'].forEach(id => {
             document.getElementById(id).addEventListener('input', updateTheChildTuner);
         });
 
+    document.getElementById('thechild-show-targets-toggle').addEventListener('change', updateTheChildTuner);
+
     document.getElementById('btn-reset-thechild-defaults').addEventListener('click', () => {
         const defaults = {
-            'thechild-scale-slider': 3.350,
-            'thechild-rotation-slider': -45,
             'thechild-gap-slider': 0.005,
-            'thechild-outer-scale-slider': 2.950,
-            'thechild-fillet-slider': 0.140,
-            'thechild-offset-x-slider': 2.710,
-            'thechild-offset-y-slider': 1.530,
-            'thechild-offset-z-slider': -2.380,
+            'thechild-target-scale-slider': 1.8,
             'thechild-roughness-slider': 0.02,
             'thechild-metalness-slider': 0.32,
             'thechild-normal-scale-slider': 0.60
@@ -593,6 +545,12 @@ function attachTheChildTunerListeners() {
                 el.value = val;
                 el.dispatchEvent(new Event('input'));
             }
+        }
+        // Reset checkbox separately
+        const checkbox = document.getElementById('thechild-show-targets-toggle');
+        if (checkbox) {
+            checkbox.checked = false;
+            checkbox.dispatchEvent(new Event('change'));
         }
     });
 }

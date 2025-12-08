@@ -6,6 +6,7 @@ import { MeshBVH } from 'three-mesh-bvh';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { CUBE_SIZE, SPACING } from '../shared/constants.js';
 import { state } from '../shared/state.js';
+import { playCubeAnimation } from '../animations/transitions.js';
 
 export class TheChildMod extends StandardCube {
     constructor(config) {
@@ -14,13 +15,48 @@ export class TheChildMod extends StandardCube {
         this.isLoaded = false;
         this.spacing = 0.005; // Default spacing
         this.cubieGeometryCache = new Map(); // Cache for processed cubie geometries
+        this.showTouchTargets = false; // Show touch target outlines
+        this.touchTargetScale = 1.8; // Scale factor for touch targets
     }
 
-    createGeometry() {
-        // Clear existing
-        this.cubieList.forEach(c => {
-            if (c.parent) c.parent.remove(c);
-        });
+    async createGeometry() {
+        // Prevent moves from executing while geometry is loading
+        state.isAnimating = true;
+
+        // Store old cubies
+        const oldCubies = [...this.cubieList];
+
+        // Only use fade transition if we have old cubies (not first load/puzzle switch)
+        const useFadeTransition = oldCubies.length > 0 && this.isLoaded;
+
+        if (useFadeTransition) {
+            // Set old cubies to fade out slightly (keeps them visible during load)
+            oldCubies.forEach(group => {
+                group.children.forEach(child => {
+                    if (child.material && !child.userData.isHitBox) {
+                        child.material.transparent = true;
+                        child.material.opacity = 1.0;
+                    }
+                });
+            });
+        } else {
+            // Immediately clear old cubies for first load or puzzle switching
+            oldCubies.forEach(c => {
+                c.children.forEach(child => {
+                    if (child.geometry) child.geometry.dispose();
+                    if (child.material) {
+                        if (Array.isArray(child.material)) {
+                            child.material.forEach(m => m.dispose());
+                        } else {
+                            child.material.dispose();
+                        }
+                    }
+                });
+                if (c.parent) c.parent.remove(c);
+            });
+        }
+
+        // Clear the cubie list to prepare for new geometry
         this.cubieList.length = 0;
 
         state.activeDimensions = { ...this.config.dimensions };
@@ -28,31 +64,119 @@ export class TheChildMod extends StandardCube {
         // Create placeholder cubies first (invisible or simple boxes)
         this.createPlaceholders();
 
-        // Check if we already have the geometry cached
-        if (this.originalGeometry) {
-            // Synchronous rebuild - prevents flash
-            this.processSTL(this.originalGeometry, null, null, { x: 2.71, y: 1.53, z: -2.38 });
-        } else {
-            // Load the STL and Colors (Async)
-            const loader = new STLLoader();
-            const fileLoader = new THREE.FileLoader();
+        // Try loading pre-computed cubies first
+        const precomputedCubies = await this.loadPrecomputedCubies();
 
-            Promise.all([
-                new Promise((resolve, reject) => loader.load('assets/3d/baby_yoda_detailed.stl', resolve, undefined, reject)),
-                new Promise((resolve) => {
-                    fileLoader.load('assets/3d/baby_yoda_detailed_colors.json',
-                        (data) => resolve(JSON.parse(data)),
-                        undefined,
-                        () => resolve(null) // Resolve null if file doesn't exist
-                    );
-                })
-            ]).then(([geometry, colorData]) => {
-                this.colorData = colorData; // Store for re-processing
-                this.processSTL(geometry, null, null, { x: 2.71, y: 1.53, z: -2.38 });
-            }).catch(error => {
-                console.error('Error loading Baby Yoda assets:', error);
-            });
+        if (precomputedCubies) {
+            console.log('[TheChildMod] Using pre-computed cubies!');
+            this.applyPrecomputedCubies(precomputedCubies);
+        } else {
+            console.log('[TheChildMod] No pre-computed cubies found, falling back to CSG computation');
+
+            // Check if we already have the geometry cached
+            if (this.originalGeometry) {
+                // Synchronous rebuild - prevents flash
+                this.processSTL(this.originalGeometry, null, null, { x: 2.71, y: 1.53, z: -2.38 });
+            } else {
+                // Load the STL and Colors (Async)
+                const loader = new STLLoader();
+                const fileLoader = new THREE.FileLoader();
+
+                try {
+                    const [geometry, colorData] = await Promise.all([
+                        new Promise((resolve, reject) => loader.load('assets/3d/baby_yoda_detailed.stl', resolve, undefined, reject)),
+                        new Promise((resolve) => {
+                            fileLoader.load('assets/3d/baby_yoda_detailed_colors.json',
+                                (data) => resolve(JSON.parse(data)),
+                                undefined,
+                                () => resolve(null) // Resolve null if file doesn't exist
+                            );
+                        })
+                    ]);
+
+                    this.colorData = colorData; // Store for re-processing
+                    this.processSTL(geometry, null, null, { x: 2.71, y: 1.53, z: -2.38 });
+                } catch (error) {
+                    console.error('Error loading Baby Yoda assets:', error);
+                }
+            }
         }
+
+        // Only animate transition if fade is enabled and we have old cubies
+        if (useFadeTransition && oldCubies.length > 0) {
+            // Animate transition: fade out old, fade in new
+            const fadeOutOld = () => {
+                oldCubies.forEach(group => {
+                    group.children.forEach(child => {
+                        if (child.material && !child.userData.isHitBox) {
+                            child.material.opacity = Math.max(0, child.material.opacity - 0.1);
+                        }
+                    });
+                });
+            };
+
+            const fadeInNew = () => {
+                this.cubieList.forEach(group => {
+                    group.children.forEach(child => {
+                        if (child.material && !child.userData.isHitBox && !child.userData.isPlaceholder) {
+                            child.material.opacity = Math.min(1, child.material.opacity + 0.1);
+                        }
+                    });
+                });
+            };
+
+            // Set new cubies to start invisible
+            this.cubieList.forEach(group => {
+                group.children.forEach(child => {
+                    if (child.material && !child.userData.isHitBox && !child.userData.isPlaceholder) {
+                        child.material.transparent = true;
+                        child.material.opacity = 0;
+                    }
+                });
+            });
+
+            // Animate the transition
+            let frame = 0;
+            const maxFrames = 10;
+            const animate = () => {
+                if (frame < maxFrames) {
+                    fadeOutOld();
+                    fadeInNew();
+                    frame++;
+                    requestAnimationFrame(animate);
+                } else {
+                    // Clean up old cubies after fade out
+                    oldCubies.forEach(c => {
+                        c.children.forEach(child => {
+                            if (child.geometry) child.geometry.dispose();
+                            if (child.material) {
+                                if (Array.isArray(child.material)) {
+                                    child.material.forEach(m => m.dispose());
+                                } else {
+                                    child.material.dispose();
+                                }
+                            }
+                        });
+                        if (c.parent) c.parent.remove(c);
+                    });
+
+                    // Reset opacity to 1 and disable transparency for performance
+                    this.cubieList.forEach(group => {
+                        group.children.forEach(child => {
+                            if (child.material && !child.userData.isHitBox && !child.userData.isPlaceholder) {
+                                child.material.opacity = 1;
+                                child.material.transparent = false;
+                            }
+                        });
+                    });
+                }
+            };
+
+            requestAnimationFrame(animate);
+        }
+
+        // Geometry is now fully loaded, allow moves to execute
+        state.isAnimating = false;
     }
 
     createPlaceholders() {
@@ -87,13 +211,233 @@ export class TheChildMod extends StandardCube {
                     const hitGeo = new THREE.BoxGeometry(CUBE_SIZE, CUBE_SIZE, CUBE_SIZE);
                     const hitMat = new THREE.MeshBasicMaterial({ visible: false });
                     const hitBox = new THREE.Mesh(hitGeo, hitMat);
+                    hitBox.userData.isHitBox = true;
                     group.add(hitBox);
 
-                    group.userData = { isCubie: true, gridPos: { x, y, z } };
+                    // Touch target outline (wireframe)
+                    const outlineGeo = new THREE.BoxGeometry(CUBE_SIZE, CUBE_SIZE, CUBE_SIZE);
+                    const outlineMat = new THREE.MeshBasicMaterial({
+                        color: 0x00ff00,
+                        wireframe: true,
+                        visible: this.showTouchTargets,
+                        depthTest: false  // Render on top
+                    });
+                    const outline = new THREE.Mesh(outlineGeo, outlineMat);
+                    outline.userData.isTouchTargetOutline = true;
+                    outline.renderOrder = 999; // Render after everything else
+                    outline.scale.set(1.01, 1.01, 1.01); // Slightly larger to be visible outside geometry
+                    group.add(outline);
+
+                    group.userData = { isCubie: true, gridPos: { x, y, z }, hitBox, outline };
                     this.parent.add(group);
                     this.cubieList.push(group);
                 }
             }
+        }
+    }
+
+    async loadPrecomputedCubies() {
+        try {
+            const basePath = 'assets/3d/cubies/baby_yoda_detailed/';
+
+            // Try to load config first to check if precomputed files exist
+            const configResponse = await fetch(basePath + 'config.json');
+            if (!configResponse.ok) {
+                return null; // Config doesn't exist, no precomputed files
+            }
+
+            const config = await configResponse.json();
+            console.log('[TheChildMod] Found pre-computed cubie config:', config);
+
+            const isBinary = config.format === 'binary_v1';
+            const extension = isBinary ? '.bin' : '.json';
+
+            // Load all 12 cubie files
+            const xRange = [-0.5, 0.5];
+            const yRange = [-1, 0, 1];
+            const zRange = [-0.5, 0.5];
+            const cubies = new Map();
+
+            const loadPromises = [];
+            for (let x of xRange) {
+                for (let y of yRange) {
+                    for (let z of zRange) {
+                        const filename = `cubie_${x}_${y}_${z}${extension}`;
+                        const promise = fetch(basePath + filename)
+                            .then(response => {
+                                if (!response.ok) throw new Error(`Failed to load ${filename}`);
+                                return isBinary ? response.arrayBuffer() : response.json();
+                            })
+                            .then(data => {
+                                const key = `${x},${y},${z}`;
+                                if (isBinary) {
+                                    // Parse binary data
+                                    cubies.set(key, this.parseBinaryCubie(data));
+                                } else {
+                                    cubies.set(key, data);
+                                }
+                            });
+                        loadPromises.push(promise);
+                    }
+                }
+            }
+
+            await Promise.all(loadPromises);
+            console.log(`[TheChildMod] Loaded ${cubies.size} pre-computed cubies (${isBinary ? 'binary' : 'JSON'} format)`);
+
+            return { cubies, config };
+        } catch (error) {
+            console.log('[TheChildMod] Could not load pre-computed cubies:', error.message);
+            return null;
+        }
+    }
+
+    parseBinaryCubie(arrayBuffer) {
+        const view = new DataView(arrayBuffer);
+        let offset = 0;
+
+        // Read header
+        const vertexCount = view.getUint32(offset, true);
+        offset += 4;
+
+        const flags = view.getUint16(offset, true);
+        offset += 2;
+
+        const hasUV = (flags & 1) !== 0;
+        const hasColor = (flags & 2) !== 0;
+
+        // Read position data
+        const position = new Float32Array(vertexCount * 3);
+        for (let i = 0; i < vertexCount * 3; i++) {
+            position[i] = view.getFloat32(offset, true);
+            offset += 4;
+        }
+
+        // Read normal data
+        const normal = new Float32Array(vertexCount * 3);
+        for (let i = 0; i < vertexCount * 3; i++) {
+            normal[i] = view.getFloat32(offset, true);
+            offset += 4;
+        }
+
+        // Read UV data if present
+        let uv = null;
+        if (hasUV) {
+            uv = new Float32Array(vertexCount * 2);
+            for (let i = 0; i < vertexCount * 2; i++) {
+                uv[i] = view.getFloat32(offset, true);
+                offset += 4;
+            }
+        }
+
+        // Read color data if present
+        let color = null;
+        if (hasColor) {
+            color = new Float32Array(vertexCount * 3);
+            for (let i = 0; i < vertexCount * 3; i++) {
+                color[i] = view.getFloat32(offset, true);
+                offset += 4;
+            }
+        }
+
+        return {
+            attributes: {
+                position: Array.from(position),
+                normal: Array.from(normal),
+                uv: uv ? Array.from(uv) : null,
+                color: color ? Array.from(color) : null
+            },
+            metadata: {
+                vertexCount: vertexCount
+            }
+        };
+    }
+
+    applyPrecomputedCubies(precomputedData) {
+        const { cubies, config } = precomputedData;
+        const S = CUBE_SIZE + this.getSpacing();
+
+        // Use Sparkle Map
+        if (!this.sparkleMap) {
+            this.sparkleMap = createSparkleMap();
+        }
+
+        const roughness = this.currentRoughness !== undefined ? this.currentRoughness : 0.6;
+        const metalness = this.currentMetalness !== undefined ? this.currentMetalness : 0.46;
+        const normalScale = this.currentNormalScale !== undefined ? this.currentNormalScale : 0.5;
+
+        const material = new THREE.MeshStandardMaterial({
+            color: 0xFFFFFF,
+            vertexColors: true,
+            roughness: roughness,
+            metalness: metalness,
+            normalMap: this.sparkleMap,
+            normalScale: new THREE.Vector2(normalScale, normalScale)
+        });
+
+        // y rotation quaternion (+90 degrees, not y')
+        const yRotation = new THREE.Quaternion().setFromAxisAngle(
+            new THREE.Vector3(0, 1, 0),
+            Math.PI / 2
+        );
+
+        this.cubieList.forEach(group => {
+            const { x, y, z } = group.userData.gridPos;
+
+            // Apply y' rotation to grid position (rotate position around Y axis)
+            // y' means -90 degrees around Y: (x, y, z) -> (z, y, -x)
+            const rotatedX = z;
+            const rotatedY = y;
+            const rotatedZ = -x;
+
+            const key = `${x},${y},${z}`;
+            const cubieData = cubies.get(key);
+
+            if (!cubieData) {
+                console.warn(`[TheChildMod] Missing precomputed data for cubie ${key}`);
+                return;
+            }
+
+            // Create geometry from pre-computed data
+            const geometry = new THREE.BufferGeometry();
+
+            geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(cubieData.attributes.position), 3));
+            geometry.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(cubieData.attributes.normal), 3));
+
+            if (cubieData.attributes.uv) {
+                geometry.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(cubieData.attributes.uv), 2));
+            }
+
+            if (cubieData.attributes.color) {
+                geometry.setAttribute('color', new THREE.BufferAttribute(new Float32Array(cubieData.attributes.color), 3));
+            }
+
+            // Create mesh
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.position.set(-x * CUBE_SIZE, -y * CUBE_SIZE, -z * CUBE_SIZE);
+
+            // Set group position using rotated coordinates and apply rotation
+            group.position.set(rotatedX * S, rotatedY * S, rotatedZ * S);
+            group.quaternion.copy(yRotation);
+            group.updateMatrix();
+            group.updateMatrixWorld(true);
+
+            // Remove existing meshes (but keep hitbox and outline)
+            for (let i = group.children.length - 1; i >= 0; i--) {
+                const child = group.children[i];
+                if (!child.userData.isPlaceholder && !child.userData.isHitBox && !child.userData.isTouchTargetOutline) {
+                    if (child.geometry) child.geometry.dispose();
+                    group.remove(child);
+                }
+            }
+
+            group.add(mesh);
+        });
+
+        this.isLoaded = true;
+
+        if (state.renderer && state.scene && state.camera) {
+            state.renderer.render(state.scene, state.camera);
         }
     }
 
@@ -247,10 +591,10 @@ export class TheChildMod extends StandardCube {
         this.cubieList.forEach(group => {
             const { x, y, z } = group.userData.gridPos;
 
-            // Remove existing mesh if any (except placeholder)
+            // Remove existing mesh if any (except placeholder, hitbox, and outline)
             for (let i = group.children.length - 1; i >= 0; i--) {
                 const child = group.children[i];
-                if (!child.userData.isPlaceholder && !child.userData.isHitBox) {
+                if (!child.userData.isPlaceholder && !child.userData.isHitBox && !child.userData.isTouchTargetOutline) {
                     if (child.geometry) child.geometry.dispose();
                     group.remove(child);
                 }
@@ -258,7 +602,20 @@ export class TheChildMod extends StandardCube {
 
             // Initial Position Set (Only if not loaded)
             if (!this.isLoaded) {
-                group.position.set(x * S_new, y * S_new, z * S_new);
+                // Apply y' rotation to grid position (rotate position around Y axis)
+                // y' means -90 degrees around Y: (x, y, z) -> (z, y, -x)
+                const rotatedX = z;
+                const rotatedY = y;
+                const rotatedZ = -x;
+
+                // y rotation quaternion (+90 degrees)
+                const yRotation = new THREE.Quaternion().setFromAxisAngle(
+                    new THREE.Vector3(0, 1, 0),
+                    Math.PI / 2
+                );
+
+                group.position.set(rotatedX * S_new, rotatedY * S_new, rotatedZ * S_new);
+                group.quaternion.copy(yRotation);
                 group.updateMatrix();
                 group.updateMatrixWorld(true);
             }
@@ -487,25 +844,29 @@ export class TheChildMod extends StandardCube {
 
     updateTheChildParams(params) {
         try {
-            const { scale, rotation, spacing, offset, roughness, metalness, normalScale, outerScale, filletRadius } = params;
+            const { spacing, showTouchTargets, touchTargetScale, roughness, metalness, normalScale } = params;
 
-            const geomChanged = (scale !== undefined && scale !== this.currentScale) ||
-                (rotation !== undefined && rotation !== this.currentRotation) ||
-                (spacing !== undefined && spacing !== this.currentSpacing) ||
-                (offset && (offset.x !== this.currentOffset?.x || offset.y !== this.currentOffset?.y || offset.z !== this.currentOffset?.z)) ||
-                (outerScale !== undefined && outerScale !== this.currentOuterScale) ||
-                (filletRadius !== undefined && filletRadius !== this.currentFilletRadius);
+            // Handle spacing changes (requires geometry rebuild)
+            const spacingChanged = spacing !== undefined && spacing !== this.currentSpacing;
 
-            if (scale !== undefined && !isNaN(scale)) this.currentScale = scale;
-            if (rotation !== undefined && !isNaN(rotation)) this.currentRotation = rotation;
-            if (offset) this.currentOffset = { ...offset };
+            // Update material properties
             if (roughness !== undefined && !isNaN(roughness)) this.currentRoughness = roughness;
             if (metalness !== undefined && !isNaN(metalness)) this.currentMetalness = metalness;
             if (normalScale !== undefined && !isNaN(normalScale)) this.currentNormalScale = normalScale;
-            if (outerScale !== undefined && !isNaN(outerScale)) this.currentOuterScale = outerScale;
-            if (filletRadius !== undefined && !isNaN(filletRadius)) this.currentFilletRadius = filletRadius;
 
-            if (geomChanged) {
+            // Handle touch target visibility
+            if (showTouchTargets !== undefined && showTouchTargets !== this.showTouchTargets) {
+                this.showTouchTargets = showTouchTargets;
+                this.updateTouchTargetVisibility();
+            }
+
+            // Handle touch target scale
+            if (touchTargetScale !== undefined && !isNaN(touchTargetScale) && touchTargetScale !== this.touchTargetScale) {
+                this.touchTargetScale = touchTargetScale;
+                this.updateTouchTargetScale();
+            }
+
+            if (spacingChanged) {
                 if (this.originalGeometry) {
                     this.processSTL(this.originalGeometry, this.currentScale, spacing, this.currentOffset);
                 }
@@ -540,6 +901,39 @@ export class TheChildMod extends StandardCube {
             });
         } catch (e) {
             console.error('Error in updateMaterialOnly:', e);
+        }
+    }
+
+    updateTouchTargetVisibility() {
+        this.cubieList.forEach(group => {
+            if (group.userData.outline) {
+                group.userData.outline.material.visible = this.showTouchTargets;
+            }
+        });
+
+        // Trigger a render update
+        if (state.renderer && state.scene && state.camera) {
+            state.renderer.render(state.scene, state.camera);
+        }
+    }
+
+    updateTouchTargetScale() {
+        this.cubieList.forEach(group => {
+            if (group.userData.hitBox && group.userData.outline) {
+                const scale = this.touchTargetScale;
+
+                // Update hitbox scale
+                group.userData.hitBox.scale.set(scale, scale, scale);
+
+                // Update outline scale (keep it slightly larger than hitbox for visibility)
+                const outlineScale = scale * 1.01;
+                group.userData.outline.scale.set(outlineScale, outlineScale, outlineScale);
+            }
+        });
+
+        // Trigger a render update
+        if (state.renderer && state.scene && state.camera) {
+            state.renderer.render(state.scene, state.camera);
         }
     }
 
@@ -613,11 +1007,22 @@ export class TheChildMod extends StandardCube {
 
     getBaseSolvedState() {
         const state = {};
-        const identity = new THREE.Quaternion();
+        // y rotation quaternion (+90 degrees)
+        const yRotation = new THREE.Quaternion().setFromAxisAngle(
+            new THREE.Vector3(0, 1, 0),
+            Math.PI / 2
+        );
+
         for (const group of this.cubieList) {
             const { x, y, z } = group.userData.gridPos;
+
+            // Apply y' rotation to position: (x, y, z) -> (z, y, -x)
+            const rotatedX = z;
+            const rotatedY = y;
+            const rotatedZ = -x;
+
             const key = `${x},${y},${z} `;
-            state[key] = { pos: { x, y, z }, quat: identity };
+            state[key] = { pos: { x: rotatedX, y: rotatedY, z: rotatedZ }, quat: yRotation.clone() };
         }
         return state;
     }

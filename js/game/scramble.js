@@ -10,7 +10,7 @@ import { soundManager } from '../core/sound.js';
 
 export async function startScramble() {
     if (state.isAnimating) return;
-    hardReset(true); // Keep camera on scramble
+    await hardReset(true); // Keep camera on scramble - wait for geometry to load
     state.isScrambling = true;
     state.scrambleSequence = [];
     state.hasBeenScrambled = true;
@@ -49,7 +49,7 @@ export async function startScramble() {
 
 
 
-export function handleResetClick() {
+export async function handleResetClick() {
     // Prevent reset during victory animation (or single moves), but allow interrupting auto-solve/scramble
     if (state.isAnimating && !state.isAutoSolving && !state.isScrambling) {
         return;
@@ -57,13 +57,13 @@ export function handleResetClick() {
 
     if (state.isAutoSolving || state.isScrambling || (state.moveHistory.length === 0 && state.scrambleSequence.length === 0)) {
         soundManager.playResetSound();
-        hardReset(true); // Keep camera on manual reset
+        await hardReset(true); // Keep camera on manual reset
     } else {
         startReverseSolve();
     }
 }
 
-export function startReverseSolve() {
+export async function startReverseSolve() {
     stopTimer();
     state.isAutoSolving = true;
 
@@ -73,7 +73,7 @@ export function startReverseSolve() {
     const N = movesToUndo.length;
     if (N === 0) {
         state.isAutoSolving = false;
-        hardReset(true);
+        await hardReset(true);
         return;
     }
 
@@ -152,16 +152,16 @@ export function startReverseSolve() {
         queueMove(axis, dir, duration, sliceVal);
     });
 
-    const checkInterval = setInterval(() => {
+    const checkInterval = setInterval(async () => {
         if (state.moveQueue.length === 0 && !state.isAnimating) {
             state.isAutoSolving = false;
-            hardReset(true);
+            await hardReset(true);
             clearInterval(checkInterval);
         }
     }, 100);
 }
 
-export function hardReset(keepCamera = false) {
+export async function hardReset(keepCamera = false) {
     stopTimer();
     state.isInspection = false;
 
@@ -188,7 +188,7 @@ export function hardReset(keepCamera = false) {
     state.pivot.rotation.set(0, 0, 0);
     state.pivot.position.set(0, 0, 0);
 
-    createCube();
+    await createCube();
 
     if (!keepCamera) {
         adjustCameraForCubeSize();
