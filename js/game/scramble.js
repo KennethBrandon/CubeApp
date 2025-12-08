@@ -120,7 +120,6 @@ export async function startReverseSolve() {
         let axis = '';
         let sliceVal = null;
         const S = CUBE_SIZE + SPACING;
-        const maxIndex = (state.cubeSize - 1) / 2;
 
         let duration = SCRAMBLE_SPEED;
         if (useEasing) {
@@ -138,6 +137,10 @@ export async function startReverseSolve() {
         if (['R', 'L'].includes(char.toUpperCase())) axis = 'x';
         else if (['U', 'D'].includes(char.toUpperCase())) axis = 'y';
         else if (['F', 'B'].includes(char.toUpperCase())) axis = 'z';
+
+        // Calculate maxIndex based on the specific axis dimension (fixes cuboid bug)
+        const dims = state.activeDimensions || state.cubeDimensions;
+        const maxIndex = (dims[axis] - 1) / 2;
 
         let layerNum = prefix ? parseInt(prefix) : 1;
         let sliceIndex = 0;
