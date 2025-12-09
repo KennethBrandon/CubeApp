@@ -177,18 +177,20 @@
             class="bg-gray-800 p-6 sm:p-8 rounded-2xl border-2 border-green-500 text-center shadow-2xl max-w-md w-full transform transition-all scale-100">
             <div class="text-6xl mb-4 animate-bounce">🎉</div>
             <h2 class="text-3xl sm:text-4xl font-bold text-white mb-2">SOLVED!</h2>
+            <h3 id="victory-puzzle-type" class="text-xl text-blue-400 font-bold mb-2"></h3>
+            <h4 id="victory-rank-display" class="text-lg text-yellow-400 font-bold mb-4 font-mono h-6"></h4>
             <p class="text-gray-300 mb-2">Time: <span id="final-time"
                     class="text-green-400 font-mono font-bold text-xl"></span></p>
 
             <div class="bg-black/30 p-4 rounded-xl mb-4 border border-gray-700">
                 <label class="block text-left text-xs text-gray-400 mb-1 uppercase font-bold">Enter Name for
                     Leaderboard</label>
-                <div class="flex gap-2">
+                <div class="flex flex-wrap gap-2">
                     <input type="text" id="player-name"
-                        class="flex-1 bg-gray-700 text-white px-3 py-2 rounded border border-gray-600 focus:outline-none focus:border-blue-500"
+                        class="flex-1 min-w-[120px] bg-gray-700 text-white px-3 py-2 rounded border border-gray-600 focus:outline-none focus:border-blue-500"
                         placeholder="Your Name" maxlength="15">
                     <button id="btn-submit-score"
-                        class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-4 py-2 rounded transition">
+                        class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-4 py-2 rounded transition whitespace-nowrap flex-shrink-0">
                         Submit
                     </button>
                 </div>

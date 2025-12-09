@@ -197,4 +197,49 @@ export async function submitScore(name, timeMs, timeString, scramble, solution) 
     }
 }
 
+export async function getPotentialRank(puzzleType, timeMs) {
+    if (!state.currentUser) {
+        console.log("getPotentialRank: No user logged in");
+        return null;
+    }
+
+    console.log(`getPotentialRank: Checking rank for type=${puzzleType}, time=${timeMs}`);
+
+    const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'leaderboard');
+
+    try {
+        // Querying with multiple where clauses (puzzleType == X AND timeMs < Y) requires a composite index in Firestore.
+        // To avoid forcing the user to create an index, we will fetch all scores for this puzzle type
+        // and filter client-side. This is safe as long as the leaderboard size per puzzle is reasonable (< a few thousand).
+
+        const { query, where, getDocs } = await import('firebase/firestore');
+
+        const q = query(
+            colRef,
+            where("puzzleType", "==", puzzleType)
+        );
+
+        console.log("getPotentialRank: Fetching docs...");
+        const snapshot = await getDocs(q);
+        console.log(`getPotentialRank: Fetched ${snapshot.size} docs for puzzleType ${puzzleType}`);
+
+        // Count how many are strictly faster (lower timeMs)
+        let betterScoresCount = 0;
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            if (data.timeMs < timeMs) {
+                betterScoresCount++;
+            }
+        });
+
+        console.log(`getPotentialRank: Found ${betterScoresCount} better scores. Rank = ${betterScoresCount + 1}`);
+
+        return betterScoresCount + 1;
+
+    } catch (e) {
+        console.error("Error calculating rank:", e);
+        return null; // UI handles null as "Unknown" or similar, but previously "Rank 1". We should fix UI too.
+    }
+}
+
 export { leaderboardData };

@@ -42,6 +42,97 @@ export function showWinModal() {
         list.innerHTML = `<p class="font-bold mb-2">Your Solution (${state.moveHistory.length} moves):</p>` + state.moveHistory.join(", ");
     }
 
+    // Determine readable puzzle name and ID for querying
+    let puzzleName = "Unknown Puzzle";
+    let puzzleTypeId = null; // To check rank
+
+    if (state.activePuzzle) {
+        const type = state.activePuzzle.constructor.name;
+
+        // Helper to format dims
+        const getDimsName = () => {
+            if (state.cubeDimensions) {
+                const dims = [state.cubeDimensions.x, state.cubeDimensions.y, state.cubeDimensions.z].sort((a, b) => b - a);
+                return `${dims[0]}x${dims[1]}x${dims[2]}`;
+            }
+            return null;
+        };
+
+        // Standard Cube logic must also check if it's actually cubic dimensions
+        // because StandardCube class is used for generic cuboids too.
+        if (type === 'StandardCube') {
+            const dims = state.cubeDimensions;
+            if (dims && (dims.x !== dims.y || dims.y !== dims.z || dims.x !== dims.z)) {
+                // It is a cuboid
+                const name = getDimsName();
+                puzzleName = name;
+                puzzleTypeId = name;
+            } else {
+                // It is a standard N x N x N
+                puzzleName = `${state.cubeSize}x${state.cubeSize}x${state.cubeSize}`;
+                puzzleTypeId = puzzleName;
+            }
+        } else if (type === 'MirrorCube') {
+            // Mirror Cube can also be non-cubic in theory if we allowed it, 
+            // but usually it's N x N x N. 
+            // However, our puzzle selector supports 'mirror-2x2x3'.
+            // Let's check dimensions just in case.
+            const dims = state.cubeDimensions;
+            if (dims && (dims.x !== dims.y || dims.y !== dims.z || dims.x !== dims.z)) {
+                const name = getDimsName();
+                puzzleName = `${name} Mirror`;
+                puzzleTypeId = `mirror-${name}`;
+            } else {
+                puzzleName = `${state.cubeSize}x${state.cubeSize}x${state.cubeSize} Mirror`;
+                puzzleTypeId = `mirror-${state.cubeSize}x${state.cubeSize}x${state.cubeSize}`;
+            }
+        } else if (type === 'Molecube') {
+            puzzleName = "Molecube";
+            puzzleTypeId = 'molecube';
+        } else if (type === 'VoidCube') {
+            puzzleName = "Void Cube";
+            puzzleTypeId = 'voidcube';
+        } else if (type === 'AcornsMod') {
+            puzzleName = "Acorns Mod";
+            puzzleTypeId = 'acorns';
+        } else if (type === 'TheChildMod') {
+            puzzleName = "The Child";
+            puzzleTypeId = 'thechild';
+        } else {
+            // Fallback for generic cuboids or other types
+            const name = getDimsName();
+            if (name) {
+                puzzleName = name;
+                puzzleTypeId = name;
+            }
+        }
+    }
+
+    const typeEl = document.getElementById('victory-puzzle-type');
+    if (typeEl) typeEl.textContent = puzzleName;
+
+    // Check Rank
+    const rankEl = document.getElementById('victory-rank-display');
+    if (rankEl) {
+        rankEl.textContent = "Checking Rank...";
+        console.log("showWinModal: Requesting rank check...");
+        import('../leaderboard/firebase.js').then(module => {
+            module.getPotentialRank(puzzleTypeId, state.finalTimeMs).then(rank => {
+                console.log(`showWinModal: Received rank: ${rank}`);
+                if (rank) {
+                    rankEl.textContent = `You are Rank #${rank}!`;
+                } else {
+                    // If fetch fails or no internet, do not misleadingly say Rank #1
+                    rankEl.textContent = "";
+                }
+                // Add fun animation
+                rankEl.classList.remove('animate-pulse');
+                void rankEl.offsetWidth; // trigger reflow
+                rankEl.classList.add('animate-pulse');
+            });
+        });
+    }
+
     overlayManager.open('solved-modal');
 
     state.isGameActive = false;
