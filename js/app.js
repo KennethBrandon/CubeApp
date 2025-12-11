@@ -7,6 +7,7 @@ import { setupEventListeners as setupInteractionListeners } from './game/interac
 import { setupUIEventListeners } from './ui/events.js';
 import { initAuth } from './leaderboard/firebase.js';
 import { togglePanel, openDetailModal, enableDebugButton } from './ui/ui.js';
+import { overlayManager } from './ui/overlayManager.js';
 import { state } from './shared/state.js';
 
 import { StandardCube } from './puzzles/StandardCube.js';
@@ -18,6 +19,7 @@ import { thumbnailGenerator } from './utils/ThumbnailGenerator.js';
 // Expose functions to window for UI interactions (HTML onclick attributes)
 window.togglePanel = togglePanel;
 window.openDetailModal = openDetailModal;
+window.overlayManager = overlayManager;
 window.generateThumbnails = () => thumbnailGenerator.generateAll();
 
 

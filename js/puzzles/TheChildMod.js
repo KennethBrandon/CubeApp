@@ -136,13 +136,32 @@ export class TheChildMod extends StandardCube {
             });
 
             // Animate the transition
-            let frame = 0;
-            const maxFrames = 10;
-            const animate = () => {
-                if (frame < maxFrames) {
-                    fadeOutOld();
-                    fadeInNew();
-                    frame++;
+            const duration = 100; // ms
+            const startTime = performance.now();
+
+            const animate = (time) => {
+                const elapsed = time - startTime;
+                let progress = elapsed / duration;
+                if (progress > 1) progress = 1;
+
+                // Update opacities based on progress
+                oldCubies.forEach(group => {
+                    group.children.forEach(child => {
+                        if (child.material && !child.userData.isHitBox) {
+                            child.material.opacity = 1 - progress;
+                        }
+                    });
+                });
+
+                this.cubieList.forEach(group => {
+                    group.children.forEach(child => {
+                        if (child.material && !child.userData.isHitBox && !child.userData.isPlaceholder) {
+                            child.material.opacity = progress;
+                        }
+                    });
+                });
+
+                if (progress < 1) {
                     requestAnimationFrame(animate);
                 } else {
                     // Clean up old cubies after fade out
@@ -160,23 +179,24 @@ export class TheChildMod extends StandardCube {
                         if (c.parent) c.parent.remove(c);
                     });
 
-                    // Reset opacity to 1 and disable transparency for performance
+                    // Finalize new cubies opacity
                     this.cubieList.forEach(group => {
                         group.children.forEach(child => {
-                            if (child.material && !child.userData.isHitBox && !child.userData.isPlaceholder) {
+                            if (child.material && !child.userData.isHitBox) {
                                 child.material.opacity = 1;
                                 child.material.transparent = false;
                             }
                         });
                     });
+
+                    state.isAnimating = false;
                 }
             };
-
             requestAnimationFrame(animate);
+        } else {
+            // Geometry is now fully loaded, allow moves to execute if no fade transition
+            state.isAnimating = false;
         }
-
-        // Geometry is now fully loaded, allow moves to execute
-        state.isAnimating = false;
     }
 
     createPlaceholders() {

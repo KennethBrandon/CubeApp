@@ -99,12 +99,26 @@ export class ThumbnailGenerator {
         // Mirror
         puzzleCategories.mirror.forEach(val => this.queue.push({ type: 'mirror', value: val, label: val }));
 
-        // Mods
+        // Mods (hardcoded)
         puzzleCategories.mods.forEach(val => this.queue.push({ type: 'mods', value: val, label: val }));
+
+        // STL Puzzles from registry
+        try {
+            const registryResponse = await fetch('assets/puzzles/registry.json?t=' + Date.now());
+            if (registryResponse.ok) {
+                const registry = await registryResponse.json();
+                if (registry && registry.length > 0) {
+                    registry.forEach(puzzle => {
+                        this.queue.push({ type: 'mods', value: `stl:${puzzle.id}`, label: puzzle.name });
+                    });
+                }
+            }
+        } catch (error) {
+            console.warn('Could not load STL puzzle registry:', error);
+        }
 
         console.log(`Starting generation of ${this.queue.length} thumbnails...`);
 
-        // Hide UI for clean screenshots
         // Hide UI for clean screenshots
         const uiIds = ['puzzle-selector-modal', 'leaderboard-modal', 'debug-modal'];
         uiIds.forEach(id => {
@@ -135,8 +149,37 @@ export class ThumbnailGenerator {
         // We'll use the existing changePuzzle but we need to ensure we wait enough time for it to settle.
         changePuzzle(item.value, false, null, false, true);
 
-        // Wait for render (shorter wait now)
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // For puzzles with async loading (STL puzzles and mods like TheChild), 
+        // we need to wait for the async loading to complete
+        // Check if this puzzle loads asynchronously
+        const isAsyncPuzzle = String(item.value).startsWith('stl:') || item.value === 'thechild';
+
+        if (isAsyncPuzzle) {
+            // Wait for state.isAnimating to become false (indicates loading is complete)
+            // with a maximum timeout of 10 seconds
+            const maxWaitTime = 10000; // 10 seconds
+            const pollInterval = 100; // Check every 100ms
+            let waited = 0;
+
+            console.log(`Waiting for async puzzle to load: ${item.value}`);
+
+            while (state.isAnimating && waited < maxWaitTime) {
+                await new Promise(resolve => setTimeout(resolve, pollInterval));
+                waited += pollInterval;
+            }
+
+            if (waited >= maxWaitTime) {
+                console.warn(`Timeout waiting for async puzzle to load: ${item.value}`);
+            } else {
+                console.log(`Async puzzle loaded after ${waited}ms: ${item.value}`);
+            }
+
+            // Extra safety buffer to ensure rendering is complete
+            await new Promise(resolve => setTimeout(resolve, 500));
+        } else {
+            // For standard puzzles, the original 500ms wait is sufficient
+            await new Promise(resolve => setTimeout(resolve, 500));
+        }
 
         // Handle Transparency
         const originalBackground = state.scene.background;

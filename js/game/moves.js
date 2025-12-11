@@ -405,6 +405,7 @@ const keyAliases = {
 
 export function onKeyUp(event) {
     const k = event.key;
+    if (!k) return;
     state.activeKeys.delete(k);
     state.activeKeys.delete(k.toLowerCase());
     state.activeKeys.delete(k.toUpperCase());

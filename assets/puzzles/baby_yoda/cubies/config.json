@@ -1,0 +1,27 @@
+{
+  "id": "draft_1765415398281",
+  "name": "baby yoda detailed",
+  "dimensions": {
+    "x": 2,
+    "y": 3,
+    "z": 2
+  },
+  "transform": {
+    "rotation": {
+      "x": -90,
+      "y": 0,
+      "z": 45
+    },
+    "scale": 0.05,
+    "offset": {
+      "x": -0.19,
+      "y": 0.04,
+      "z": -0.19
+    }
+  },
+  "cut": {
+    "filletRadius": 0.14
+  },
+  "format": "binary_v1",
+  "timestamp": "2025-12-11T01:18:46.620Z"
+}

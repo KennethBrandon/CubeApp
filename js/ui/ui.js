@@ -98,6 +98,16 @@ export function showWinModal() {
         } else if (type === 'TheChildMod') {
             puzzleName = "The Child";
             puzzleTypeId = 'thechild';
+        } else if (type === 'StlPuzzleMod' || state.activePuzzle.puzzleId) {
+            // STL Custom Puzzle
+            const id = state.activePuzzle.puzzleId;
+            puzzleTypeId = id;
+            // Try to find name in registry or global cache
+            if (window.puzzleRegistry && window.puzzleRegistry[id]) {
+                puzzleName = window.puzzleRegistry[id];
+            } else {
+                puzzleName = "Custom Puzzles";
+            }
         } else {
             // Fallback for generic cuboids or other types
             const name = getDimsName();
@@ -204,7 +214,7 @@ export function renderLeaderboardUI(leaderboardData, puzzleSize = 3) {
 
     // Check Mods
     if (!isFound) {
-        if (puzzleCategories.mods.includes(p)) {
+        if (puzzleCategories.mods.includes(p) || (state.customPuzzles && state.customPuzzles.some(entry => entry.id === p))) {
             category = 'mods';
             isFound = true;
         }
@@ -225,9 +235,29 @@ export function renderLeaderboardUI(leaderboardData, puzzleSize = 3) {
 
     // Update title to show current puzzle
     if (title) {
-        const puzzleLabel = typeof puzzleSize === 'string'
+        let puzzleLabel = typeof puzzleSize === 'string'
             ? puzzleSize
             : `${puzzleSize}x${puzzleSize}`;
+
+        // Map built-in mod puzzle IDs to display names
+        const modNames = {
+            'molecube': 'Molecube',
+            'voidcube': 'Void Cube',
+            'acorns': 'Acorns Mod',
+            'thechild': 'The Child'
+        };
+
+        if (modNames[puzzleSize]) {
+            puzzleLabel = modNames[puzzleSize];
+        }
+        // Check if it's a custom puzzle and get the display name
+        else if (state.customPuzzles) {
+            const customEntry = state.customPuzzles.find(p => p.id === puzzleSize);
+            if (customEntry) {
+                puzzleLabel = customEntry.name;
+            }
+        }
+
         title.textContent = `Top Solvers - ${puzzleLabel}`;
     }
 

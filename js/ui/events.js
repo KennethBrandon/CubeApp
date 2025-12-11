@@ -27,6 +27,7 @@ export function setupUIEventListeners() {
     window.addEventListener('keyup', onKeyUp);
 
     setupPuzzleSelector();
+    setupLeaderboardUI();
 
     document.getElementById('btn-scramble').addEventListener('click', () => {
         gtag('event', 'scramble_click');

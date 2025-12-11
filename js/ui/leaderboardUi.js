@@ -7,8 +7,8 @@ import { isOnline } from '../utils/network.js';
 export function setupLeaderboardUI() {
     // Category switching
     document.querySelectorAll('.leaderboard-category-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            showLeaderboardCategory(e.target.dataset.category);
+        btn.addEventListener('click', () => {
+            showLeaderboardCategory(btn.dataset.category);
         });
     });
 
@@ -57,6 +57,19 @@ export function setupLeaderboardUI() {
     // Actually, dispatching 'offline' on window might be tricky if the browser overrides it.
     // Let's listen for 'network-status-change' as a safe bet.
     window.addEventListener('network-status-change', handleOnlineStatus);
+
+    // Fetch registry for custom puzzles
+    fetch('assets/puzzles/registry.json')
+        .then(res => res.json())
+        .then(registry => {
+            state.customPuzzles = registry;
+            // Re-render chips if we are already seeing them
+            const activeCategory = document.querySelector('.leaderboard-category-btn.bg-blue-600')?.dataset.category;
+            if (activeCategory) {
+                renderPuzzleChips(activeCategory);
+            }
+        })
+        .catch(err => console.warn('[Leaderboard] Failed to load registry:', err));
 }
 
 
@@ -114,10 +127,15 @@ export function openLeaderboardModal() {
                 if (puzzleCategories.cuboids.includes(p)) {
                     initialCategory = 'cuboids';
                 } else {
-                    initialCategory = 'custom';
+                    // Check Mods (if it's not a cuboid, could it be a custom mod with 'x' in its ID?)
+                    if (puzzleCategories.mods.includes(p) || (state.customPuzzles && state.customPuzzles.some(entry => entry.id === p))) {
+                        initialCategory = 'mods';
+                    } else {
+                        initialCategory = 'custom';
+                    }
                 }
             }
-        } else if (p === 'molecube' || p === 'voidcube' || p === 'acorns' || p === 'thechild') {
+        } else if (p === 'molecube' || p === 'voidcube' || p === 'acorns' || p === 'thechild' || (state.customPuzzles && state.customPuzzles.some(entry => entry.id === p))) {
             initialCategory = 'mods';
         } else {
             // Number (Standard or Big)
@@ -300,6 +318,13 @@ function renderPuzzleChips(category, autoSelect = false, smooth = true) {
             knownSorted.add(mod);
         });
 
+        // Add dynamic mods from registry to 'mods' category logic
+        // Wait, this block is for 'custom' category.
+        // If we want them in 'mods', we should add them to 'mods' logic below.
+        if (state.customPuzzles) {
+            state.customPuzzles.forEach(p => knownSorted.add(p.id));
+        }
+
         // puzzles is defined in outer scope
         // Filter available types
         const available = state.availablePuzzleTypes || new Set();
@@ -324,7 +349,7 @@ function renderPuzzleChips(category, autoSelect = false, smooth = true) {
             const currentNormalized = currentIsMirror ? `mirror-${currentSortedBase}` : currentSortedBase;
 
             if (!knownSorted.has(currentNormalized) && !puzzles.includes(current)) {
-                console.log(`[LB] Adding current ${current} to custom list`);
+
                 puzzles.push(current);
             }
         }
@@ -365,6 +390,17 @@ function renderPuzzleChips(category, autoSelect = false, smooth = true) {
     } else {
         puzzles = puzzleCategories[category] || [];
 
+        // If category is mods, append custom puzzles from registry
+        if (category === 'mods' && state.customPuzzles) {
+            // Create a new array to avoid mutating the original export
+            puzzles = [...puzzles];
+            state.customPuzzles.forEach(p => {
+                if (!puzzles.includes(p.id)) {
+                    puzzles.push(p.id);
+                }
+            });
+        }
+
         // Ensure current selection is in the list (e.g. for Mirror if we add dynamic mirrors later)
         const current = String(state.selectedLeaderboardPuzzle);
         if (category === 'mirror' && current.startsWith('mirror-') && !puzzles.includes(current)) {
@@ -397,7 +433,16 @@ function renderPuzzleChips(category, autoSelect = false, smooth = true) {
                     else if (val === 'voidcube') label = 'Void Cube';
                     else if (val === 'acorns') label = 'Acorns Mod';
                     else if (val === 'thechild') label = 'The Child';
-                    else label = val;
+                    if (val === 'molecube') label = 'Molecube';
+                    else if (val === 'voidcube') label = 'Void Cube';
+                    else if (val === 'acorns') label = 'Acorns Mod';
+                    else if (val === 'thechild') label = 'The Child';
+                    else {
+                        // Check registry
+                        const entry = state.customPuzzles && state.customPuzzles.find(p => p.id === val);
+                        if (entry) label = entry.name;
+                        else label = val;
+                    }
                 } else if (category === 'custom') {
                     if (val.startsWith('mirror-')) {
                         label = val.replace('mirror-', '') + ' Mirror';

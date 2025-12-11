@@ -49,8 +49,8 @@ export function adjustCameraForCubeSize(relativeZoom = null) {
     }
 
     // Calculate dynamic zoom limits
-    // Max zoom: cube takes up 95% of smallest dimension
-    const maxZoomCoverage = 0.95;
+    // Max zoom: cube takes up 300% of smallest dimension (allows zooming in very tight)
+    const maxZoomCoverage = 1.5; // Increased from 0.95 to allow tighter zoom
     let maxZoomDistance;
     if (width <= height) {
         maxZoomDistance = apparentCubeSize / (2 * Math.tan(fovRadians / 2) * aspectRatio * maxZoomCoverage);

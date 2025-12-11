@@ -5,6 +5,8 @@ import { Molecube } from '../puzzles/Molecube.js';
 import { VoidCube } from '../puzzles/VoidCube.js';
 import { AcornsMod } from '../puzzles/AcornsMod.js';
 import { TheChildMod } from '../puzzles/TheChildMod.js';
+
+import { StlPuzzleMod } from '../puzzles/StlPuzzleMod.js';
 import { hardReset } from '../game/scramble.js';
 import { getMirrorHeight, toggleMirrors } from '../core/environment.js';
 import { adjustCameraForCubeSize } from '../core/controls.js';
@@ -36,6 +38,9 @@ export function setupPuzzleSelector() {
 
     // Category switching and Carousel listeners are now attached lazily in openPuzzleSelector
     // when the modal is created.
+
+    // Start fetching registry immediately (for correct titles on load)
+    fetchRegistry();
 
     // Initial render of options is also deferred.
     // renderPuzzleOptions();
@@ -153,15 +158,22 @@ function updateSidebarActive(category) {
         setTimeout(() => {
             initPreview('custom-puzzle-preview');
             // Trigger initial update based on current slider values
-            const d1 = parseInt(document.getElementById('custom-modal-d1').value);
-            const d2 = parseInt(document.getElementById('custom-modal-d2').value);
-            const d3 = parseInt(document.getElementById('custom-modal-d3').value);
-            const isMirror = document.getElementById('custom-modal-mirror').checked;
+            const d1Elem = document.getElementById('custom-modal-d1');
+            const d2Elem = document.getElementById('custom-modal-d2');
+            const d3Elem = document.getElementById('custom-modal-d3');
+            const mirrorElem = document.getElementById('custom-modal-mirror');
 
-            const dims = [d1, d2, d3].sort((a, b) => b - a);
-            const newDims = { x: dims[1], y: dims[0], z: dims[2] };
+            if (d1Elem && d2Elem && d3Elem && mirrorElem) {
+                const d1 = parseInt(d1Elem.value);
+                const d2 = parseInt(d2Elem.value);
+                const d3 = parseInt(d3Elem.value);
+                const isMirror = mirrorElem.checked;
 
-            updatePreview(newDims, isMirror);
+                const dims = [d1, d2, d3].sort((a, b) => b - a);
+                const newDims = { x: dims[1], y: dims[0], z: dims[2] };
+
+                updatePreview(newDims, isMirror);
+            }
         }, 50);
     } else {
         // Optional: Dispose if leaving custom tab to save resources
@@ -318,10 +330,81 @@ function renderPuzzleOptions() {
             if (val === 'molecube') label = 'Molecube';
             if (val === 'voidcube') label = 'Void Cube';
             if (val === 'thechild') label = 'The Child';
+
+            // Only add 'The Child' if it's explicitly strictly hardcoded, 
+            // but we might want to move it to registry later? 
+            // For now, keep hardcoded mods.
+
             const btn = createPuzzleButton(label, val);
             modsContainer.appendChild(btn);
         });
+
+        // Fetch Generic STL Puzzles from Registry
+        if (window.puzzleRegistry) {
+            // Already fetched, just render
+            renderRegistryButtons(modsContainer);
+        } else {
+            // Should have been started, but if not (or failed), try again or wait?
+            // Actually, fetchRegistry handles the window.puzzleRegistry population.
+            // We can just re-call it or wait.
+            // For simplicity, let's assume it's running. If it's done, 'window.puzzleRegistry' is set.
+            // If it's not done, we might need a callback. 
+            // Let's just call fetchRegistry again which will handle deduping if we implement it, 
+            // or just accept the race for the menu (unlikely to be opened instantly).
+            // Better: check if we have data.
+
+            // Actually, let's just use the same promise if possible, or simpler:
+            // Just try to render from whatever we have. If empty, maybe add a retry or listener?
+            // Since we call fetchRegistry on setup, it should be fast.
+            // Let's make fetchRegistry return a promise we can use here if we want to be robust.
+
+            fetchRegistry().then(() => {
+                renderRegistryButtons(modsContainer);
+            });
+        }
     }
+}
+
+function renderRegistryButtons(container) {
+    if (!window.puzzleRegistry) return;
+    Object.keys(window.puzzleRegistry).forEach(id => {
+        const name = window.puzzleRegistry[id];
+        const val = `stl:${id}`;
+        // Dedup check just in case
+        // (Not strictly necessary if we clear container, which we do)
+        const btn = createPuzzleButton(name, val);
+        container.appendChild(btn);
+    });
+}
+
+function fetchRegistry() {
+    if (window.registryPromise) return window.registryPromise;
+
+    window.registryPromise = fetch('assets/puzzles/registry.json?t=' + Date.now())
+        .then(res => {
+            if (res.ok) return res.json();
+            return [];
+        })
+        .then(registry => {
+            if (registry && registry.length > 0) {
+                // Cache registry for name lookups
+                window.puzzleRegistry = {};
+                registry.forEach(p => {
+                    window.puzzleRegistry[p.id] = p.name;
+                });
+
+                // If current puzzle is STL, update title now that we have names
+                // This handles the "Direct Load" case where title was generic initially
+                const currentVal = state.activePuzzle instanceof StlPuzzleMod ? `stl:${state.activePuzzle.puzzleId}` : null;
+                if (currentVal) {
+                    updatePuzzleButtonText(state.cubeDimensions, false, currentVal);
+                    updatePageTitle(state.cubeDimensions, false, currentVal);
+                }
+            }
+        })
+        .catch(err => console.log('No custom registry found or empty.'));
+
+    return window.registryPromise;
 }
 
 function createPuzzleButton(label, value) {
@@ -354,63 +437,19 @@ function createPuzzleIcon(value) {
     const container = document.createElement('div');
     container.className = "w-16 h-16 flex items-center justify-center bg-gray-800 rounded-lg overflow-hidden border border-gray-600";
 
-    // Construct filename using helper
-    // Note: getPuzzleIconPath is exported but not imported here? 
-    // Wait, getPuzzleIconPath is defined in THIS file at line 242 (in previous view it was exported).
-    // Let me check if getPuzzleIconPath is available.
-    // In the current view of puzzleSelector.js, getPuzzleIconPath is NOT defined/exported in the file content I just read?
-    // Let me check the file content again.
-
-    // Ah, I see `createPuzzleIcon` at line 224.
-    // I DO NOT see `getPuzzleIconPath` in the file content I just read (lines 1-431).
-    // Wait, looking at the previous `view_file` output for `puzzleSelector.js` (Step 31), `getPuzzleIconPath` WAS there at line 242.
-    // In the NEW `view_file` output (Step 147), `getPuzzleIconPath` is MISSING?
-    // Let me check the end of the file.
-    // Step 147 shows lines 1-431. The file ends at line 431.
-    // The `createPuzzleIcon` function is at line 224.
-    // `changePuzzle` is at 248.
-    // It seems `getPuzzleIconPath` is GONE from the file entirely?
-
-    // If `getPuzzleIconPath` is missing, I need to restore it or implement the logic inline.
-    // The original code in `createPuzzleIcon` (lines 235) uses:
-    // `img.src = 'assets/icons/puzzle-${value}.png';`
-
-    // It seems the file was reverted to a state BEFORE `getPuzzleIconPath` was even extracted?
-    // Or maybe I am misremembering.
-
-    // Let's look at `leaderboardUi.js` imports.
-    // Line 1: `import { puzzleCategories } from './puzzleSelector.js';`
-    // It does NOT import `getPuzzleIconPath`.
-
-    // Okay, so I need to implement the logic to determine if it's custom.
-    // Or re-introduce `getPuzzleIconPath`.
-
-    // Let's re-introduce `getPuzzleIconPath` and use it.
-
-    // Wait, if I change `createPuzzleIcon`, I can just check if the value implies custom.
-    // But `getPuzzleIconPath` was useful for `leaderboardUi.js` too.
-
-    // Let's check `leaderboardUi.js` again.
-    // It constructs the image src manually: `img.src = 'assets/icons/puzzle-${value}.png';` (Line 276).
-
-    // So `getPuzzleIconPath` is indeed missing from both.
-
-    // I will re-implement `getPuzzleIconPath` in `puzzleSelector.js` and export it.
-    // And update `createPuzzleIcon` to use it.
-
     const img = document.createElement('img');
     img.className = "w-full h-full object-contain";
     img.alt = value;
 
     // Logic to determine path
-    let iconPath = `assets/icons/puzzle-${value}.png`;
+    let iconPath = getPuzzleIconPath(value);
 
-    // Check if custom (simple check for now based on previous logic)
-    // If value is not in standard/big/cuboids/mirror lists...
-    // But `puzzleCategories` is available.
-
-    // Let's just use the helper function I'll add.
-    iconPath = getPuzzleIconPath(value);
+    // If it's a generic custom icon, we can make it look a bit better or just use the icon
+    if (iconPath.includes('puzzle-custom.png')) {
+        // Maybe check if we have a specific image for this STL puzzle?
+        // e.g. assets/puzzles/[id]/icon.png ?
+        // For now, default custom icon
+    }
 
     if (iconPath.includes('puzzle-custom.png')) {
         container.textContent = "🧩";
@@ -442,6 +481,20 @@ export function getPuzzleIconPath(value) {
 
     // Check Mods
     if (puzzleCategories.mods.includes(valStr)) return `assets/icons/puzzle-${valStr}.png`;
+
+    // Check STL Custom
+    if (valStr.startsWith('stl:')) {
+        const id = valStr.split(':')[1];
+        return `assets/puzzles/${id}/thumbnail.png`;
+    }
+
+    // Check if it fits a known custom puzzle ID (from registry)
+    const knownCustom = (state.customPuzzles && state.customPuzzles.find(p => p.id === valStr)) ||
+        (window.puzzleRegistry && window.puzzleRegistry[valStr] ? { id: valStr } : null);
+
+    if (knownCustom) {
+        return `assets/puzzles/${valStr}/thumbnail.png`;
+    }
 
     // Check Standard/Big
     let size = null;
@@ -506,10 +559,16 @@ export function changePuzzle(val, isCustom = false, customDims = null, isMirrorC
             dims.sort((a, b) => b - a);
             newDims = { x: dims[1], y: dims[0], z: dims[2] };
             newSize = dims[0];
+        } else if (String(val).startsWith('stl:')) {
+            const puzzleId = val.split(':')[1];
+            newSize = 3;
+            newDims = { x: 3, y: 3, z: 3 };
+            PuzzleClass = StlPuzzleMod;
         } else {
             newSize = parseInt(val);
             newDims = { x: newSize, y: newSize, z: newSize };
         }
+
     }
 
     // Validation
@@ -524,7 +583,15 @@ export function changePuzzle(val, isCustom = false, customDims = null, isMirrorC
     }
 
     // Check if same puzzle (use constructor to check exact class, not instanceof which matches subclasses)
-    if (!isCustom && state.activePuzzle.constructor === PuzzleClass && newDims.x === state.cubeDimensions.x && newDims.y === state.cubeDimensions.y && newDims.z === state.cubeDimensions.z) return;
+    if (!isCustom && state.activePuzzle.constructor === PuzzleClass && newDims.x === state.cubeDimensions.x && newDims.y === state.cubeDimensions.y && newDims.z === state.cubeDimensions.z) {
+        // Special check for StlPuzzleMod: Must also match puzzleId
+        if (PuzzleClass === StlPuzzleMod) {
+            const newPuzzleId = String(val).split(':')[1];
+            if (state.activePuzzle.puzzleId === newPuzzleId) return;
+        } else {
+            return;
+        }
+    }
 
     // Update Button Text
     updatePuzzleButtonText(newDims, PuzzleClass === MirrorCube, val);
@@ -561,9 +628,15 @@ export function changePuzzle(val, isCustom = false, customDims = null, isMirrorC
             state.cubeWrapper.updateMatrixWorld(true);
         }
 
-        state.activePuzzle = new PuzzleClass({
+        const puzzleConfig = {
             dimensions: newDims
-        });
+        };
+
+        if (PuzzleClass === StlPuzzleMod) {
+            puzzleConfig.puzzleId = String(val).split(':')[1];
+        }
+
+        state.activePuzzle = new PuzzleClass(puzzleConfig);
 
         await hardReset(true);
 
@@ -643,6 +716,8 @@ function updatePuzzleButtonText(dims, isMirror, puzzleType) {
         text = "Acorns Mod";
     } else if (puzzleType === 'thechild') {
         text = "The Child";
+    } else if (String(puzzleType).startsWith('stl:')) {
+        text = getPuzzleName(puzzleType);
     } else if (dims.x === dims.y && dims.y === dims.z) {
         text = `${dims.x}x${dims.x}x${dims.x}`;
     } else {
@@ -651,7 +726,7 @@ function updatePuzzleButtonText(dims, isMirror, puzzleType) {
         text = `${dims.y}x${dims.x}x${dims.z}`; // Y is largest in our logic usually
     }
 
-    if (puzzleType !== 'molecube' && puzzleType !== 'voidcube' && puzzleType !== 'acorns' && puzzleType !== 'thechild') {
+    if (puzzleType !== 'molecube' && puzzleType !== 'voidcube' && puzzleType !== 'acorns' && puzzleType !== 'thechild' && !String(puzzleType).startsWith('stl:')) {
         if (isMirror) text += " Mirror";
         else text += " Cube";
     }
@@ -669,13 +744,15 @@ function updatePageTitle(dims, isMirror, puzzleType) {
         text = "Acorns Mod";
     } else if (puzzleType === 'thechild') {
         text = "The Child";
+    } else if (String(puzzleType).startsWith('stl:')) {
+        text = getPuzzleName(puzzleType);
     } else if (dims.x === dims.y && dims.y === dims.z) {
         text = `${dims.x}x${dims.x}x${dims.x}`;
     } else {
         text = `${dims.y}x${dims.x}x${dims.z}`;
     }
 
-    if (puzzleType !== 'molecube' && puzzleType !== 'voidcube' && puzzleType !== 'acorns' && puzzleType !== 'thechild') {
+    if (puzzleType !== 'molecube' && puzzleType !== 'voidcube' && puzzleType !== 'acorns' && puzzleType !== 'thechild' && !String(puzzleType).startsWith('stl:')) {
         if (isMirror) text += " Mirror Cube";
         else text += " Cube";
     }
@@ -750,3 +827,15 @@ function setupCustomPuzzleListeners() {
         });
     }
 }
+
+function getPuzzleName(val) {
+    if (String(val).startsWith('stl:')) {
+        const id = String(val).split(':')[1];
+        if (window.puzzleRegistry && window.puzzleRegistry[id]) {
+            return window.puzzleRegistry[id];
+        }
+        return "Custom Puzzle";
+    }
+    return val;
+}
+

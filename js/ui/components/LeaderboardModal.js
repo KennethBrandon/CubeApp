@@ -14,42 +14,66 @@ function createLeaderboardModal() {
     <div id="leaderboard-modal"
         class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-4">
         <div
-            class="bg-gray-900 w-full max-w-5xl h-[90vh] md:h-[80vh] rounded-2xl border border-gray-700 shadow-2xl flex flex-col md:flex-row overflow-hidden">
+            class="bg-gray-900 w-full max-w-5xl h-[90vh] md:h-[80vh] rounded-2xl border border-gray-700 shadow-2xl flex flex-col md:flex-row overflow-hidden relative">
 
-            <!-- Sidebar -->
-            <div
-                class="w-full md:w-64 bg-gray-800/50 border-b md:border-b-0 md:border-r border-gray-700 flex flex-row md:flex-col flex-wrap md:flex-nowrap p-4 gap-2 md:overflow-y-auto shrink-0">
-                <h2 class="text-xl font-bold text-yellow-500 mb-4 px-2 hidden md:flex items-center gap-2">
-                    <span>🏆</span> Leaderboard
-                </h2>
-
-                <!-- Mobile Title -->
-                <div class="md:hidden flex items-center mr-4">
-                    <span class="font-bold text-yellow-500 whitespace-nowrap">🏆 Leaderboard</span>
+            <!-- Sidebar (Categories) -->
+            <div class="w-full md:w-64 bg-gray-800/50 border-b md:border-b-0 md:border-r border-gray-700 flex flex-row md:flex-col shrink-0 overflow-x-auto md:overflow-x-hidden md:overflow-y-auto hide-scrollbar">
+                <div class="p-4 border-r md:border-r-0 md:border-b border-gray-700 bg-gray-800/80 backdrop-blur sticky left-0 z-10 hidden md:block">
+                    <h2
+                        class="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">
+                        Leaderboards
+                    </h2>
+                </div>
+                
+                <!-- Mobile Title (Compact) -->
+                 <div class="md:hidden flex items-center px-4 border-r border-gray-700 bg-gray-800/80 backdrop-blur whitespace-nowrap sticky left-0 z-10">
+                    <span class="font-bold text-blue-400">🏆</span>
                 </div>
 
-                <button
-                    class="leaderboard-category-btn text-left px-4 py-2 md:py-3 rounded-xl transition font-bold text-gray-400 hover:bg-gray-800 whitespace-nowrap"
-                    data-category="standard">Standard</button>
-                <button
-                    class="leaderboard-category-btn text-left px-4 py-2 md:py-3 rounded-xl transition font-bold text-gray-400 hover:bg-gray-800 whitespace-nowrap"
-                    data-category="big">Big</button>
-                <button
-                    class="leaderboard-category-btn text-left px-4 py-2 md:py-3 rounded-xl transition font-bold text-gray-400 hover:bg-gray-800 whitespace-nowrap"
-                    data-category="cuboids">Cuboids</button>
-                <button
-                    class="leaderboard-category-btn text-left px-4 py-2 md:py-3 rounded-xl transition font-bold text-gray-400 hover:bg-gray-800 whitespace-nowrap"
-                    data-category="mirror">Mirror</button>
-                <button
-                    class="leaderboard-category-btn text-left px-4 py-2 md:py-3 rounded-xl transition font-bold text-gray-400 hover:bg-gray-800 whitespace-nowrap"
-                    data-category="mods">Mods</button>
-                <button
-                    class="leaderboard-category-btn text-left px-4 py-2 md:py-3 rounded-xl transition font-bold text-gray-400 hover:bg-gray-800 whitespace-nowrap"
-                    data-category="custom">Custom</button>
-
-                <div class="flex-1 hidden md:block"></div>
-                <button id="btn-close-leaderboard"
-                    class="hidden md:block text-center px-4 py-3 rounded-xl bg-gray-800 hover:bg-gray-700 text-white font-bold transition">Close</button>
+                <div class="flex flex-row md:flex-col p-2 gap-2 md:space-y-1 md:gap-0 min-w-max md:min-w-0">
+                    <button data-category="standard"
+                        class="leaderboard-category-btn group flex-1 md:w-full text-left px-3 py-2 md:px-4 md:py-3 rounded-xl text-gray-400 hover:bg-gray-800 hover:text-white transition flex items-center gap-2 md:gap-3 border border-transparent hover:border-gray-700 shrink-0">
+                        <div class="flex flex-col">
+                            <span class="font-bold text-sm">Standard</span>
+                            <span class="text-[10px] opacity-60 hidden md:block">2x2 - 7x7</span>
+                        </div>
+                    </button>
+                    <button data-category="big"
+                        class="leaderboard-category-btn group flex-1 md:w-full text-left px-3 py-2 md:px-4 md:py-3 rounded-xl text-gray-400 hover:bg-gray-800 hover:text-white transition flex items-center gap-2 md:gap-3 border border-transparent hover:border-gray-700 shrink-0">
+                        <div class="flex flex-col">
+                            <span class="font-bold text-sm">Big Cubes</span>
+                            <span class="text-[10px] opacity-60 hidden md:block">8x8 - 20x20</span>
+                        </div>
+                    </button>
+                    <button data-category="cuboids"
+                        class="leaderboard-category-btn group flex-1 md:w-full text-left px-3 py-2 md:px-4 md:py-3 rounded-xl text-gray-400 hover:bg-gray-800 hover:text-white transition flex items-center gap-2 md:gap-3 border border-transparent hover:border-gray-700 shrink-0">
+                        <div class="flex flex-col">
+                            <span class="font-bold text-sm">Cuboids</span>
+                            <span class="text-[10px] opacity-60 hidden md:block">3x3x5, etc</span>
+                        </div>
+                    </button>
+                    <button data-category="mirror"
+                        class="leaderboard-category-btn group flex-1 md:w-full text-left px-3 py-2 md:px-4 md:py-3 rounded-xl text-gray-400 hover:bg-gray-800 hover:text-white transition flex items-center gap-2 md:gap-3 border border-transparent hover:border-gray-700 shrink-0">
+                        <div class="flex flex-col">
+                            <span class="font-bold text-sm">Mirror</span>
+                            <span class="text-[10px] opacity-60 hidden md:block">Shape Shifters</span>
+                        </div>
+                    </button>
+                    <button data-category="mods"
+                        class="leaderboard-category-btn group flex-1 md:w-full text-left px-3 py-2 md:px-4 md:py-3 rounded-xl text-gray-400 hover:bg-gray-800 hover:text-white transition flex items-center gap-2 md:gap-3 border border-transparent hover:border-gray-700 shrink-0">
+                        <div class="flex flex-col">
+                            <span class="font-bold text-sm">Mods</span>
+                            <span class="text-[10px] opacity-60 hidden md:block">Special Puzzles</span>
+                        </div>
+                    </button>
+                    <button data-category="custom"
+                        class="leaderboard-category-btn group flex-1 md:w-full text-left px-3 py-2 md:px-4 md:py-3 rounded-xl text-gray-400 hover:bg-gray-800 hover:text-white transition flex items-center gap-2 md:gap-3 border border-transparent hover:border-gray-700 shrink-0">
+                        <div class="flex flex-col">
+                            <span class="font-bold text-sm">Custom</span>
+                            <span class="text-[10px] opacity-60 hidden md:block">Everything Else</span>
+                        </div>
+                    </button>
+                </div>
             </div>
 
             <!-- Content Area -->
