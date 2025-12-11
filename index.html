@@ -471,6 +471,18 @@
         FPS: <span id="fps-value" class="text-green-400 font-bold">60</span>
     </div>
 
+    <!-- Global Loading Overlay -->
+    <div id="global-loading"
+        class="hidden fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center opacity-0 transition-opacity duration-300">
+        <div class="relative">
+            <div class="w-16 h-16 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin"></div>
+            <div class="absolute inset-0 flex items-center justify-center">
+                <span class="text-2xl">🧩</span>
+            </div>
+        </div>
+        <p id="global-loading-text" class="text-blue-400 font-bold mt-4 animate-pulse tracking-wider">Loading...</p>
+    </div>
+
 
     <!-- Floating Controls (Zoom & Mirror) -->
 

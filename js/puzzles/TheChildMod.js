@@ -7,6 +7,7 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { CUBE_SIZE, SPACING } from '../shared/constants.js';
 import { state } from '../shared/state.js';
 import { playCubeAnimation } from '../animations/transitions.js';
+import { puzzleCache } from '../utils/puzzleCache.js';
 
 export class TheChildMod extends StandardCube {
     constructor(config) {
@@ -80,18 +81,23 @@ export class TheChildMod extends StandardCube {
             } else {
                 // Load the STL and Colors (Async)
                 const loader = new STLLoader();
-                const fileLoader = new THREE.FileLoader();
+                let stlUrl = 'assets/3d/baby_yoda_detailed.stl';
+                let colorUrl = 'assets/3d/baby_yoda_detailed_colors.json';
+
+                // Check cache for STL
+                try {
+                    const cache = await puzzleCache.open();
+                    const cachedStl = await cache.match(stlUrl);
+                    if (cachedStl) {
+                        const blob = await cachedStl.blob();
+                        stlUrl = URL.createObjectURL(blob);
+                    }
+                } catch (e) { console.warn("Cache check failed for STL", e); }
 
                 try {
                     const [geometry, colorData] = await Promise.all([
-                        new Promise((resolve, reject) => loader.load('assets/3d/baby_yoda_detailed.stl', resolve, undefined, reject)),
-                        new Promise((resolve) => {
-                            fileLoader.load('assets/3d/baby_yoda_detailed_colors.json',
-                                (data) => resolve(JSON.parse(data)),
-                                undefined,
-                                () => resolve(null) // Resolve null if file doesn't exist
-                            );
-                        })
+                        loader.loadAsync(stlUrl),
+                        puzzleCache.fetch(new Request(colorUrl)).then(r => r.ok ? r.json() : null)
                     ]);
 
                     this.colorData = colorData; // Store for re-processing
@@ -261,7 +267,7 @@ export class TheChildMod extends StandardCube {
             const basePath = 'assets/3d/cubies/baby_yoda_detailed/';
 
             // Try to load config first to check if precomputed files exist
-            const configResponse = await fetch(basePath + 'config.json');
+            const configResponse = await puzzleCache.fetch(new Request(basePath + 'config.json'));
             if (!configResponse.ok) {
                 return null; // Config doesn't exist, no precomputed files
             }
@@ -283,7 +289,7 @@ export class TheChildMod extends StandardCube {
                 for (let y of yRange) {
                     for (let z of zRange) {
                         const filename = `cubie_${x}_${y}_${z}${extension}`;
-                        const promise = fetch(basePath + filename)
+                        const promise = puzzleCache.fetch(new Request(basePath + filename))
                             .then(response => {
                                 if (!response.ok) throw new Error(`Failed to load ${filename}`);
                                 return isBinary ? response.arrayBuffer() : response.json();

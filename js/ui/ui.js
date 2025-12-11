@@ -343,3 +343,25 @@ export function enableDebugButton() {
     };
     document.body.appendChild(debugBtn);
 }
+
+export function showLoading(message = "Loading...") {
+    const overlay = document.getElementById('global-loading');
+    const text = document.getElementById('global-loading-text');
+    if (overlay && text) {
+        text.textContent = message;
+        overlay.classList.remove('hidden');
+        // Force reflow
+        void overlay.offsetWidth;
+        overlay.classList.remove('opacity-0');
+    }
+}
+
+export function hideLoading() {
+    const overlay = document.getElementById('global-loading');
+    if (overlay) {
+        overlay.classList.add('opacity-0');
+        setTimeout(() => {
+            overlay.classList.add('hidden');
+        }, 300);
+    }
+}

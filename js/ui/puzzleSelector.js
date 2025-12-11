@@ -15,6 +15,8 @@ import { updateActivePuzzleTab } from './ui.js';
 import { initPreview, updatePreview, disposePreview } from './puzzlePreview.js';
 import { overlayManager } from './overlayManager.js';
 import { ensurePuzzleSelectorModal } from './components/PuzzleSelectorModal.js';
+import { puzzleCache } from '../utils/puzzleCache.js';
+import { showLoading, hideLoading } from './ui.js';
 
 export const puzzleCategories = {
     'standard': [2, 3, 4, 5, 6, 7],
@@ -421,16 +423,93 @@ function createPuzzleButton(label, value) {
     btn.appendChild(text);
 
     btn.addEventListener('click', () => {
-        if (selectionCallback) {
-            selectionCallback(value);
+        // If it's an STL puzzle or The Child, check cache first
+        const isDownloadable = typeof value === 'string' && (value.startsWith('stl:') || value === 'thechild');
+
+        if (isDownloadable) {
+            const puzzleId = value === 'thechild' ? 'thechild' : value.split(':')[1];
+            puzzleCache.checkIfCached(puzzleId).then(isCached => {
+                if (isCached) {
+                    selectPuzzle(value);
+                } else {
+                    // Show download prompt or just download
+                    // For now, simpler UX: Trigger download with loading
+                    downloadAndSelect(puzzleId, value);
+                }
+            });
         } else {
-            // Defer change until after modal closes to avoid history conflict
-            pendingPuzzleChange = { val: value, isCustom: false, customDims: null, isMirrorCustom: false };
+            selectPuzzle(value);
         }
-        closePuzzleSelector();
     });
 
+    // Add download indicator if STL or The Child
+    const isDownloadable = typeof value === 'string' && (value.startsWith('stl:') || value === 'thechild');
+    if (isDownloadable) {
+        const puzzleId = value === 'thechild' ? 'thechild' : value.split(':')[1];
+        puzzleCache.checkIfCached(puzzleId).then(isCached => {
+            if (!isCached) {
+                // Determine size
+                puzzleCache.getDownloadSize(puzzleId).then(size => {
+                    const indicator = document.createElement('div');
+                    indicator.className = "absolute top-2 right-2 bg-blue-600 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-md";
+
+                    let sizeText = "↓";
+                    if (size) {
+                        const mb = (size / (1024 * 1024)).toFixed(1);
+                        sizeText += ` ${mb}MB`;
+                    }
+                    indicator.textContent = sizeText;
+                    btn.appendChild(indicator);
+                    btn.classList.add('relative');
+                });
+            }
+        });
+    }
+
     return btn;
+}
+
+function selectPuzzle(value) {
+    if (selectionCallback) {
+        selectionCallback(value);
+    } else {
+        pendingPuzzleChange = { val: value, isCustom: false, customDims: null, isMirrorCustom: false };
+    }
+    closePuzzleSelector();
+}
+
+async function downloadAndSelect(puzzleId, value) {
+    const btn = document.activeElement; // The clicked button
+    let originalHtml = "";
+    if (btn) {
+        originalHtml = btn.innerHTML;
+        btn.innerHTML = `<svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
+        btn.disabled = true;
+    }
+
+    try {
+        await puzzleCache.downloadPuzzle(puzzleId, (progress) => {
+            // Optional: Update progress UI
+        });
+
+        // Restore button state
+        if (btn) {
+            btn.innerHTML = originalHtml;
+            btn.disabled = false;
+            // Remove download indicator if present
+            const indicator = btn.querySelector('.absolute.top-2.right-2');
+            if (indicator) indicator.remove();
+        }
+
+        selectPuzzle(value);
+    } catch (e) {
+        console.error("Download error:", e);
+        alert("Download failed. Please check your connection.");
+        if (btn) {
+            btn.innerHTML = originalHtml || "Error";
+            btn.disabled = false;
+        }
+    }
 }
 
 function createPuzzleIcon(value) {
@@ -609,6 +688,9 @@ export function changePuzzle(val, isCustom = false, customDims = null, isMirrorC
         state.cubeSize = newSize;
         state.cubeDimensions = newDims;
 
+        // Show loading screen
+        showLoading(`Loading ${updatePuzzleButtonText(newDims, PuzzleClass === MirrorCube, val, true)}...`);
+
         const newHeight = getMirrorHeight(newSize);
         state.backMirrorHeightOffset = newHeight;
 
@@ -639,6 +721,8 @@ export function changePuzzle(val, isCustom = false, customDims = null, isMirrorC
         state.activePuzzle = new PuzzleClass(puzzleConfig);
 
         await hardReset(true);
+
+        hideLoading();
 
         // Mirror Debug
         const debugRow = document.getElementById('mirror-debug-row');
@@ -732,6 +816,7 @@ function updatePuzzleButtonText(dims, isMirror, puzzleType) {
     }
 
     btn.innerHTML = `<span class="mr-2">🧩</span> ${text} <span class="ml-2 text-xs opacity-50">▼</span>`;
+    return text; // Return text for other uses
 }
 
 function updatePageTitle(dims, isMirror, puzzleType) {

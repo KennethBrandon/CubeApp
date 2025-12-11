@@ -6,6 +6,7 @@ import { MeshBVH } from 'three-mesh-bvh';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { CUBE_SIZE, SPACING } from '../shared/constants.js';
 import { state } from '../shared/state.js';
+import { puzzleCache } from '../utils/puzzleCache.js';
 
 export class StlPuzzleMod extends StandardCube {
     constructor(config) {
@@ -20,7 +21,8 @@ export class StlPuzzleMod extends StandardCube {
     async loadPrecomputedCubies() {
         try {
             const basePath = `assets/puzzles/${this.puzzleId}/cubies/`;
-            const configResponse = await fetch(basePath + 'config.json');
+
+            const configResponse = await puzzleCache.fetch(new Request(basePath + 'config.json'));
 
             if (!configResponse.ok) return null; // No pre-computed data found
 
@@ -57,7 +59,7 @@ export class StlPuzzleMod extends StandardCube {
                     for (let z of zRange) {
                         const filename = `cubie_${x}_${y}_${z}.bin`;
                         promises.push(
-                            fetch(basePath + filename)
+                            puzzleCache.fetch(new Request(basePath + filename))
                                 .then(res => {
                                     if (!res.ok) return null;
                                     return res.arrayBuffer();
@@ -159,7 +161,7 @@ export class StlPuzzleMod extends StandardCube {
     }
 
     async loadConfig() {
-        const res = await fetch(`assets/puzzles/${this.puzzleId}/config.json`);
+        const res = await puzzleCache.fetch(new Request(`assets/puzzles/${this.puzzleId}/config.json`));
         if (!res.ok) throw new Error(`Config file not found: assets/puzzles/${this.puzzleId}/config.json`);
 
         this.puzzleConfig = await res.json();
@@ -225,34 +227,46 @@ export class StlPuzzleMod extends StandardCube {
 
 
                 const loader = new STLLoader();
-                const stlPromise = loader.loadAsync(`assets/puzzles/${this.puzzleId}/${this.puzzleConfig.stlPath}`)
+                let stlUrl = `assets/puzzles/${this.puzzleId}/${this.puzzleConfig.stlPath}`;
+
+                // Try caching for STL (Blob URL)
+                try {
+                    const cache = await puzzleCache.open();
+                    const cached = await cache.match(stlUrl);
+                    if (cached) {
+                        const blob = await cached.blob();
+                        stlUrl = URL.createObjectURL(blob);
+                    }
+                } catch (e) {
+                    console.warn("Error accessing cache for STL, using network url", e);
+                }
+
+                const stlPromise = loader.loadAsync(stlUrl)
                     .then(g => {
                         return g;
                     });
 
                 let colorPromise = Promise.resolve(null);
                 if (this.colorPath) {
-                    const fileLoader = new THREE.FileLoader();
-                    colorPromise = new Promise((resolve) => {
-                        fileLoader.load(this.colorPath,
-                            (data) => {
-                                try {
-                                    const parsed = JSON.parse(data);
-                                    resolve(parsed);
-                                } catch (e) {
-                                    console.error("[StlPuzzleMod] Error parsing color JSON", e);
-                                    resolve(null);
-                                }
-                            },
-                            (xhr) => {
-                                // Optional: Log progress if needed
-
-                            },
-                            (err) => {
-                                console.warn("[StlPuzzleMod] Failed to load color data", err);
+                    colorPromise = new Promise(async (resolve) => {
+                        // Use puzzleCache.fetch manually or just fetch (FileLoader uses XHR/fetch)
+                        // Since FileLoader doesn't support custom fetch easily without mod, 
+                        // let's fetch text manually and parse.
+                        try {
+                            const res = await puzzleCache.fetch(new Request(this.colorPath));
+                            if (!res.ok) throw new Error("Color file fetch failed");
+                            const data = await res.text(); // FileLoader loads text by default usually for JSON
+                            try {
+                                const parsed = JSON.parse(data);
+                                resolve(parsed);
+                            } catch (e) {
+                                console.error("Color parse error", e);
                                 resolve(null);
                             }
-                        );
+                        } catch (err) {
+                            console.warn("Failed to load color data", err);
+                            resolve(null);
+                        }
                     });
                 }
 
