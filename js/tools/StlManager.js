@@ -34,6 +34,12 @@ class StlManager {
             cut: {
                 filletRadius: 0.14
             },
+            material: {
+                roughness: 0.6,
+                metalness: 0.0,
+                normalScale: 0.5,
+                useSparkle: true
+            },
             stlData: null, // Base64 string of STL
             colorData: null // Array of vertex colors
         };
@@ -240,6 +246,22 @@ class StlManager {
         const updateFillet = () => this.updateBoundsGuide();
         document.getElementById('inp-fillet').addEventListener('input', updateFillet);
         document.getElementById('val-fillet').addEventListener('change', updateFillet);
+
+        // Material Settings
+        bindSlider('inp-roughness', () => this.config.material, 'roughness', 'val-roughness');
+        bindSlider('inp-metalness', () => this.config.material, 'metalness', 'val-metalness');
+        bindSlider('inp-normalScale', () => this.config.material, 'normalScale', 'val-normalScale');
+
+        ['inp-roughness', 'val-roughness', 'inp-metalness', 'val-metalness', 'inp-normalScale', 'val-normalScale'].forEach(id => {
+            document.getElementById(id).addEventListener('input', () => this.updateMeshMaterial());
+            document.getElementById(id).addEventListener('change', () => this.updateMeshMaterial());
+        });
+
+        const chkSparkle = document.getElementById('chk-sparkle');
+        chkSparkle.addEventListener('change', (e) => {
+            this.config.material.useSparkle = e.target.checked;
+            this.updateMeshMaterial();
+        });
 
         // Paint Controls
         const colorPicker = document.getElementById('color-picker');
@@ -543,6 +565,7 @@ class StlManager {
                     if (typeof config.transform.scale === 'number') this.config.transform.scale = config.transform.scale;
                 }
                 if (config.cut) this.config.cut = { ...config.cut };
+                if (config.material) this.config.material = { ...config.material };
 
                 // Update UI Inputs
                 const setVal = (id, val) => {
@@ -574,9 +597,19 @@ class StlManager {
                 setVal('inp-fillet', this.config.cut.filletRadius || 0.14);
                 setVal('val-fillet', this.config.cut.filletRadius || 0.14);
 
+                setVal('inp-roughness', this.config.material.roughness !== undefined ? this.config.material.roughness : 0.6);
+                setVal('val-roughness', this.config.material.roughness !== undefined ? this.config.material.roughness : 0.6);
+                setVal('inp-metalness', this.config.material.metalness !== undefined ? this.config.material.metalness : 0.0);
+                setVal('val-metalness', this.config.material.metalness !== undefined ? this.config.material.metalness : 0.0);
+                setVal('inp-normalScale', this.config.material.normalScale !== undefined ? this.config.material.normalScale : 0.5);
+                setVal('val-normalScale', this.config.material.normalScale !== undefined ? this.config.material.normalScale : 0.5);
+
+                document.getElementById('chk-sparkle').checked = this.config.material.useSparkle !== undefined ? this.config.material.useSparkle : true;
+
                 // Apply Updates
                 this.updateBoundsGuide();
                 this.updateMeshTransform();
+                this.updateMeshMaterial();
 
                 alert('Configuration Imported!');
             } catch (err) {
@@ -657,13 +690,22 @@ class StlManager {
         const center = new THREE.Vector3();
         geometry.boundingBox.getCenter(center);
         geometry.translate(-center.x, -center.y, -center.z);
+
+        // Generate UVs for normal map (box projection)
+        this.applyBoxUV(geometry);
         // Correct standard STL orientation (often Z-up vs Y-up) is handled by pre-rotation slider
 
         const material = new THREE.MeshStandardMaterial({
             vertexColors: true,
-            roughness: 0.6,
-            metalness: 0
+            roughness: this.config.material.roughness,
+            metalness: this.config.material.metalness
         });
+
+        if (this.config.material.useSparkle) {
+            if (!this.sparkleMap) this.sparkleMap = createSparkleMap();
+            material.normalMap = this.sparkleMap;
+            material.normalScale.set(this.config.material.normalScale, this.config.material.normalScale);
+        }
 
         this.mesh = new THREE.Mesh(geometry, material);
         this.scene.add(this.mesh);
@@ -697,6 +739,26 @@ class StlManager {
         // 3. Offset
         const o = this.config.transform.offset;
         this.mesh.position.set(o.x, o.y, o.z);
+    }
+
+    updateMeshMaterial() {
+        if (!this.mesh || !this.mesh.material) return;
+
+        const mat = this.mesh.material;
+        const cfg = this.config.material;
+
+        mat.roughness = cfg.roughness;
+        mat.metalness = cfg.metalness;
+
+        if (cfg.useSparkle) {
+            if (!this.sparkleMap) this.sparkleMap = createSparkleMap();
+            mat.normalMap = this.sparkleMap;
+            mat.normalScale.set(cfg.normalScale, cfg.normalScale);
+        } else {
+            mat.normalMap = null;
+        }
+
+        mat.needsUpdate = true;
     }
 
     paint(event) {
@@ -1048,6 +1110,13 @@ class StlManager {
             if (config.dimensions) this.config.dimensions = config.dimensions;
             if (config.transform) this.config.transform = config.transform;
             if (config.cut) this.config.cut = config.cut;
+            if (config.material) {
+                // Handle both 'useSparkle' and 'useSparkles' for compatibility
+                this.config.material = { ...config.material };
+                if (config.material.useSparkles !== undefined && config.material.useSparkle === undefined) {
+                    this.config.material.useSparkle = config.material.useSparkles;
+                }
+            }
 
             // Store STL Data as Base64 for saving
             // We need to convert buffer to base64 string
@@ -1085,8 +1154,19 @@ class StlManager {
             setVal('val-fillet', this.config.cut.filletRadius || 0.14);
             setVal('inp-fillet', this.config.cut.filletRadius || 0.14);
 
+            // Material settings
+            const mat = this.config.material || { roughness: 0.6, metalness: 0.0, normalScale: 0.5, useSparkle: true };
+            setVal('val-roughness', mat.roughness !== undefined ? mat.roughness : 0.6);
+            setVal('inp-roughness', mat.roughness !== undefined ? mat.roughness : 0.6);
+            setVal('val-metalness', mat.metalness !== undefined ? mat.metalness : 0.0);
+            setVal('inp-metalness', mat.metalness !== undefined ? mat.metalness : 0.0);
+            setVal('val-normalScale', mat.normalScale !== undefined ? mat.normalScale : 0.5);
+            setVal('inp-normalScale', mat.normalScale !== undefined ? mat.normalScale : 0.5);
+            document.getElementById('chk-sparkle').checked = mat.useSparkle !== undefined ? mat.useSparkle : true;
+
             this.updateBoundsGuide();
             this.updateMeshTransform();
+            this.updateMeshMaterial();
 
             // Enable panel
             document.getElementById('config-panel').classList.remove('opacity-50', 'pointer-events-none');
@@ -1134,6 +1214,18 @@ class StlManager {
         document.getElementById('inp-offZ').value = this.config.transform.offset.z;
         document.getElementById('val-offZ').value = this.config.transform.offset.z;
         document.getElementById('inp-fillet').value = this.config.cut.filletRadius || 0.14;
+
+        // Material UI
+        const mat = this.config.material || { roughness: 0.6, metalness: 0, normalScale: 0.5, useSparkle: true };
+        this.config.material = mat; // Ensure config has it if missing in draft
+
+        document.getElementById('inp-roughness').value = mat.roughness !== undefined ? mat.roughness : 0.6;
+        document.getElementById('val-roughness').value = mat.roughness !== undefined ? mat.roughness : 0.6;
+        document.getElementById('inp-metalness').value = mat.metalness !== undefined ? mat.metalness : 0.0;
+        document.getElementById('val-metalness').value = mat.metalness !== undefined ? mat.metalness : 0.0;
+        document.getElementById('inp-normalScale').value = mat.normalScale !== undefined ? mat.normalScale : 0.5;
+        document.getElementById('val-normalScale').value = mat.normalScale !== undefined ? mat.normalScale : 0.5;
+        document.getElementById('chk-sparkle').checked = mat.useSparkle !== undefined ? mat.useSparkle : true;
 
         // Load Geometry
         // Handle STL vs 3MF based on saved type or try catch?
@@ -1557,3 +1649,51 @@ class StlManager {
 }
 
 new StlManager();
+
+function createSparkleMap(maxDim = 3) {
+    const size = 512;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+
+    const noiseScale = Math.max(1, maxDim / 4);
+    const noiseSize = Math.floor(size / noiseScale);
+
+    const noiseCanvas = document.createElement('canvas');
+    noiseCanvas.width = noiseSize;
+    noiseCanvas.height = noiseSize;
+    const noiseCtx = noiseCanvas.getContext('2d');
+
+    noiseCtx.fillStyle = 'rgb(128, 128, 255)';
+    noiseCtx.fillRect(0, 0, noiseSize, noiseSize);
+
+    const imgData = noiseCtx.getImageData(0, 0, noiseSize, noiseSize);
+    const data = imgData.data;
+
+    for (let i = 0; i < data.length; i += 4) {
+        const strength = 60;
+        const noiseX = (Math.random() - 0.5) * strength;
+        const noiseY = (Math.random() - 0.5) * strength;
+
+        data[i] = Math.min(255, Math.max(0, 128 + noiseX));
+        data[i + 1] = Math.min(255, Math.max(0, 128 + noiseY));
+        data[i + 2] = 255;
+    }
+
+    noiseCtx.putImageData(imgData, 0, 0);
+
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(noiseCanvas, 0, 0, size, size);
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(1, 1);
+    tex.generateMipmaps = true;
+    tex.minFilter = THREE.LinearMipmapLinearFilter;
+    tex.magFilter = THREE.LinearFilter;
+
+    return tex;
+}

@@ -1,6 +1,6 @@
 {
   "id": "draft_1765415398281",
-  "name": "baby yoda detailed",
+  "name": "Baby Yoda",
   "thumbnail": "thumbnail.png",
   "dimensions": {
     "x": 2,
@@ -23,6 +23,13 @@
   "cut": {
     "filletRadius": 0.14
   },
+  "material": {
+    "roughness": 0.4,
+    "metalness": 0.06,
+    "normalScale": 0,
+    "useSparkles": false
+  },
   "format": "binary_v1",
-  "timestamp": "2025-12-11T01:18:46.620Z"
+  "timestamp": "2025-12-11T01:18:46.620Z",
+  "colorPath": "baby_yoda_colors.json"
 }

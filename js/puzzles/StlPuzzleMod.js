@@ -83,11 +83,28 @@ export class StlPuzzleMod extends StandardCube {
     }
 
     applyPrecomputedCubies(data) {
+        // Material Params
+        const matConfig = (data.config && data.config.material) || this.puzzleConfig.material || {};
+
+        const roughness = matConfig.roughness !== undefined ? matConfig.roughness : 0.6;
+        const metalness = matConfig.metalness !== undefined ? matConfig.metalness : 0.0;
+        const normalScale = matConfig.normalScale !== undefined ? matConfig.normalScale : 0.5;
+        const useSparkle = matConfig.useSparkle !== undefined ? matConfig.useSparkle : true;
+
+        if (useSparkle && !this.sparkleMap) {
+            this.sparkleMap = createSparkleMap();
+        }
+
         const material = new THREE.MeshStandardMaterial({
             vertexColors: true,
-            roughness: 0.6,
-            metalness: 0
+            roughness: roughness,
+            metalness: metalness
         });
+
+        if (useSparkle) {
+            material.normalMap = this.sparkleMap;
+            material.normalScale = new THREE.Vector2(normalScale, normalScale);
+        }
 
         // Map cubies to grid
         // Our cubieList corresponds to grid positions.
@@ -469,6 +486,35 @@ export class StlPuzzleMod extends StandardCube {
 
         geometry.computeVertexNormals();
 
+        // Compute UVs for Normal Map (Box Projection)
+        geometry.computeBoundingBox();
+        const bbox = geometry.boundingBox;
+        const size = new THREE.Vector3();
+        bbox.getSize(size);
+        const min = bbox.min;
+
+        const posAttr = geometry.attributes.position;
+        const normAttr = geometry.attributes.normal;
+        const uvAttr = new THREE.BufferAttribute(new Float32Array(posAttr.count * 2), 2);
+
+        for (let i = 0; i < posAttr.count; i++) {
+            const x = posAttr.getX(i);
+            const y = posAttr.getY(i);
+            const z = posAttr.getZ(i);
+
+            const nx = Math.abs(normAttr.getX(i));
+            const ny = Math.abs(normAttr.getY(i));
+            const nz = Math.abs(normAttr.getZ(i));
+
+            let u = 0, v = 0;
+            if (nx >= ny && nx >= nz) { u = (z - min.z) / size.z; v = (y - min.y) / size.y; }
+            else if (ny >= nx && ny >= nz) { u = (x - min.x) / size.x; v = (z - min.z) / size.z; }
+            else { u = (x - min.x) / size.x; v = (y - min.y) / size.y; }
+
+            uvAttr.setXY(i, u, v);
+        }
+        geometry.setAttribute('uv', uvAttr);
+
         // Update bounds after all transforms to verify scale
         geometry.computeBoundingBox();
 
@@ -477,12 +523,28 @@ export class StlPuzzleMod extends StandardCube {
         evaluator.attributes = Object.keys(geometry.attributes);
         const sourceBVH = new MeshBVH(geometry);
 
+        // Material Params
+        const matConfig = this.puzzleConfig.material || {};
+        const roughness = matConfig.roughness !== undefined ? matConfig.roughness : 0.6;
+        const metalness = matConfig.metalness !== undefined ? matConfig.metalness : 0.0;
+        const normalScale = matConfig.normalScale !== undefined ? matConfig.normalScale : 0.5;
+        const useSparkle = matConfig.useSparkle !== undefined ? matConfig.useSparkle : true;
+
+        if (useSparkle && !this.sparkleMap) {
+            this.sparkleMap = createSparkleMap();
+        }
+
         const material = new THREE.MeshStandardMaterial({
             color: this.colorData ? 0xFFFFFF : 0x74C947,
             vertexColors: !!this.colorData,
-            roughness: 0.6,
-            metalness: 0
+            roughness: roughness,
+            metalness: metalness
         });
+
+        if (useSparkle) {
+            material.normalMap = this.sparkleMap;
+            material.normalScale = new THREE.Vector2(normalScale, normalScale);
+        }
 
         const sourceBrush = new Brush(geometry, material);
         sourceBrush.updateMatrixWorld();
@@ -708,4 +770,56 @@ export class StlPuzzleMod extends StandardCube {
         }
         return `${x},${y},${z},${w}`;
     }
+}
+
+function createSparkleMap(maxDim = 3) {
+    const size = 512;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+
+    const noiseScale = Math.max(1, maxDim / 4);
+    const noiseSize = Math.floor(size / noiseScale);
+
+    const noiseCanvas = document.createElement('canvas');
+    noiseCanvas.width = noiseSize;
+    noiseCanvas.height = noiseSize;
+    const noiseCtx = noiseCanvas.getContext('2d');
+
+    noiseCtx.fillStyle = 'rgb(128, 128, 255)';
+    noiseCtx.fillRect(0, 0, noiseSize, noiseSize);
+
+    const imgData = noiseCtx.getImageData(0, 0, noiseSize, noiseSize);
+    const data = imgData.data;
+
+    for (let i = 0; i < data.length; i += 4) {
+        const strength = 60;
+        const noiseX = (Math.random() - 0.5) * strength;
+        const noiseY = (Math.random() - 0.5) * strength;
+
+        data[i] = Math.min(255, Math.max(0, 128 + noiseX));
+        data[i + 1] = Math.min(255, Math.max(0, 128 + noiseY));
+        data[i + 2] = 255;
+    }
+
+    noiseCtx.putImageData(imgData, 0, 0);
+
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(noiseCanvas, 0, 0, size, size);
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(1, 1);
+    tex.generateMipmaps = true;
+    tex.minFilter = THREE.LinearMipmapLinearFilter;
+    tex.magFilter = THREE.LinearFilter;
+
+    if (state.renderer) {
+        tex.anisotropy = state.renderer.capabilities.getMaxAnisotropy();
+    }
+
+    return tex;
 }
