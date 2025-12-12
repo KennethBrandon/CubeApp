@@ -424,7 +424,7 @@ class StlPainter {
         // Store original geometry WITH COLORS before transformations for cubie generation
         this.originalGeometry = geometry.clone();
 
-        // Center and Rotate (match TheChildMod logic)
+        // Center and Rotate (match StlPuzzleMod logic)
         geometry.computeBoundingBox();
         const center = new THREE.Vector3();
         geometry.boundingBox.getCenter(center);
@@ -695,7 +695,7 @@ class StlPainter {
 
             console.log('[Cubie Cutter] Starting cubie generation...');
 
-            // Clone and prepare the geometry (same as TheChildMod.processSTL)
+            // Clone and prepare the geometry (same as StlPuzzleMod.processSTL)
             // Use ORIGINAL geometry before StlPainter transformations
             const geometry = this.originalGeometry.clone();
 
@@ -766,7 +766,7 @@ class StlPainter {
                         cubieIndex++;
                         console.log(`[Cubie Cutter] Processing cubie ${cubieIndex}/${totalCubies}: (${x}, ${y}, ${z})`);
 
-                        // Create cutting box (same logic as TheChildMod)
+                        // Create cutting box (same logic as StlPuzzleMod)
                         const outerScale = this.cubieParams.outerScale;
                         const halfSize = CUBE_SIZE / 2;
 

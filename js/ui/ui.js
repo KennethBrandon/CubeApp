@@ -95,9 +95,6 @@ export function showWinModal() {
         } else if (type === 'AcornsMod') {
             puzzleName = "Acorns Mod";
             puzzleTypeId = 'acorns';
-        } else if (type === 'TheChildMod') {
-            puzzleName = "The Child";
-            puzzleTypeId = 'thechild';
         } else if (type === 'StlPuzzleMod' || state.activePuzzle.puzzleId) {
             // STL Custom Puzzle
             const id = state.activePuzzle.puzzleId;
@@ -243,8 +240,7 @@ export function renderLeaderboardUI(leaderboardData, puzzleSize = 3) {
         const modNames = {
             'molecube': 'Molecube',
             'voidcube': 'Void Cube',
-            'acorns': 'Acorns Mod',
-            'thechild': 'The Child'
+            'acorns': 'Acorns Mod'
         };
 
         if (modNames[puzzleSize]) {

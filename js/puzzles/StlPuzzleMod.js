@@ -633,7 +633,7 @@ export class StlPuzzleMod extends StandardCube {
                 resGeom.translate(-x * CUBE_SIZE, -y * CUBE_SIZE, -z * CUBE_SIZE);
 
                 if (geometry.attributes.color) {
-                    // Apply Barycentric interpolation (Simplified copy from TheChildMod)
+                    // Apply Barycentric interpolation
                     // ... (We skip full barycentric here for brevity/performance in MVP unless simple copy works)
                     // Actually, StlPainter logic is complex. 
                     // For MVP, three-bvh-csg might preserve colors reasonably well if attributes align?

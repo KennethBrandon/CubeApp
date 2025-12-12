@@ -85,17 +85,6 @@ function createDebugMenu() {
                     </label>
                 </div>
 
-                <!-- The Child Tuner Toggle -->
-                <div class="flex items-center justify-between p-3 bg-gray-900/50 rounded-lg">
-                    <span class="text-gray-300">Show The Child Tuner</span>
-                    <label class="relative inline-block w-12 h-6">
-                        <input type="checkbox" id="toggle-thechild-tuner" class="sr-only peer">
-                        <div
-                            class="w-12 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-6 peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600">
-                        </div>
-                    </label>
-                </div>
-
                 <div class="flex items-center justify-between p-3 bg-gray-900/50 rounded-lg">
                     <span class="text-gray-300">Animation Speed (ms)</span>
                     <div class="flex items-center gap-2">
@@ -200,17 +189,6 @@ function attachDebugListeners() {
             import('./Tuners.js').then(module => module.showAcornsTuner());
         }
         gtag('event', 'toggle_acorns_tuner', { state: e.target.checked ? 'on' : 'off' });
-    });
-
-    document.getElementById('toggle-thechild-tuner').addEventListener('change', (e) => {
-        const ui = document.getElementById('thechild-tuner-ui');
-        if (ui) {
-            if (e.target.checked) ui.classList.remove('hidden');
-            else ui.classList.add('hidden');
-        } else if (e.target.checked) {
-            import(`./Tuners.js?t=${Date.now()}`).then(module => module.showTheChildTuner());
-        }
-        gtag('event', 'toggle_thechild_tuner', { state: e.target.checked ? 'on' : 'off' });
     });
 
     document.getElementById('toggle-molecube-tuner').addEventListener('change', (e) => {

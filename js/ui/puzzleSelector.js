@@ -4,7 +4,6 @@ import { MirrorCube } from '../puzzles/MirrorCube.js';
 import { Molecube } from '../puzzles/Molecube.js';
 import { VoidCube } from '../puzzles/VoidCube.js';
 import { AcornsMod } from '../puzzles/AcornsMod.js';
-import { TheChildMod } from '../puzzles/TheChildMod.js';
 
 import { StlPuzzleMod } from '../puzzles/StlPuzzleMod.js';
 import { hardReset } from '../game/scramble.js';
@@ -23,7 +22,7 @@ export const puzzleCategories = {
     'big': [8, 9, 10, 11, 12, 13, 14, 15, 16, 17],
     'cuboids': ['2x2x3', '3x3x2', '3x3x4', '3x3x5', '2x2x4', '2x2x1', '3x3x1'],
     'mirror': ['mirror-2x2x2', 'mirror-3x3x3', 'mirror-4x4x4', 'mirror-5x5x5', 'mirror-6x6x6', 'mirror-7x7x7'],
-    'mods': ['molecube', 'voidcube', 'acorns', 'thechild']
+    'mods': ['molecube', 'voidcube', 'acorns']
 };
 
 
@@ -331,11 +330,6 @@ function renderPuzzleOptions() {
             let label = val;
             if (val === 'molecube') label = 'Molecube';
             if (val === 'voidcube') label = 'Void Cube';
-            if (val === 'thechild') label = 'The Child';
-
-            // Only add 'The Child' if it's explicitly strictly hardcoded, 
-            // but we might want to move it to registry later? 
-            // For now, keep hardcoded mods.
 
             const btn = createPuzzleButton(label, val);
             modsContainer.appendChild(btn);
@@ -423,11 +417,11 @@ function createPuzzleButton(label, value) {
     btn.appendChild(text);
 
     btn.addEventListener('click', () => {
-        // If it's an STL puzzle or The Child, check cache first
-        const isDownloadable = typeof value === 'string' && (value.startsWith('stl:') || value === 'thechild');
+        // If it's an STL puzzle, check cache first
+        const isDownloadable = typeof value === 'string' && value.startsWith('stl:');
 
         if (isDownloadable) {
-            const puzzleId = value === 'thechild' ? 'thechild' : value.split(':')[1];
+            const puzzleId = value.split(':')[1];
             puzzleCache.checkIfCached(puzzleId).then(isCached => {
                 if (isCached) {
                     selectPuzzle(value);
@@ -442,10 +436,10 @@ function createPuzzleButton(label, value) {
         }
     });
 
-    // Add download indicator if STL or The Child
-    const isDownloadable = typeof value === 'string' && (value.startsWith('stl:') || value === 'thechild');
+    // Add download indicator if STL
+    const isDownloadable = typeof value === 'string' && value.startsWith('stl:');
     if (isDownloadable) {
-        const puzzleId = value === 'thechild' ? 'thechild' : value.split(':')[1];
+        const puzzleId = value.split(':')[1];
         puzzleCache.checkIfCached(puzzleId).then(isCached => {
             if (!isCached) {
                 // Determine size
@@ -618,10 +612,6 @@ export function changePuzzle(val, isCustom = false, customDims = null, isMirrorC
             newSize = 2;
             newDims = { x: 2, y: 2, z: 2 };
             PuzzleClass = AcornsMod;
-        } else if (val === 'thechild') {
-            newSize = 3;
-            newDims = { x: 2, y: 3, z: 2 };
-            PuzzleClass = TheChildMod;
         } else if (val === 'mirror-2x2x2') {
             newSize = 2;
             newDims = { x: 2, y: 2, z: 2 };
@@ -798,8 +788,6 @@ function updatePuzzleButtonText(dims, isMirror, puzzleType) {
         text = "Void Cube";
     } else if (puzzleType === 'acorns') {
         text = "Acorns Mod";
-    } else if (puzzleType === 'thechild') {
-        text = "The Child";
     } else if (String(puzzleType).startsWith('stl:')) {
         text = getPuzzleName(puzzleType);
     } else if (dims.x === dims.y && dims.y === dims.z) {
@@ -810,7 +798,7 @@ function updatePuzzleButtonText(dims, isMirror, puzzleType) {
         text = `${dims.y}x${dims.x}x${dims.z}`; // Y is largest in our logic usually
     }
 
-    if (puzzleType !== 'molecube' && puzzleType !== 'voidcube' && puzzleType !== 'acorns' && puzzleType !== 'thechild' && !String(puzzleType).startsWith('stl:')) {
+    if (puzzleType !== 'molecube' && puzzleType !== 'voidcube' && puzzleType !== 'acorns' && !String(puzzleType).startsWith('stl:')) {
         if (isMirror) text += " Mirror";
         else text += " Cube";
     }
@@ -827,8 +815,6 @@ function updatePageTitle(dims, isMirror, puzzleType) {
         text = "Void Cube";
     } else if (puzzleType === 'acorns') {
         text = "Acorns Mod";
-    } else if (puzzleType === 'thechild') {
-        text = "The Child";
     } else if (String(puzzleType).startsWith('stl:')) {
         text = getPuzzleName(puzzleType);
     } else if (dims.x === dims.y && dims.y === dims.z) {
@@ -837,12 +823,12 @@ function updatePageTitle(dims, isMirror, puzzleType) {
         text = `${dims.y}x${dims.x}x${dims.z}`;
     }
 
-    if (puzzleType !== 'molecube' && puzzleType !== 'voidcube' && puzzleType !== 'acorns' && puzzleType !== 'thechild' && !String(puzzleType).startsWith('stl:')) {
+    if (puzzleType !== 'molecube' && puzzleType !== 'voidcube' && puzzleType !== 'acorns' && !String(puzzleType).startsWith('stl:')) {
         if (isMirror) text += " Mirror Cube";
         else text += " Cube";
     }
 
-    document.title = `${text} - Cube App`;
+    document.title = `${text} - 3D Cube Puzzle`;
 }
 
 function setupCustomPuzzleListeners() {

@@ -1445,7 +1445,7 @@ class StlManager {
                             // Center geom to local space (0,0,0) relative to cubie center
                             // Result is in World Space (aligned with boxBrush at x*S, y*S...)
                             // We want it local to that position?
-                            // Yes, TheChildMod logic positions the group at GridPos, so mesh should be local.
+                            // Yes, StlPuzzleMod logic positions the group at GridPos, so mesh should be local.
                             resGeom.translate(-x * CUBE_SIZE, -y * CUBE_SIZE, -z * CUBE_SIZE);
 
                             this.generatedCubies.push({

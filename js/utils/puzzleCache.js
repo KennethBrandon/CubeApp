@@ -14,16 +14,6 @@ export const puzzleCache = {
     async checkIfCached(puzzleId) {
         const cache = await this.open();
 
-        // Special case for The Child
-        if (puzzleId === 'thechild') {
-            // Check for the main STL or the precomputed config
-            const stlReq = new Request('assets/3d/baby_yoda_detailed.stl');
-            if (await cache.match(stlReq)) return true;
-
-            const configReq = new Request('assets/3d/cubies/baby_yoda_detailed/config.json');
-            return !!(await cache.match(configReq));
-        }
-
         // Check for config first as it's small and always required
         const configReq = new Request(`assets/puzzles/${puzzleId}/config.json`);
         const configRes = await cache.match(configReq);
@@ -46,69 +36,6 @@ export const puzzleCache = {
     async downloadPuzzle(puzzleId, onProgress) {
         const cache = await this.open();
         let basePath = `assets/puzzles/${puzzleId}/`;
-
-        // Special handling for legacy 'thechild'
-        if (puzzleId === 'thechild') {
-            try {
-                const filesToCache = [];
-                // Check if using precomputed
-                const configUrl = 'assets/3d/cubies/baby_yoda_detailed/config.json';
-                const configRes = await fetch(configUrl);
-
-                if (configRes.ok) {
-                    filesToCache.push(configUrl);
-                    const configClone = configRes.clone();
-                    await cache.put(configUrl, configClone);
-                    const config = await configRes.json();
-
-                    if (config.format === 'binary_v1') {
-                        const dims = { x: 2, y: 3, z: 2 }; // Hardcoded for The Child
-                        // Or use config.dimensions if available
-
-                        const xRange = [-0.5, 0.5];
-                        const yRange = [-1, 0, 1];
-                        const zRange = [-0.5, 0.5];
-
-                        for (let x of xRange) {
-                            for (let y of yRange) {
-                                for (let z of zRange) {
-                                    filesToCache.push(`assets/3d/cubies/baby_yoda_detailed/cubie_${x}_${y}_${z}.bin`);
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    // Fallback to STL + Colors
-                    filesToCache.push('assets/3d/baby_yoda_detailed.stl');
-                    filesToCache.push('assets/3d/baby_yoda_detailed_colors.json');
-                }
-
-                // Add thumbnail if we know where it is, or use default logic?
-                // TheChildMod usually uses 'assets/puzzles/thechild/thumbnail.png' ?? 
-                // Or maybe just generic icon. Skip thumbnail for now or try to fetch it.
-
-                // Execute Download
-                let completed = 0;
-                const total = filesToCache.length;
-                const batchSize = 5;
-                for (let i = 0; i < total; i += batchSize) {
-                    const batch = filesToCache.slice(i, i + batchSize);
-                    await Promise.all(batch.map(async (url) => {
-                        try {
-                            await cache.add(url);
-                        } catch (e) { console.warn(`Failed to cache ${url}`, e); }
-                    }));
-                    completed += batch.length;
-                    if (onProgress) onProgress(Math.min(1.0, completed / total));
-                }
-                return;
-
-            } catch (e) {
-                console.error("Failed to download The Child:", e);
-                throw e;
-            }
-        }
-
 
         try {
             // 1. Fetch Config
@@ -204,8 +131,6 @@ export const puzzleCache = {
     async getDownloadSize(puzzleId) {
         // We only check the STL size as it's the bulk.
         // We need config first to know STL path.
-
-        if (puzzleId === 'thechild') return null; // Binary format or legacy, skip size
 
         try {
             // Try to fetch config HEAD first? Or just fetch config (it's small)
