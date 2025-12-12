@@ -178,6 +178,8 @@ export class MirrorCube extends StandardCube {
                     const coreGeo = new THREE.BoxGeometry(width, height, depth);
                     const core = new THREE.Mesh(coreGeo, coreMat);
                     core.position.set(offsetX, offsetY, offsetZ);
+                    core.castShadow = true;
+                    core.receiveShadow = true;
                     group.add(core);
 
                     const sx = width / 2 + 0.001;
@@ -266,6 +268,8 @@ export class MirrorCube extends StandardCube {
                             };
 
                             const sticker = new THREE.Mesh(geo, stickerMat);
+                            sticker.castShadow = true;
+                            sticker.receiveShadow = true;
                             // Apply offset to sticker position
                             sticker.position.set(
                                 f.pos[0] + offsetX,

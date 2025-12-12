@@ -77,6 +77,8 @@ export class StandardCube extends Puzzle {
 
                     const core = new THREE.Mesh(baseGeo, coreMat);
                     core.scale.set(0.98, 0.98, 0.98);
+                    core.castShadow = true;
+                    core.receiveShadow = true;
                     group.add(core);
 
                     // Sticker Size 0.800 (User Preference)
@@ -113,6 +115,8 @@ export class StandardCube extends Puzzle {
                             sticker.position.set(...f.pos);
                             sticker.rotation.set(...f.rot);
                             sticker.userData = { isSticker: true, originalColor: f.color, initialScale: 1.0 };
+                            sticker.castShadow = true;
+                            sticker.receiveShadow = true;
                             group.add(sticker);
                             this.stickers.push(sticker);
                         }

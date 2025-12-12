@@ -258,6 +258,10 @@ export class AcornsMod extends StandardCube {
                     group.remove(placeholder);
                 }
 
+                // Post-processing for shadows
+                result.castShadow = true;
+                result.receiveShadow = true;
+
                 group.add(result);
             } catch (e) {
                 console.error("CSG Error for piece", x, y, z, e);

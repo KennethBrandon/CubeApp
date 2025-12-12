@@ -134,6 +134,8 @@ export class StlPuzzleMod extends StandardCube {
 
                 // Mesh
                 const mesh = new THREE.Mesh(geometry, material.clone());
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
 
                 // Debug Scale
                 geometry.computeBoundingBox();
@@ -645,6 +647,8 @@ export class StlPuzzleMod extends StandardCube {
                 }
 
                 const mesh = new THREE.Mesh(resGeom, material);
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
                 group.add(mesh);
             }
         });

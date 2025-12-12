@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { Reflector } from 'three/addons/objects/Reflector.js';
 import { state } from '../shared/state.js';
+import { setShadowIntensity, setShadowsEnabled } from './scene.js';
 
 export function createEnvironment() {
     // Remove old environment objects if any
@@ -76,6 +77,17 @@ export function createEnvironment() {
     wall.receiveShadow = true;
     wall.userData.isWall = true;
     state.scene.add(wall);
+
+    // Apply default environment settings (pattern enabled by default with specific colors)
+    updateEnvironment({
+        shadowsEnabled: true,
+        shadowIntensity: 0.1,
+        patternEnabled: true,
+        patternScale: 1.0,
+        patternOpacity: 0.30,
+        patternColors: ['#69A6E2', '#22458C', '#5E3295'],
+        forceUpdate: true
+    });
 }
 
 function createWoodTexture() {
@@ -222,32 +234,135 @@ function updateMirrorButtonState() {
     }
 }
 
-export function updateBackMirrorHeight(offset) {
-    state.backMirrorHeightOffset = offset;
+
+
+export function updateEnvironment(params) {
     state.scene.traverse(obj => {
-        if (obj.userData.isMirror && obj.position.x < 0 && obj.position.z < 0) { // Identify back mirror by position
-            // We need to be careful not to move the bottom mirror which is at 0, y, 0
-            // Back mirror is at -dist, y, -dist
-            if (Math.abs(obj.position.x) > 0.1 && Math.abs(obj.position.z) > 0.1) {
-                obj.position.y = offset;
-                obj.lookAt(0, offset, 0);
+        if (obj.userData.isWall) {
+            if (params.wallColor !== undefined) obj.material.color.setHex(params.wallColor);
+            if (params.wallRoughness !== undefined) obj.material.roughness = params.wallRoughness;
+            if (params.wallMetalness !== undefined) obj.material.metalness = params.wallMetalness;
+
+            // Handle Global Parameters that might be passed in updateEnvironment wrapper
+            // But usually updateEnvironment is called with params specific to the tuner.
+            // setShadowIntensity is a global Scene setting, not attached to the wall.
+            // But we can call it here if it's in params.
+            if (params.shadowIntensity !== undefined) {
+                setShadowIntensity(params.shadowIntensity);
             }
+            if (params.shadowsEnabled !== undefined) {
+                setShadowsEnabled(params.shadowsEnabled);
+            }
+
+            if (params.patternEnabled !== undefined || params.patternScale !== undefined || params.patternOpacity !== undefined || params.patternColors !== undefined) {
+                // If toggling on, or if already on and updating params
+                const enabled = params.patternEnabled !== undefined ? params.patternEnabled : (obj.userData.patternEnabled || false);
+                obj.userData.patternEnabled = enabled;
+
+                if (enabled) {
+                    const scale = params.patternScale || obj.userData.patternScale || 1.0;
+                    const opacity = params.patternOpacity !== undefined ? params.patternOpacity : (obj.userData.patternOpacity || 0.1);
+                    const colors = params.patternColors || obj.userData.patternColors || ['#334455', '#2a3b4c', '#1f2d3a'];
+
+                    // Store current values
+                    obj.userData.patternScale = scale;
+                    obj.userData.patternOpacity = opacity;
+                    obj.userData.patternColors = colors;
+
+                    // Create/Update Texture
+                    if (!obj.userData.patternTexture || params.forceUpdate) {
+                        const tex = createGeometricPatternTexture(scale, opacity, colors);
+                        obj.material.map = tex;
+                        obj.userData.patternTexture = tex;
+                    }
+                    // If we just enabled it, key it in
+                    if (!obj.material.map) {
+                        const tex = createGeometricPatternTexture(scale, opacity, colors);
+                        obj.material.map = tex;
+                        obj.userData.patternTexture = tex;
+                    }
+                    obj.material.needsUpdate = true;
+                } else {
+                    // Disable pattern
+                    if (obj.material.map) {
+                        obj.material.map = null;
+                        obj.material.needsUpdate = true;
+                    }
+                }
+            }
+        }
+        if (obj.userData.isDesk) {
+            if (params.deskColor !== undefined) obj.material.color.setHex(params.deskColor);
+            if (params.deskRoughness !== undefined) obj.material.roughness = params.deskRoughness;
+            if (params.deskMetalness !== undefined) obj.material.metalness = params.deskMetalness;
         }
     });
 }
 
-export function getMirrorHeight(size) {
-    // 2x2 -> 1.0
-    // 3x3 -> 1.7
-    // 17x17 -> 5.0
+function createGeometricPatternTexture(scale = 1.0, opacity = 0.1, colors = ['#334455', '#2a3b4c', '#1f2d3a']) {
+    const canvas = document.createElement('canvas');
+    const size = 1024;
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
 
-    if (size <= 3) {
-        // Interpolate between 2 (1.0) and 3 (1.7)
-        const t = (size - 2) / (3 - 2);
-        return 1.0 + t * (1.7 - 1.0);
-    } else {
-        // Interpolate between 3 (1.7) and 17 (5.0)
-        const t = (size - 3) / (17 - 3);
-        return 1.7 + t * (5.0 - 1.7);
+    // Fill background
+    ctx.fillStyle = colors[0];
+    ctx.fillRect(0, 0, size, size);
+
+    // Draw Triangles
+    const numTriangles = 50 * scale;
+
+    // We want a tiling pattern ideally, but random disjoint triangles are easier for "geometric wall".
+    // For a nice specialized look let's do a Delaunay-like or just random polygons.
+    // Let's stick to the user's requested "Geometric Shapes" - likely abstract.
+
+    ctx.globalAlpha = opacity;
+
+    for (let i = 0; i < numTriangles; i++) {
+        ctx.fillStyle = colors[Math.floor(Math.random() * colors.length)];
+        ctx.beginPath();
+        const x = Math.random() * size;
+        const y = Math.random() * size;
+        const s = (Math.random() * 100 + 50) * scale;
+
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + s, y + (Math.random() - 0.5) * s);
+        ctx.lineTo(x + (Math.random() - 0.5) * s, y + s);
+        ctx.closePath();
+        ctx.fill();
     }
+
+    // Polygons
+    for (let i = 0; i < numTriangles / 2; i++) {
+        ctx.fillStyle = colors[Math.floor(Math.random() * colors.length)];
+        ctx.beginPath();
+        const x = Math.random() * size;
+        const y = Math.random() * size;
+        const s = (Math.random() * 150 + 50) * scale;
+        const sides = Math.floor(Math.random() * 3) + 3; // 3 to 5 sides
+
+        for (let j = 0; j < sides; j++) {
+            const angle = (j / sides) * Math.PI * 2;
+            const px = x + Math.cos(angle) * s;
+            const py = y + Math.sin(angle) * s;
+            if (j === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        ctx.fill();
+    }
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(2, 2);
+    // tex.needsUpdate = true; // automatic on creation
+    return tex;
+}
+
+export function getMirrorHeight(size) {
+    // Default base is 1.7 for size 3
+    // Scale slightly for larger cubes
+    return 1.7 + (size - 3) * 0.5;
 }

@@ -62,6 +62,8 @@ export class VoidCube extends StandardCube {
 
                     const core = new THREE.Mesh(baseGeo, coreMat);
                     core.scale.set(0.98, 0.98, 0.98);
+                    core.castShadow = true;
+                    core.receiveShadow = true;
                     group.add(core);
 
                     // Sticker Size 0.800 (User Preference)
@@ -97,6 +99,8 @@ export class VoidCube extends StandardCube {
                             const sticker = new THREE.Mesh(stickerGeo, stickerMat);
                             sticker.position.set(...f.pos);
                             sticker.rotation.set(...f.rot);
+                            sticker.castShadow = true;
+                            sticker.receiveShadow = true;
                             sticker.userData = { isSticker: true, originalColor: f.color, initialScale: 1.0 };
                             group.add(sticker);
                             this.stickers.push(sticker);

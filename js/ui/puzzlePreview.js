@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { StandardCube } from '../puzzles/StandardCube.js';
 import { MirrorCube } from '../puzzles/MirrorCube.js';
-import { getMirrorHeight } from '../core/environment.js';
+
 
 let scene, camera, renderer, previewGroup;
 let activePreviewPuzzle = null;

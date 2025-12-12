@@ -3,7 +3,7 @@ import { enableDebugButton } from './ui.js';
 import { showDebugMenu } from './components/DebugMenu.js';
 import { showLeaderboard } from './components/LeaderboardModal.js';
 import { startScramble, handleResetClick, hardReset } from '../game/scramble.js';
-import { toggleMirrors, updateBackMirrorHeight, getMirrorHeight } from '../core/environment.js';
+import { toggleMirrors } from '../core/environment.js';
 import { playSolveAnimation, animateVictory } from '../animations/victory.js';
 import { showWinModal, togglePanel, openDetailModal, updateHistoryUI, updateActivePuzzleTab } from './ui.js';
 import { submitScore, fetchLeaderboard } from '../leaderboard/firebase.js';

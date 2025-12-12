@@ -312,6 +312,8 @@ export class Molecube extends StandardCube {
                         normalScale: new THREE.Vector2(0.2, 0.2) // Subtle sparkle
                     });
                     const sphere = new THREE.Mesh(sphereGeo, mat);
+                    sphere.castShadow = true;
+                    sphere.receiveShadow = true;
                     group.add(sphere);
 
                     // Connecting Cylinder
@@ -328,6 +330,8 @@ export class Molecube extends StandardCube {
                             metalness: 0.1
                         });
                         const cylinder = new THREE.Mesh(cylGeo, cylMat);
+                        cylinder.castShadow = true;
+                        cylinder.receiveShadow = true;
 
                         // Align cylinder (default Y axis) to localCenter
                         const axis = new THREE.Vector3(0, 1, 0);
@@ -375,6 +379,8 @@ export class Molecube extends StandardCube {
             metalness: 0.1
         });
         const coreSphere = new THREE.Mesh(coreGeo, coreMat);
+        coreSphere.castShadow = true;
+        coreSphere.receiveShadow = true;
         coreSphere.userData = { isCore: true };
         this.parent.add(coreSphere);
         // We don't add it to cubieList because it doesn't move/rotate with faces (it's the core).
