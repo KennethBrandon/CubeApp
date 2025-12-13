@@ -19,10 +19,28 @@ export const puzzleCache = {
         const configRes = await cache.match(configReq);
         if (!configRes) return false;
 
-        // We assume if config is there, likely the rest is there or in progress.
-        // But to be sure, we could check the cached config to find the STL path.
-        // For performance in list view, checking config existence is usually enough
-        // if we trust our download process completes or nothing.
+        // Verify at least one main asset to avoid partial states
+        try {
+            const config = await configRes.json();
+
+            if (config.stlPath) {
+                const stlReq = new Request(`assets/puzzles/${puzzleId}/${config.stlPath}`);
+                if (!await cache.match(stlReq)) return false;
+            } else if (config.format === 'binary_v1' && config.dimensions) {
+                // Check first cubie
+                const getFirstIndex = (size) => (0 - (size - 1) / 2);
+                const x = getFirstIndex(config.dimensions.x);
+                const y = getFirstIndex(config.dimensions.y);
+                const z = getFirstIndex(config.dimensions.z);
+
+                const cubieReq = new Request(`assets/puzzles/${puzzleId}/cubies/cubie_${x}_${y}_${z}.bin`);
+                if (!await cache.match(cubieReq)) return false;
+            }
+        } catch (e) {
+            console.warn("Error verifying cached assets, assuming not cached:", e);
+            return false;
+        }
+
         return true;
     },
 
@@ -107,6 +125,10 @@ export const puzzleCache = {
 
                         await cache.add(url);
                     } catch (e) {
+                        if (url.endsWith('/thumbnail.png')) {
+                            console.warn(`Optional thumbnail missing for ${url}, skipping.`);
+                            return;
+                        }
                         console.warn(`Failed to cache ${url}`, e);
                         // Don't fail entire download for one texture/bin if we can help it?
                         // But for now, let it throw so UI knows.
@@ -140,6 +162,7 @@ export const puzzleCache = {
 
             if (config.stlPath) {
                 const stlUrl = `assets/puzzles/${puzzleId}/${config.stlPath}`;
+                const headRes = await fetch(stlUrl, { method: 'HEAD' });
                 if (headRes.ok) {
                     const len = headRes.headers.get('Content-Length');
                     if (len) return parseInt(len);
@@ -160,13 +183,20 @@ export const puzzleCache = {
                 const totalCubies = dims.x * dims.y * dims.z;
 
                 // Just check one to see if files exist/accessible
+                // Calculate valid start index like in downloadPuzzle
+                const getFirstIndex = (size) => (0 - (size - 1) / 2);
+                const x = getFirstIndex(dims.x);
+                const y = getFirstIndex(dims.y);
+                const z = getFirstIndex(dims.z);
+
+                // Check first cubie to verify existence
                 const basePath = `assets/puzzles/${puzzleId}/cubies/`;
-                const sampleRes = await fetch(basePath + 'cubie_0_0_0.bin', { method: 'HEAD' });
+                const sampleRes = await fetch(basePath + `cubie_${x}_${y}_${z}.bin`, { method: 'HEAD' });
 
                 if (sampleRes.ok) {
                     // Rough estimate: avg size * count? 
                     // Let's just return a flag or null to indicate "Size Unknown" but verify existence.
-                    // Or... if we want to be fancy, we can't easily get total size without a manifest.
+                    // OR if we want to be fancy, we can't easily get total size without a manifest.
                     // RETURN NULL implies no size shown.
                     // For the UI, maybe we just want to know it's downloadable.
 
