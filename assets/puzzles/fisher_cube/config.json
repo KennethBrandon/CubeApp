@@ -30,6 +30,20 @@
     "normalScale": 0.34,
     "useSparkle": true
   },
+  "solveSettings": {
+    "ignoreCenters": [
+      {
+        "x": 0,
+        "y": 1,
+        "z": 0
+      },
+      {
+        "x": 0,
+        "y": -1,
+        "z": 0
+      }
+    ]
+  },
   "format": "binary_v1",
-  "timestamp": "2025-12-13T19:09:26.845Z"
+  "timestamp": "2025-12-13T19:36:20.311Z"
 }

@@ -22,18 +22,19 @@ export class StlPuzzleMod extends StandardCube {
         try {
             const basePath = `assets/puzzles/${this.puzzleId}/cubies/`;
 
-            const configResponse = await puzzleCache.fetch(new Request(basePath + 'config.json'));
+            // Use main config to check format
+            if (this.puzzleConfig.format !== 'binary_v1') return null;
 
-            if (!configResponse.ok) return null; // No pre-computed data found
-
-            const config = await configResponse.json();
-            const isBinary = config.format === 'binary_v1';
+            const config = this.puzzleConfig;
             const cubies = [];
 
+            // Dimensions (already loaded in main config)
+            const dims = config.dimensions;
+
             // Dimensions check
-            if (config.dimensions.x !== this.config.dimensions.x ||
-                config.dimensions.y !== this.config.dimensions.y ||
-                config.dimensions.z !== this.config.dimensions.z) {
+            if (dims.x !== this.config.dimensions.x ||
+                dims.y !== this.config.dimensions.y ||
+                dims.z !== this.config.dimensions.z) {
                 console.warn("[StlPuzzleMod] Pre-computed dimensions mismatch!");
                 return null;
             }
@@ -180,8 +181,22 @@ export class StlPuzzleMod extends StandardCube {
     }
 
     async loadConfig() {
-        const res = await puzzleCache.fetch(new Request(`assets/puzzles/${this.puzzleId}/config.json`));
-        if (!res.ok) throw new Error(`Config file not found: assets/puzzles/${this.puzzleId}/config.json`);
+        let res;
+        const url = `assets/puzzles/${this.puzzleId}/config.json`;
+        try {
+            // Network First
+            res = await fetch(url, { cache: 'no-cache' });
+            if (!res.ok) throw new Error("Network fetch failed");
+
+            // Update Cache
+            const cache = await puzzleCache.open();
+            cache.put(url, res.clone());
+        } catch (e) {
+            console.warn("[StlPuzzleMod] Network config load failed, using cache", e);
+            res = await puzzleCache.fetch(new Request(url));
+        }
+
+        if (!res.ok) throw new Error(`Config file not found: ${url}`);
 
         this.puzzleConfig = await res.json();
 
@@ -673,8 +688,17 @@ export class StlPuzzleMod extends StandardCube {
             StlPuzzleMod.validRotations = this.generateValidRotations();
         }
 
+        // Get ignored centers from config
+        const ignoredCenters = (this.puzzleConfig.solveSettings && this.puzzleConfig.solveSettings.ignoreCenters) || [];
+        // Helper to check efficiently
+        const isIgnored = (x, y, z) => {
+            return ignoredCenters.some(c => c.x === x && c.y === y && c.z === z);
+        };
+
         // Check each of the 24 global orientations
+        let attempt = 0;
         for (const globalQuat of StlPuzzleMod.validRotations) {
+            attempt++;
             let matches = true;
 
             for (const group of this.cubieList) {
@@ -689,24 +713,35 @@ export class StlPuzzleMod extends StandardCube {
                 // Check Position Distance
                 if (group.position.distanceTo(expectedPos) > epsilon) {
                     matches = false;
+                    // console.log(`[Fail Attempt ${attempt}] Pos mismatch at [${x},${y},${z}]`);
                     break;
                 }
 
                 // 2. Check Orientation
                 // For a Super Cube, the piece orientation must match the Global Orientation exactly.
-                // angleTo calculates the shortest angle between two quaternions.
-                if (group.quaternion.angleTo(globalQuat) > angleEpsilon) {
-                    matches = false;
-                    break;
+                // UNLESS it is configured to ignore orientation (e.g. symmetric centers).
+                if (!isIgnored(x, y, z)) {
+                    if (group.quaternion.angleTo(globalQuat) > angleEpsilon) {
+                        matches = false;
+                        if (attempt === 1) { // Only log for first orientation attempt to reduce spam
+                            // console.log(`[StlPuzzle] Orientation mismatch at [${x},${y},${z}]. Diff: ${group.quaternion.angleTo(globalQuat).toFixed(2)} rad`);
+                        }
+                        break;
+                    }
+                } else {
+                    // console.log(`[StlPuzzle] Ignored orientation check for [${x},${y},${z}]`);
                 }
             }
 
             if (matches) {
+                console.log("[StlPuzzle] SOLVED!");
                 // Found a matching valid orientation! The puzzle is solved.
-
                 return true;
             }
         }
+
+        // Rate limit failure log, only occasionally
+        // if (Math.random() < 0.01) console.log("[StlPuzzle] Not Solved");
 
         return false;
     }

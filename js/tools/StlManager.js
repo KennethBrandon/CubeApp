@@ -43,10 +43,15 @@ class StlManager {
                 useSparkle: true
             },
             stlData: null, // Base64 string of STL
-            colorData: null // Array of vertex colors
+            colorData: null, // Array of vertex colors
+            solveSettings: {
+                ignoreCenters: [] // List of {x,y,z}
+            }
         };
 
         this.generatedCubies = []; // Store generated results
+        this.ignoreMarkers = null; // Group for visual markers
+        this.isIgnoreMode = false;
 
         this.brushColor = new THREE.Color('#74C947');
         this.brushSize = 0.5;
@@ -176,7 +181,9 @@ class StlManager {
 
         // Save / Export Buttons
         document.getElementById('btn-save').addEventListener('click', () => this.saveDraft());
-        document.getElementById('btn-export').addEventListener('click', () => this.exportAssets());
+        document.getElementById('btn-export-binary').addEventListener('click', () => this.exportGeneratedAssets());
+        document.getElementById('btn-export-config').addEventListener('click', () => this.exportConfigOnly());
+        document.getElementById('btn-export-colors').addEventListener('click', () => this.exportColorsOnly());
 
         // New Puzzle Button
         document.getElementById('btn-new-puzzle').addEventListener('click', () => this.resetWorkspace());
@@ -399,13 +406,30 @@ class StlManager {
         document.getElementById('btn-import-config').addEventListener('click', () => document.getElementById('file-input-config').click());
         document.getElementById('file-input-config').addEventListener('change', (e) => this.handleConfigFileSelect(e));
 
-        document.getElementById('btn-import-colors').addEventListener('click', () => document.getElementById('file-input-colors').click());
         document.getElementById('file-input-colors').addEventListener('change', (e) => this.handleColorFileSelect(e));
+
+        // Solve Settings
+        document.getElementById('btn-toggle-ignore').addEventListener('click', () => {
+            this.isIgnoreMode = !this.isIgnoreMode;
+            const btn = document.getElementById('btn-toggle-ignore');
+            if (this.isIgnoreMode) {
+                btn.textContent = "Target Mode: ON (Click to Toggle)";
+                btn.classList.add('bg-orange-600', 'border-orange-500');
+                btn.classList.remove('bg-gray-700', 'border-gray-600');
+                // Disable other tools visually?
+            } else {
+                btn.textContent = "Target Mode: OFF";
+                btn.classList.remove('bg-orange-600', 'border-orange-500');
+                btn.classList.add('bg-gray-700', 'border-gray-600');
+            }
+        });
 
         // Mouse Events
         this.container.addEventListener('mousedown', (e) => {
             if (e.button === 0 && this.mesh) {
-                if (this.currentTool === 'brush') {
+                if (this.isIgnoreMode) {
+                    this.toggleIgnoreAtMouse(e);
+                } else if (this.currentTool === 'brush') {
                     this.isPainting = true;
                     this.paint(e);
                 } else if (this.currentTool === 'replace') {
@@ -688,6 +712,8 @@ class StlManager {
                 }
                 if (config.cut) this.config.cut = { ...config.cut };
                 if (config.material) this.config.material = { ...config.material };
+                if (config.solveSettings) this.config.solveSettings = { ...config.solveSettings };
+                else this.config.solveSettings = { ignoreCenters: [] };
 
                 // Update UI Inputs
                 const setVal = (id, val) => {
@@ -755,8 +781,11 @@ class StlManager {
 
                 // Apply Updates
                 this.updateBoundsGuide();
+                this.updateBoundsGuide();
                 this.updateMeshTransform();
                 this.updateMeshMaterial();
+                this.renderIgnoreList();
+                this.updateIgnoreMarkers();
 
                 alert('Configuration Imported!');
             } catch (err) {
@@ -1058,8 +1087,18 @@ class StlManager {
 
     checkSaveEnabled() {
         const hasData = this.config.name && this.config.stlData;
-        document.getElementById('btn-save').disabled = !hasData;
-        document.getElementById('btn-export').disabled = !hasData;
+        const saveBtn = document.getElementById('btn-save');
+        if (saveBtn) saveBtn.disabled = !hasData;
+
+        const confBtn = document.getElementById('btn-export-config');
+        if (confBtn) confBtn.disabled = !hasData;
+
+        const colBtn = document.getElementById('btn-export-colors');
+        if (colBtn) colBtn.disabled = !(hasData && this.config.colorData);
+
+        // Binary export depends on generation
+        const binBtn = document.getElementById('btn-export-binary');
+        if (binBtn) binBtn.disabled = !(this.generatedCubies && this.generatedCubies.length > 0);
     }
 
     saveDraft() {
@@ -1084,6 +1123,40 @@ class StlManager {
         } catch (e) {
             console.error(e);
             alert('Failed to save draft. Storage might be full (STL might be too big).');
+        }
+    }
+
+    exportConfigOnly() {
+        if (!this.config.stlData) return;
+        const safeName = this.config.name.toLowerCase().replace(/[^a-z0-9]/g, '_');
+
+        // Export Config JSON
+        const releaseConfig = { ...this.config };
+        delete releaseConfig.stlData;
+        delete releaseConfig.colorData;
+        delete releaseConfig.id;
+
+        // Ensure fileType is set if using binary
+        if (this.config.fileType === '3mf' || !this.config.fileType) {
+            releaseConfig.fileType = '3mf';
+        }
+
+        // Add references (User responsibility to match, but we provide defaults)
+        // For binary cubies, we don't necessarily have a single stlPath. 
+        // But if they are just exporting config, maybe they are doing 3MF.
+        // Let's just output cleaned config.
+
+        releaseConfig.timestamp = new Date().toISOString();
+
+        this.downloadFile(JSON.stringify(releaseConfig, null, 2), 'config.json', 'application/json');
+    }
+
+    exportColorsOnly() {
+        const safeName = this.config.name.toLowerCase().replace(/[^a-z0-9]/g, '_');
+        if (this.config.colorData) {
+            this.downloadFile(JSON.stringify(this.config.colorData), `${safeName}_colors.json`, 'application/json');
+        } else {
+            alert("No color data to export.");
         }
     }
 
@@ -1232,7 +1305,23 @@ class StlManager {
 
             const modelPath = config.stlPath ? (baseUrl + config.stlPath) : (baseUrl + `${id}.${extension}`);
 
-            const sRes = await fetch(modelPath);
+            let sRes = await fetch(modelPath);
+
+            // Fallback: If STL not found, try 3MF
+            if (!sRes.ok && extension === 'stl' && !config.stlPath) {
+                const altPath = baseUrl + `${id}.3mf`;
+                try {
+                    const res2 = await fetch(altPath);
+                    if (res2.ok) {
+                        sRes = res2;
+                        extension = '3mf';
+                        config.fileType = '3mf'; // Update config in memory
+                    }
+                } catch (e) {
+                    // Ignore, original error will be thrown
+                }
+            }
+
             if (!sRes.ok) throw new Error(`${extension.toUpperCase()} file not found: ${modelPath}`);
             const buffer = await sRes.arrayBuffer();
 
@@ -1279,6 +1368,11 @@ class StlManager {
                 if (config.material.useSparkles !== undefined && config.material.useSparkle === undefined) {
                     this.config.material.useSparkle = config.material.useSparkles;
                 }
+            }
+            if (config.solveSettings) {
+                this.config.solveSettings = { ...config.solveSettings };
+            } else {
+                this.config.solveSettings = { ignoreCenters: [] };
             }
 
             // Store STL Data as Base64 for saving
@@ -1327,9 +1421,42 @@ class StlManager {
             setVal('inp-normalScale', mat.normalScale !== undefined ? mat.normalScale : 0.5);
             document.getElementById('chk-sparkle').checked = mat.useSparkle !== undefined ? mat.useSparkle : true;
 
-            this.updateBoundsGuide();
-            this.updateMeshTransform();
-            this.updateMeshMaterial();
+            // Update Cut Settings (Internal Color)
+            if (this.config.cut) {
+                const useSingle = this.config.cut.useSingleColor;
+                const singleColor = this.config.cut.singleColor || '#444444';
+
+                const chk = document.getElementById('chk-internal-single');
+                if (chk) chk.checked = useSingle;
+
+                const divInternal = document.getElementById('div-internal-color');
+                if (divInternal) {
+                    if (useSingle) divInternal.classList.remove('opacity-50', 'pointer-events-none');
+                    else divInternal.classList.add('opacity-50', 'pointer-events-none');
+                }
+
+                const valInt = document.getElementById('val-internal-color');
+                if (valInt) valInt.value = singleColor;
+
+                const hexInt = document.getElementById('hex-internal-color');
+                if (hexInt) hexInt.value = singleColor;
+            }
+
+            // Target Mode (Ignore Centers)
+            this.renderIgnoreList();
+            if (this.config.solveSettings && this.config.solveSettings.ignoreCenters && this.config.solveSettings.ignoreCenters.length > 0) {
+                this.isIgnoreMode = true;
+                const btn = document.getElementById('btn-toggle-ignore');
+                if (btn) {
+                    btn.classList.add('bg-orange-600', 'text-white');
+                    btn.classList.remove('bg-gray-700', 'text-gray-300');
+                    btn.innerHTML = 'Target Mode: ON';
+                }
+            }
+            this.updateIgnoreMarkers();
+
+            // Ensure palette is rendered
+            this.renderPalette();
 
             // Enable panel
             document.getElementById('config-panel').classList.remove('opacity-50', 'pointer-events-none');
@@ -1847,23 +1974,7 @@ class StlManager {
 
         let fileCount = 0;
 
-        // 1. Export Config (Binary Mode)
-        const exportConfig = {
-            ...this.config,
-            format: 'binary_v1',
-            timestamp: new Date().toISOString()
-        };
-        // Clean up raw data
-        delete exportConfig.stlData;
-        delete exportConfig.colorData;
-
-        this.downloadFile(JSON.stringify(exportConfig, null, 2), 'config.json', 'application/json');
-        fileCount++;
-
-        // 2. Export Helper for User
-
-
-        // 3. Export Binaries
+        // 1. Export Binaries
         for (const cubie of this.generatedCubies) {
             const buffer = this.geometryToBinary(cubie.geometry);
             const fname = `cubie_${cubie.x}_${cubie.y}_${cubie.z}.bin`;
@@ -1872,7 +1983,7 @@ class StlManager {
             await new Promise(r => setTimeout(r, 100)); // Delay to prevent browser throttling downloads
         }
 
-        alert(`Exported ${fileCount} files!\n\nPlease move them to: assets/puzzles/${safeName}/cubies/`);
+        alert(`Exported ${fileCount} files!\n\nPlease move them to: assets/puzzles/${safeName}/cubies/\n\nNote: Config file is no longer exported here. Use the main Save/Export button for config.`);
     }
 
     async parseGeometryFromBuffer(buffer, type) {
@@ -1946,6 +2057,96 @@ class StlManager {
         if (this.controls) this.controls.update();
         if (this.renderer) this.renderer.render(this.scene, this.camera);
     }
+
+    toggleIgnoreAtMouse(event) {
+        // Raycast to find grid cell
+        const rect = this.renderer.domElement.getBoundingClientRect();
+        this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+        this.raycaster.setFromCamera(this.mouse, this.camera);
+        // Intersect with mesh
+        const intersects = this.raycaster.intersectObject(this.mesh, false);
+
+        if (intersects.length > 0) {
+            const point = intersects[0].point;
+
+            // Calculate grid pos
+            const UNIT = CUBE_SIZE; // Should be same constant
+            const x = Math.round(point.x / UNIT);
+            const y = Math.round(point.y / UNIT);
+            const z = Math.round(point.z / UNIT);
+
+            // Toggle in list
+            const list = this.config.solveSettings.ignoreCenters;
+            const idx = list.findIndex(c => c.x === x && c.y === y && c.z === z);
+
+            if (idx >= 0) {
+                list.splice(idx, 1);
+            } else {
+                list.push({ x, y, z });
+            }
+
+            this.renderIgnoreList();
+            this.updateIgnoreMarkers();
+        }
+    }
+
+    renderIgnoreList() {
+        const list = document.getElementById('ignore-list');
+        list.innerHTML = '';
+
+        if (!this.config.solveSettings.ignoreCenters || this.config.solveSettings.ignoreCenters.length === 0) {
+            list.innerHTML = '<p class="text-gray-500 italic">None</p>';
+            return;
+        }
+
+        this.config.solveSettings.ignoreCenters.forEach(c => {
+            const div = document.createElement('div');
+            div.className = 'flex justify-between items-center text-gray-300';
+            div.textContent = `[${c.x}, ${c.y}, ${c.z}]`;
+
+            const btn = document.createElement('button');
+            btn.textContent = '×';
+            btn.className = 'text-red-400 hover:text-red-300 font-bold ml-2 px-1';
+            btn.onclick = (e) => {
+                e.stopPropagation(); // Prevent list click?
+                const idx = this.config.solveSettings.ignoreCenters.indexOf(c);
+                if (idx > -1) {
+                    this.config.solveSettings.ignoreCenters.splice(idx, 1);
+                    this.renderIgnoreList();
+                    this.updateIgnoreMarkers();
+                }
+            };
+
+            div.appendChild(btn);
+            list.appendChild(div);
+        });
+    }
+
+    updateIgnoreMarkers() {
+        if (this.ignoreMarkers) {
+            this.scene.remove(this.ignoreMarkers);
+            this.ignoreMarkers = null;
+        }
+
+        const centers = this.config.solveSettings.ignoreCenters;
+        if (!centers || centers.length === 0) return;
+
+        this.ignoreMarkers = new THREE.Group();
+        const UNIT = CUBE_SIZE;
+        // Marker geometry
+        const geo = new THREE.WireframeGeometry(new THREE.BoxGeometry(UNIT, UNIT, UNIT));
+        const mat = new THREE.LineBasicMaterial({ color: 0xffaa00, linewidth: 2 });
+
+        centers.forEach(c => {
+            const mesh = new THREE.LineSegments(geo, mat);
+            mesh.position.set(c.x * UNIT, c.y * UNIT, c.z * UNIT);
+            this.ignoreMarkers.add(mesh);
+        });
+
+        this.scene.add(this.ignoreMarkers);
+    }
 }
 
 new StlManager();
@@ -1996,4 +2197,6 @@ function createSparkleMap(maxDim = 3) {
     tex.magFilter = THREE.LinearFilter;
 
     return tex;
+
+
 }

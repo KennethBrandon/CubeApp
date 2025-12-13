@@ -30,16 +30,6 @@
             <a href="index.html" class="text-gray-400 hover:text-white text-sm flex items-center gap-2">
                 🏠 Back to App
             </a>
-            <button id="btn-save"
-                class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled>
-                💾 Save Draft
-            </button>
-            <button id="btn-export"
-                class="bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded transition disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled>
-                📤 Export Assets
-            </button>
         </div>
     </header>
 
@@ -306,9 +296,29 @@
                     </div>
                 </div>
 
-                <!-- 5. Optimization (Generation) -->
+                <!-- 6. Solve Settings -->
                 <div class="bg-gray-900/50 p-4 rounded-lg border border-gray-700">
-                    <h2 class="text-sm font-bold text-gray-400 uppercase mb-3">6. Optimization</h2>
+                    <h2 class="text-sm font-bold text-gray-400 uppercase mb-3">6. Solve Settings</h2>
+                    <p class="text-[10px] text-gray-500 mb-2">Configure pieces that should ignore orientation checks
+                        (e.g. symmetric centers).</p>
+
+                    <button id="btn-toggle-ignore"
+                        class="w-full bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition text-xs mb-3 border border-gray-600">
+                        Target Mode: OFF
+                    </button>
+
+                    <div class="space-y-1">
+                        <label class="block text-xs text-gray-500">Ignored Grid Positions:</label>
+                        <div id="ignore-list"
+                            class="max-h-32 overflow-y-auto space-y-1 pr-1 bg-gray-800 rounded p-2 text-xs font-mono">
+                            <p class="text-gray-500 italic">None</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 7. Optimization (Generation) -->
+                <div class="bg-gray-900/50 p-4 rounded-lg border border-gray-700">
+                    <h2 class="text-sm font-bold text-gray-400 uppercase mb-3">7. Optimization</h2>
                     <p class="text-[10px] text-gray-500 mb-3">Generate pre-cut assets for instant loading and correct
                         inner colors.</p>
 
@@ -320,11 +330,6 @@
                         <div id="gen-progress" class="hidden text-xs text-center text-blue-400 font-mono">
                             Processing: <span id="gen-count">0</span> / <span id="gen-total">0</span>
                         </div>
-                        <button id="btn-export-binary"
-                            class="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 px-4 rounded transition text-xs disabled:opacity-50 disabled:cursor-not-allowed"
-                            disabled>
-                            💾 Export Binary Assets
-                        </button>
 
                         <button id="btn-view-exploded"
                             class="hidden w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-1 px-4 mt-2 rounded transition text-xs">
@@ -335,6 +340,37 @@
                         <div id="cubie-list" class="max-h-40 overflow-y-auto mt-2 space-y-1 pr-1 hidden">
                             <!-- Items inserted by JS -->
                         </div>
+                    </div>
+                </div>
+
+                <!-- 8. Export -->
+                <div class="bg-gray-900/50 p-4 rounded-lg border border-gray-700">
+                    <h2 class="text-sm font-bold text-gray-400 uppercase mb-3">8. Export / Save</h2>
+                    <div class="space-y-3">
+                        <button id="btn-export-binary"
+                            class="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 px-4 rounded transition text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled>
+                            💾 Export Binary Cubies
+                        </button>
+
+                        <div class="grid grid-cols-2 gap-2">
+                            <button id="btn-export-config"
+                                class="bg-gray-700 hover:bg-green-600 text-white font-bold py-2 px-2 rounded transition text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                                disabled>
+                                📄 Config
+                            </button>
+                            <button id="btn-export-colors"
+                                class="bg-gray-700 hover:bg-green-600 text-white font-bold py-2 px-2 rounded transition text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                                disabled>
+                                🎨 Colors
+                            </button>
+                        </div>
+
+                        <button id="btn-save"
+                            class="w-full bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled>
+                            💾 Save Local Draft
+                        </button>
                     </div>
                 </div>
 
