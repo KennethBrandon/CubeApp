@@ -186,7 +186,7 @@ function attachDebugListeners() {
             else ui.classList.add('hidden');
         } else if (e.target.checked) {
             // If it doesn't exist and we want to show it, we need to load it.
-            import('./Tuners.js').then(module => module.showCubeTuner());
+            import('../tuners/index.js').then(module => module.showCubeTuner());
         }
         gtag('event', 'toggle_cube_tuner', { state: e.target.checked ? 'on' : 'off' });
     });
@@ -197,7 +197,7 @@ function attachDebugListeners() {
             if (e.target.checked) ui.classList.remove('hidden');
             else ui.classList.add('hidden');
         } else if (e.target.checked) {
-            import('./Tuners.js').then(module => module.showAcornsTuner());
+            import('../tuners/index.js').then(module => module.showAcornsTuner());
         }
         gtag('event', 'toggle_acorns_tuner', { state: e.target.checked ? 'on' : 'off' });
     });
@@ -208,7 +208,7 @@ function attachDebugListeners() {
             if (e.target.checked) ui.classList.remove('hidden');
             else ui.classList.add('hidden');
         } else if (e.target.checked) {
-            import('./Tuners.js').then(module => module.showMolecubeTuner());
+            import('../tuners/index.js').then(module => module.showMolecubeTuner());
         }
         gtag('event', 'toggle_molecube_tuner', { state: e.target.checked ? 'on' : 'off' });
     });
@@ -219,7 +219,7 @@ function attachDebugListeners() {
             if (e.target.checked) ui.classList.remove('hidden');
             else ui.classList.add('hidden');
         } else if (e.target.checked) {
-            import('./Tuners.js').then(module => module.showMirrorTuner());
+            import('../tuners/index.js').then(module => module.showMirrorTuner());
         }
     });
 
@@ -309,7 +309,7 @@ function attachDebugListeners() {
             if (e.target.checked) ui.classList.remove('hidden');
             else ui.classList.add('hidden');
         } else if (e.target.checked) {
-            import('./Tuners.js').then(module => module.showEnvironmentTuner());
+            import('../tuners/index.js').then(module => module.showEnvironmentTuner());
         }
     });
 }
