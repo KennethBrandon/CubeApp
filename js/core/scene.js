@@ -28,7 +28,8 @@ export function initScene() {
     state.renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true, alpha: true });
     state.renderer.setSize(window.innerWidth, window.innerHeight);
     state.renderer.setPixelRatio(window.devicePixelRatio);
-    state.renderer.shadowMap.enabled = true; // Enable shadows
+    state.renderer.shadowMap.enabled = true;
+    state.renderer.shadowMap.type = THREE.VSMShadowMap; // Better softness
     container.appendChild(state.renderer.domElement);
 
     // Lighting
@@ -43,6 +44,8 @@ export function initScene() {
     dirLight.shadow.mapSize.height = 2048;
     dirLight.shadow.camera.near = 0.5;
     dirLight.shadow.camera.far = 50;
+    dirLight.shadow.bias = -0.0001; // Reduce acne
+    dirLight.shadow.radius = 1; // Default softness
     // Adjust shadow camera frustum to cover the desk area
     const d = 15;
     dirLight.shadow.camera.left = -d;
@@ -73,6 +76,65 @@ const lights = {
     fill: null,
     back: null
 };
+
+export function updateLighting(params) {
+    // 1. Shadow Intensity (Coupled Dir + Ambient)
+    if (params.shadowIntensity !== undefined && lights.ambient && lights.dir) {
+        const t = params.shadowIntensity; // 0 (Faint) to 1 (Strong)
+
+        // Target Total Brightness ~ 2.0
+        // T=0: Dir 0.5, Amb 1.5 -> Contrast 1.33 (Faint shadow)
+        // T=1: Dir 1.8, Amb 0.2 -> Contrast 10.0 (Dark shadow)
+        // Default T=0.1: Dir 0.63, Amb 1.37
+
+        const minDir = 0.5;
+        const maxDir = 1.8;
+        const dirIntensity = minDir + (t * (maxDir - minDir));
+        const ambIntensity = 2.0 - dirIntensity;
+
+        lights.dir.intensity = dirIntensity;
+        lights.ambient.intensity = ambIntensity;
+    }
+
+    // 2. Shadows Enabled (Existing Logic)
+    if (params.shadowsEnabled !== undefined && lights.dir) {
+        lights.dir.castShadow = params.shadowsEnabled;
+    }
+
+    // 3. Light Direction (Azimuth/Elevation)
+    if ((params.lightAzimuth !== undefined || params.lightElevation !== undefined) && lights.dir) {
+        // Defaults if one is missing, based on initial pos (10, 20, 10)
+        // R ~= 24.5
+        const r = 24.5;
+        // Azimuth ~ 45 deg, Elevation ~ 55 deg.
+        // But we just use whatever is passed or current logic if we tracked it.
+        // For simplicity, we expect the tuner to pass both or we use stored defaults in Tuner.
+        // Let's assume params has them if we differ from default.
+
+        const azimuth = params.lightAzimuth !== undefined ? params.lightAzimuth * (Math.PI / 180) : Math.PI / 4;
+        const elevation = params.lightElevation !== undefined ? params.lightElevation * (Math.PI / 180) : Math.PI / 3;
+
+        // Spherical to Cartesian (Y up)
+        // y = r * sin(elevation)
+        // h = r * cos(elevation) (horizontal projection radius)
+        // x = h * sin(azimuth)
+        // z = h * cos(azimuth)
+
+        const y = r * Math.sin(elevation);
+        const h = r * Math.cos(elevation);
+        const x = h * Math.sin(azimuth);
+        const z = h * Math.cos(azimuth);
+
+        lights.dir.position.set(x, y, z);
+    }
+
+    // 4. Shadow Softness (Radius)
+    if (params.shadowSoftness !== undefined && lights.dir) {
+        lights.dir.shadow.radius = params.shadowSoftness;
+        // ensure blurSamples is high enough if needed, default 8 is usually fine.
+        lights.dir.shadow.blurSamples = 8;
+    }
+}
 
 export function setShadowIntensity(intensity) {
     if (!lights.ambient) return;

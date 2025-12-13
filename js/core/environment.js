@@ -81,7 +81,10 @@ export function createEnvironment() {
     // Apply default environment settings (pattern enabled by default with specific colors)
     updateEnvironment({
         shadowsEnabled: true,
-        shadowIntensity: 0.1,
+        shadowIntensity: 0.35,
+        lightAzimuth: -15,
+        lightElevation: 55,
+        shadowSoftness: 9.0,
         patternEnabled: true,
         patternScale: 1.0,
         patternOpacity: 0.30,
@@ -245,14 +248,18 @@ export function updateEnvironment(params) {
 
             // Handle Global Parameters that might be passed in updateEnvironment wrapper
             // But usually updateEnvironment is called with params specific to the tuner.
-            // setShadowIntensity is a global Scene setting, not attached to the wall.
-            // But we can call it here if it's in params.
-            if (params.shadowIntensity !== undefined) {
-                setShadowIntensity(params.shadowIntensity);
-            }
-            if (params.shadowsEnabled !== undefined) {
-                setShadowsEnabled(params.shadowsEnabled);
-            }
+            import('./scene.js').then(sceneModule => {
+                const lightingParams = {};
+                if (params.shadowIntensity !== undefined) lightingParams.shadowIntensity = params.shadowIntensity;
+                if (params.shadowsEnabled !== undefined) lightingParams.shadowsEnabled = params.shadowsEnabled;
+
+                // New params
+                if (params.lightAzimuth !== undefined) lightingParams.lightAzimuth = params.lightAzimuth;
+                if (params.lightElevation !== undefined) lightingParams.lightElevation = params.lightElevation;
+                if (params.shadowSoftness !== undefined) lightingParams.shadowSoftness = params.shadowSoftness;
+
+                sceneModule.updateLighting(lightingParams);
+            });
 
             if (params.patternEnabled !== undefined || params.patternScale !== undefined || params.patternOpacity !== undefined || params.patternColors !== undefined) {
                 // If toggling on, or if already on and updating params

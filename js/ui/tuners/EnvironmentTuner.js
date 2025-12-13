@@ -28,9 +28,26 @@ function createEnvironmentTuner() {
             </label>
         </div>
         <div class="mb-3">
-            <label class="block mb-1 text-gray-300">Shadow Intensity: <span id="env-shadow-intensity-val" class="text-white font-mono">0.10</span></label>
-            <input type="range" id="env-shadow-intensity" min="0" max="1" step="0.05" value="0.1"
+            <label class="block mb-1 text-gray-300">Shadow Intensity: <span id="env-shadow-intensity-val" class="text-white font-mono">0.35</span></label>
+            <input type="range" id="env-shadow-intensity" min="0" max="1" step="0.05" value="0.35"
                 class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-teal-500">
+        </div>
+        <div class="mb-3 flex gap-2">
+            <div class="w-1/2">
+               <label class="block mb-1 text-gray-300">Azimuth: <span id="env-light-azimuth-val" class="text-white font-mono">-15°</span></label>
+               <input type="range" id="env-light-azimuth" min="-180" max="180" step="5" value="-15"
+                   class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-teal-500">
+            </div>
+            <div class="w-1/2">
+                <label class="block mb-1 text-gray-300">Elevation: <span id="env-light-elevation-val" class="text-white font-mono">55°</span></label>
+                <input type="range" id="env-light-elevation" min="0" max="90" step="5" value="55"
+                    class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-teal-500">
+            </div>
+        </div>
+        <div class="mb-3">
+             <label class="block mb-1 text-gray-300">Shadow Softness: <span id="env-shadow-softness-val" class="text-white font-mono">9.0</span></label>
+             <input type="range" id="env-shadow-softness" min="0" max="50" step="1" value="9.0"
+                 class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-teal-500">
         </div>
 
         <hr class="border-gray-700 my-4">
@@ -139,6 +156,9 @@ function attachEnvironmentTunerListeners() {
         // Collect all params
         const shadowsEnabled = document.getElementById('env-shadows-enabled').checked;
         const shadowIntensity = parseFloat(document.getElementById('env-shadow-intensity').value);
+        const lightAzimuth = parseFloat(document.getElementById('env-light-azimuth').value);
+        const lightElevation = parseFloat(document.getElementById('env-light-elevation').value);
+        const shadowSoftness = parseFloat(document.getElementById('env-shadow-softness').value);
 
         const deskColor = parseInt(document.getElementById('env-desk-color-picker').value.replace('#', '0x'), 16);
         const deskRoughness = parseFloat(document.getElementById('env-desk-roughness').value);
@@ -159,6 +179,9 @@ function attachEnvironmentTunerListeners() {
 
         // Update Labels
         document.getElementById('env-shadow-intensity-val').textContent = shadowIntensity.toFixed(2);
+        document.getElementById('env-light-azimuth-val').textContent = lightAzimuth.toFixed(0) + '°';
+        document.getElementById('env-light-elevation-val').textContent = lightElevation.toFixed(0) + '°';
+        document.getElementById('env-shadow-softness-val').textContent = shadowSoftness.toFixed(1);
 
         document.getElementById('env-desk-color-val').textContent = document.getElementById('env-desk-color-picker').value.toUpperCase();
         document.getElementById('env-desk-roughness-val').textContent = deskRoughness.toFixed(2);
@@ -191,6 +214,11 @@ function attachEnvironmentTunerListeners() {
                 deskColor, deskRoughness, deskMetalness,
                 wallColor, wallRoughness, wallMetalness,
                 patternEnabled, patternScale, patternOpacity, patternColors,
+                shadowIntensity,
+                lightAzimuth, lightElevation, shadowSoftness,
+                deskColor, deskRoughness, deskMetalness,
+                wallColor, wallRoughness, wallMetalness,
+                patternEnabled, patternScale, patternOpacity, patternColors,
                 forceUpdate
             });
         });
@@ -200,7 +228,8 @@ function attachEnvironmentTunerListeners() {
     if (document.getElementById('env-shadows-enabled')) {
         document.getElementById('env-shadows-enabled').addEventListener('change', () => updateEnv(false));
     }
-    ['env-shadow-intensity', 'env-desk-roughness', 'env-desk-metalness',
+    ['env-shadow-intensity', 'env-light-azimuth', 'env-light-elevation', 'env-shadow-softness',
+        'env-desk-roughness', 'env-desk-metalness',
         'env-wall-roughness', 'env-wall-metalness',
         'env-pattern-scale', 'env-pattern-opacity'].forEach(id => {
             document.getElementById(id).addEventListener('input', () => updateEnv(id === 'env-pattern-scale' || id === 'env-pattern-opacity'));
@@ -223,7 +252,10 @@ function attachEnvironmentTunerListeners() {
     document.getElementById('btn-reset-env-defaults').addEventListener('click', () => {
         // Reset Valid Defaults
         document.getElementById('env-shadows-enabled').checked = true;
-        document.getElementById('env-shadow-intensity').value = 0.1;
+        document.getElementById('env-shadow-intensity').value = 0.35;
+        document.getElementById('env-light-azimuth').value = -15;
+        document.getElementById('env-light-elevation').value = 55;
+        document.getElementById('env-shadow-softness').value = 9.0;
 
         document.getElementById('env-desk-color-picker').value = '#5D4037';
         document.getElementById('env-desk-roughness').value = 0.9;
