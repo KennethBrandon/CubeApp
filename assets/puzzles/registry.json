@@ -10,5 +10,9 @@
     {
         "id": "baby_yoda",
         "name": "Baby Yoda"
+    },
+    {
+        "id": "fisher_cube",
+        "name": "Fisher Cube"
     }
 ]
