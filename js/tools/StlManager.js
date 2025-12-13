@@ -32,7 +32,9 @@ class StlManager {
                 offset: { x: 0, y: 0, z: 0 }
             },
             cut: {
-                filletRadius: 0.14
+                filletRadius: 0.14,
+                useSingleColor: false,
+                singleColor: '#222222'
             },
             material: {
                 roughness: 0.6,
@@ -257,11 +259,70 @@ class StlManager {
             document.getElementById(id).addEventListener('change', () => this.updateMeshMaterial());
         });
 
+
+
         const chkSparkle = document.getElementById('chk-sparkle');
         chkSparkle.addEventListener('change', (e) => {
             this.config.material.useSparkle = e.target.checked;
             this.updateMeshMaterial();
         });
+
+        // Internal Color Settings
+        const chkInternal = document.getElementById('chk-internal-single');
+        const divInternal = document.getElementById('div-internal-color');
+        const valInternal = document.getElementById('val-internal-color');
+        const hexInternal = document.getElementById('hex-internal-color');
+
+        if (chkInternal) {
+            chkInternal.addEventListener('change', (e) => {
+                this.config.cut.useSingleColor = e.target.checked;
+                if (e.target.checked) {
+                    divInternal.classList.remove('opacity-50', 'pointer-events-none');
+                    valInternal.disabled = false;
+                    if (hexInternal) hexInternal.disabled = false;
+                } else {
+                    divInternal.classList.add('opacity-50', 'pointer-events-none');
+                    valInternal.disabled = true;
+                    if (hexInternal) hexInternal.disabled = true;
+                }
+            });
+            // Initial State
+            valInternal.disabled = !chkInternal.checked;
+            if (hexInternal) hexInternal.disabled = !chkInternal.checked;
+        }
+
+        if (valInternal && hexInternal) {
+            // Color Picker -> Hex Input & Config
+            valInternal.addEventListener('input', (e) => {
+                const val = e.target.value;
+                this.config.cut.singleColor = val;
+                hexInternal.value = val.toUpperCase();
+            });
+
+            // Hex Input -> Color Picker & Config
+            hexInternal.addEventListener('input', (e) => {
+                let val = e.target.value;
+                if (!val.startsWith('#')) val = '#' + val;
+
+                // Validate Hex
+                if (/^#[0-9A-F]{6}$/i.test(val)) {
+                    this.config.cut.singleColor = val;
+                    valInternal.value = val;
+                }
+            });
+
+            // Format on change (blur)
+            hexInternal.addEventListener('change', (e) => {
+                let val = e.target.value;
+                if (!val.startsWith('#')) val = '#' + val;
+                if (/^#[0-9A-F]{6}$/i.test(val)) {
+                    e.target.value = val.toUpperCase();
+                } else {
+                    // Revert if invalid
+                    e.target.value = valInternal.value.toUpperCase();
+                }
+            });
+        }
 
         // Paint Controls
         const colorPicker = document.getElementById('color-picker');
@@ -372,6 +433,44 @@ class StlManager {
         }
     }
 
+    extractColorsFromGeometry(geometry) {
+        if (!geometry || !geometry.attributes.color) return;
+        const colorAttr = geometry.attributes.color;
+        const uniqueColors = new Set();
+        const count = colorAttr.count;
+
+        for (let i = 0; i < count; i++) {
+            const r = colorAttr.getX(i);
+            const g = colorAttr.getY(i);
+            const b = colorAttr.getZ(i);
+
+            // Convert to hex
+            const c = new THREE.Color(r, g, b);
+            uniqueColors.add(c.getHexString().toUpperCase());
+        }
+
+        // Add to palette
+        if (uniqueColors.size > 50) {
+            if (!confirm(`Found ${uniqueColors.size} unique colors in geometry. Add all to palette?`)) return;
+        }
+
+        const palette = JSON.parse(localStorage.getItem('stl_palette') || '[]');
+        let modified = false;
+
+        uniqueColors.forEach(hex => {
+            const fullHex = '#' + hex;
+            if (!palette.includes(fullHex)) {
+                palette.push(fullHex);
+                modified = true;
+            }
+        });
+
+        if (modified) {
+            localStorage.setItem('stl_palette', JSON.stringify(palette));
+            this.renderPalette();
+        }
+    }
+
     extractColorsFromData(colorData) {
         if (!colorData) return;
         const uniqueColors = new Set();
@@ -430,6 +529,80 @@ class StlManager {
             container.appendChild(div);
         });
     }
+    async parse3MF(buffer) {
+        const loader = new ThreeMFLoader();
+        const group = loader.parse(buffer);
+        const geometries = [];
+
+        group.traverse(child => {
+            if (child.isMesh) {
+                child.geometry.computeVertexNormals();
+
+                // Force to non-indexed by manually building new geometry
+                const positions = [];
+                const normals = [];
+                const colors = [];
+
+                const geom = child.geometry;
+                const posAttr = geom.attributes.position;
+                const normAttr = geom.attributes.normal;
+                const colAttr = geom.attributes.color;
+                const indexAttr = geom.index;
+
+                // Helper to push vertex
+                const pushVertex = (idx, matColor) => {
+                    positions.push(posAttr.getX(idx), posAttr.getY(idx), posAttr.getZ(idx));
+                    normals.push(normAttr.getX(idx), normAttr.getY(idx), normAttr.getZ(idx));
+
+                    if (colAttr) {
+                        colors.push(colAttr.getX(idx), colAttr.getY(idx), colAttr.getZ(idx));
+                    } else {
+                        colors.push(matColor.r, matColor.g, matColor.b);
+                    }
+                };
+
+                // Determine groups
+                const materials = Array.isArray(child.material) ? child.material : [child.material];
+                const groups = geom.groups && geom.groups.length > 0 ? geom.groups : [{ start: 0, count: indexAttr ? indexAttr.count : posAttr.count, materialIndex: 0 }];
+
+                groups.forEach(g => {
+                    const mat = materials[g.materialIndex] || materials[0];
+                    const matColor = mat && mat.color ? mat.color : new THREE.Color('#74C947');
+
+                    for (let i = g.start; i < g.start + g.count; i++) {
+                        const idx = indexAttr ? indexAttr.getX(i) : i;
+                        pushVertex(idx, matColor);
+                    }
+                });
+
+                const newGeom = new THREE.BufferGeometry();
+                newGeom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+                newGeom.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+                newGeom.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+
+                // Bake transform
+                child.updateMatrixWorld();
+                newGeom.applyMatrix4(child.matrix);
+
+                geometries.push(newGeom);
+            }
+        });
+
+        if (geometries.length === 0) {
+            alert('No meshes found in 3MF file.');
+            return null;
+        } else if (geometries.length === 1) {
+            return geometries[0];
+        } else {
+            try {
+                const { mergeGeometries } = await import('three/addons/utils/BufferGeometryUtils.js');
+                return mergeGeometries(geometries);
+            } catch (err) {
+                console.warn('BufferGeometryUtils not found, taking first mesh.', err);
+                return geometries[0];
+            }
+        }
+    }
 
     setBrushColor(colorStr) {
         this.brushColor.set(colorStr);
@@ -454,59 +627,8 @@ class StlManager {
             let geometry;
 
             if (lowerName.endsWith('.3mf')) {
-                const loader = new ThreeMFLoader();
-                const group = loader.parse(buffer);
-
-                // 3MF returns a Group with meshes. We need to extracting a single geometry.
-                // If it's a single mesh, easy. If multiple, we should merge or prompt?
-                // For simplicity, let's fast-merge all meshes in the group.
-
-                const geometries = [];
-                group.traverse(child => {
-                    if (child.isMesh) {
-                        child.geometry.computeVertexNormals(); // Ensure normals
-                        // Apply local matrix to geometry if needed, but usually loader applies it to mesh
-                        // We need to bake the child's world matrix (relative to group root) into the geometry
-                        // But traverse visits children.
-                        // Let's assume flat structure or apply transforms.
-
-                        child.updateMatrixWorld(); // Update local against parent (group is at 0,0,0)
-
-                        const g = child.geometry.clone();
-                        g.applyMatrix4(child.matrix); // Bake local transform (since group is root)
-                        geometries.push(g);
-                    }
-                });
-
-                if (geometries.length === 0) {
-                    alert('No meshes found in 3MF file.');
-                    return;
-                } else if (geometries.length === 1) {
-                    geometry = geometries[0];
-                } else {
-                    // Merge
-                    // Use standard BufferGeometryUtils if available, but we don't have it imported.
-                    // Let's manually merge simplified or just take the first one?
-                    // Merging is better.
-                    // Wait, we don't have BufferGeometryUtils imported.
-                    // Let's import it dynamically or just take the biggest one?
-                    // Or implementing a simple merge.
-
-
-                    // Naive merge requires matching attributes.
-                    // Let's warn user and take first for now, or assume compatible?
-                    // Let's try to import BufferGeometryUtils if possible.
-                    // Check import map: three/addons/utils/BufferGeometryUtils.js exists usually.
-
-                    try {
-                        const { mergeGeometries } = await import('three/addons/utils/BufferGeometryUtils.js');
-                        geometry = mergeGeometries(geometries);
-                    } catch (err) {
-                        console.warn('BufferGeometryUtils not found, taking first mesh.', err);
-                        geometry = geometries[0];
-                    }
-                }
-
+                geometry = await this.parse3MF(buffer);
+                if (geometry) this.extractColorsFromGeometry(geometry);
             } else {
                 // STL
                 geometry = new STLLoader().parse(buffer);
@@ -594,8 +716,33 @@ class StlManager {
                 setVal('inp-offZ', this.config.transform.offset.z);
                 setVal('val-offZ', this.config.transform.offset.z);
 
-                setVal('inp-fillet', this.config.cut.filletRadius || 0.14);
-                setVal('val-fillet', this.config.cut.filletRadius || 0.14);
+                setVal('inp-fillet', this.config.cut.filletRadius);
+                setVal('val-fillet', this.config.cut.filletRadius);
+
+                // Internal Color UI
+                const chkInternal = document.getElementById('chk-internal-single');
+                const divInternal = document.getElementById('div-internal-color');
+                const valInternal = document.getElementById('val-internal-color');
+                const hexInternal = document.getElementById('hex-internal-color');
+
+                if (chkInternal && this.config.cut.useSingleColor !== undefined) {
+                    chkInternal.checked = this.config.cut.useSingleColor;
+
+                    // Update UI state
+                    if (chkInternal.checked) {
+                        divInternal.classList.remove('opacity-50', 'pointer-events-none');
+                        if (valInternal) valInternal.disabled = false;
+                        if (hexInternal) hexInternal.disabled = false;
+                    } else {
+                        divInternal.classList.add('opacity-50', 'pointer-events-none');
+                        if (valInternal) valInternal.disabled = true;
+                        if (hexInternal) hexInternal.disabled = true;
+                    }
+                }
+                if (valInternal && this.config.cut.singleColor) {
+                    valInternal.value = this.config.cut.singleColor;
+                    if (hexInternal) hexInternal.value = this.config.cut.singleColor.toUpperCase();
+                }
 
                 setVal('inp-roughness', this.config.material.roughness !== undefined ? this.config.material.roughness : 0.6);
                 setVal('val-roughness', this.config.material.roughness !== undefined ? this.config.material.roughness : 0.6);
@@ -665,16 +812,18 @@ class StlManager {
             this.mesh.geometry.dispose();
         }
 
-        // Apply default colors (Green)
-        const count = geometry.attributes.position.count;
-        const colors = new Float32Array(count * 3);
-        const color = new THREE.Color('#74C947');
-        for (let i = 0; i < count; i++) {
-            colors[i * 3] = color.r;
-            colors[i * 3 + 1] = color.g;
-            colors[i * 3 + 2] = color.b;
+        // Apply default colors (Green) ONLY if not present
+        if (!geometry.attributes.color) {
+            const count = geometry.attributes.position.count;
+            const colors = new Float32Array(count * 3);
+            const color = new THREE.Color('#74C947');
+            for (let i = 0; i < count; i++) {
+                colors[i * 3] = color.r;
+                colors[i * 3 + 1] = color.g;
+                colors[i * 3 + 2] = color.b;
+            }
+            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
         }
-        geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 
         this.originalGeometry = geometry.clone(); // Clone to keep untransformed version if needed? 
         // Actually, for "visual" transform adjustment, we usually modify the mesh.scale/position/rotation
@@ -1075,13 +1224,27 @@ class StlManager {
             } catch (e) { console.warn('Config not found, using defaults'); }
 
             // 2. Load STL
-            const stlPath = config.stlPath ? (baseUrl + config.stlPath) : (baseUrl + `${id}.stl`);
-            const sRes = await fetch(stlPath);
-            if (!sRes.ok) throw new Error('STL file not found');
-            const stlBuffer = await sRes.arrayBuffer();
+            // 2. Load Model File
+            let extension = 'stl';
+            if (config.fileType === '3mf') extension = '3mf';
+            // Also check stlPath override if present
+            if (config.stlPath && config.stlPath.toLowerCase().endsWith('.3mf')) extension = '3mf';
 
-            // Parse STL
-            const geometry = new STLLoader().parse(stlBuffer);
+            const modelPath = config.stlPath ? (baseUrl + config.stlPath) : (baseUrl + `${id}.${extension}`);
+
+            const sRes = await fetch(modelPath);
+            if (!sRes.ok) throw new Error(`${extension.toUpperCase()} file not found: ${modelPath}`);
+            const buffer = await sRes.arrayBuffer();
+
+            // Parse Model
+            let geometry;
+            if (extension === '3mf') {
+                geometry = await this.parse3MF(buffer);
+                if (geometry) this.extractColorsFromGeometry(geometry);
+            } else {
+                geometry = new STLLoader().parse(buffer);
+            }
+
             this.loadGeometry(geometry);
 
             // 3. Load Colors
@@ -1120,7 +1283,7 @@ class StlManager {
 
             // Store STL Data as Base64 for saving
             // We need to convert buffer to base64 string
-            const blob = new Blob([stlBuffer]);
+            const blob = new Blob([buffer]);
             const reader = new FileReader();
             reader.onload = (e) => {
                 this.config.stlData = e.target.result;
@@ -1347,19 +1510,23 @@ class StlManager {
 
             // Create Source Brush
             // Ensure connection of color attribute if present on mesh geometry
-            const sourceMaterial = new THREE.MeshStandardMaterial({ vertexColors: geometry.attributes.color !== undefined });
-            const sourceBrush = new Brush(geometry, sourceMaterial);
-            sourceBrush.updateMatrixWorld();
-
             // BVH for Color Transfer (Insides)
-            const sourceBVH = new MeshBVH(geometry);
+            // Explicitly set _isCut on source to 0 to avoid ambiguity
+            const sourceCount = geometry.attributes.position.count;
+            geometry.setAttribute('_isCut', new THREE.BufferAttribute(new Float32Array(sourceCount).fill(0), 1));
 
+            // Ensure source has color if not (so CSG interpolation works)
+            if (!geometry.attributes.color) {
+                const colors = new Float32Array(sourceCount * 3).fill(1); // Default white
+                geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+            }
+
+            const sourceBrush = new Brush(geometry);
+            const sourceBVH = new MeshBVH(geometry);
             const evaluator = new Evaluator();
-            evaluator.attributes = ['position', 'normal', 'uv'];
-            if (geometry.attributes.color) evaluator.attributes.push('color');
+            evaluator.attributes = ['position', 'normal', 'uv', 'color', '_isCut'];
 
             // Grid Ranges
-            // Logic mirrors StlPuzzleMod.js
             const dim = this.config.dimensions;
             const getRange = (size) => {
                 const range = [];
@@ -1415,14 +1582,19 @@ class StlManager {
                         else boxGeo = new THREE.BoxGeometry(w, h, d);
 
                         boxGeo.translate(xc, yc, zc);
+
+                        // We need non-indexed input for consistent attributes usually?
+                        // BoxGeometry is indexed.
                         boxGeo = boxGeo.toNonIndexed();
 
-                        // Attributes match
                         const posCount = boxGeo.attributes.position.count;
                         if (geometry.attributes.color) {
-                            const boxColors = new Float32Array(posCount * 3).fill(1); // Internal white
+                            const boxColors = new Float32Array(posCount * 3).fill(1);
                             boxGeo.setAttribute('color', new THREE.BufferAttribute(boxColors, 3));
                         }
+                        // Mark box faces as Cut (1)
+                        boxGeo.setAttribute('_isCut', new THREE.BufferAttribute(new Float32Array(posCount).fill(1), 1));
+
                         if (geometry.attributes.uv && !boxGeo.attributes.uv) {
                             boxGeo.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(posCount * 2), 2));
                         }
@@ -1431,21 +1603,21 @@ class StlManager {
                         boxBrush.position.set(x * CUBE_SIZE, y * CUBE_SIZE, z * CUBE_SIZE);
                         boxBrush.updateMatrixWorld();
 
-                        const result = evaluator.evaluate(sourceBrush, boxBrush, INTERSECTION);
+                        let result = evaluator.evaluate(sourceBrush, boxBrush, INTERSECTION);
 
                         if (result.geometry && result.geometry.attributes.position.count > 0) {
-                            const resGeom = result.geometry;
+                            // CRITICAL: Force non-indexed to ensure boundary vertices are split
+                            // This prevents color bleeding between Surface and Cut faces
+                            let resGeom = result.geometry.toNonIndexed();
 
                             // Color Interpolation for Insides
-                            // Fixes white faces by mapping to nearest source point
-                            if (geometry.attributes.color && resGeom.attributes.color) {
+                            if (geometry.attributes.color && resGeom.attributes.color && resGeom.attributes._isCut) {
                                 this.fixInternalColors(resGeom, geometry, sourceBVH);
                             }
 
-                            // Center geom to local space (0,0,0) relative to cubie center
-                            // Result is in World Space (aligned with boxBrush at x*S, y*S...)
-                            // We want it local to that position?
-                            // Yes, StlPuzzleMod logic positions the group at GridPos, so mesh should be local.
+                            // Cleanup temp attribute
+                            resGeom.deleteAttribute('_isCut');
+
                             resGeom.translate(-x * CUBE_SIZE, -y * CUBE_SIZE, -z * CUBE_SIZE);
 
                             this.generatedCubies.push({
@@ -1457,7 +1629,10 @@ class StlManager {
                 }
             }
 
+
+
             btnExport.disabled = false;
+            this.renderCubieList(); // Update UI
             alert(`Generated ${this.generatedCubies.length} cubies!`);
 
         } catch (e) {
@@ -1468,46 +1643,171 @@ class StlManager {
         }
     }
 
+    renderCubieList() {
+        const list = document.getElementById('cubie-list');
+        list.classList.remove('hidden');
+        list.innerHTML = '';
+
+        // Show/Setup Exploded View Button
+        const btnExploded = document.getElementById('btn-view-exploded');
+        btnExploded.classList.remove('hidden');
+        btnExploded.onclick = () => this.previewAllCubies();
+
+        this.generatedCubies.forEach((cubie, index) => {
+            const btn = document.createElement('button');
+            btn.className = 'w-full text-left text-xs bg-gray-800 hover:bg-gray-700 p-2 rounded border border-gray-600 flex justify-between';
+            btn.innerHTML = `<span>Cubie [${cubie.x}, ${cubie.y}, ${cubie.z}]</span> <span class="text-blue-400">👁️</span>`;
+            btn.onclick = () => this.previewCubie(index);
+            list.appendChild(btn);
+        });
+
+        const btnExit = document.getElementById('btn-exit-preview');
+        btnExit.onclick = () => this.exitPreview();
+    }
+
+    previewAllCubies() {
+        if (this.generatedCubies.length === 0) return;
+
+        // Cleanup
+        this.exitPreview();
+
+        // Hide Main Mesh
+        if (this.mesh) this.mesh.visible = false;
+        if (this.boundsGuide) this.boundsGuide.visible = false;
+        if (this.gridGuide) this.gridGuide.visible = false;
+
+        this.previewGroup = new THREE.Group();
+
+        const material = new THREE.MeshStandardMaterial({
+            vertexColors: true,
+            roughness: this.config.material.roughness,
+            metalness: this.config.material.metalness
+        });
+
+        // Spacing factor (1.5 = 50% gap)
+        const SPACING = CUBE_SIZE * 1.5;
+
+        this.generatedCubies.forEach(cubie => {
+            const geom = cubie.geometry.clone();
+            // Reset position to local center for specific mesh, then place in group
+            // Actually, generated geometry is already centered at 0,0,0 ??
+            // NO, `generateCubies` translates it back to relative position!
+            // See: resGeom.translate(-x * CUBE_SIZE, -y * CUBE_SIZE, -z * CUBE_SIZE);
+            // So the geometry vertex data is around (0,0,0) relative to the cubie's logical center?
+            // Wait, let's check `generateCubies`.
+            // It translates by `-x*UNIT`. So it moves the cut piece to Origin.
+            // So `geom` is at Origin.
+
+            const mesh = new THREE.Mesh(geom, material);
+            mesh.position.set(cubie.x * SPACING, cubie.y * SPACING, cubie.z * SPACING);
+            this.previewGroup.add(mesh);
+        });
+
+        this.scene.add(this.previewGroup);
+        this.previewMesh = this.previewGroup; // Alias for cleanup
+
+        // Show Exit
+        document.getElementById('btn-exit-preview').classList.remove('hidden');
+        this.controls.reset();
+    }
+
+    previewCubie(index) {
+        if (!this.generatedCubies[index]) return;
+
+        // Cleanup
+        this.exitPreview();
+
+        // Hide Main Mesh
+        if (this.mesh) this.mesh.visible = false;
+        if (this.boundsGuide) this.boundsGuide.visible = false;
+        if (this.gridGuide) this.gridGuide.visible = false;
+
+        const cubie = this.generatedCubies[index];
+        const geom = cubie.geometry.clone();
+
+        geom.center(); // Center for single view
+
+        const material = new THREE.MeshStandardMaterial({
+            vertexColors: true,
+            roughness: this.config.material.roughness,
+            metalness: this.config.material.metalness
+        });
+
+        this.previewMesh = new THREE.Mesh(geom, material);
+        this.scene.add(this.previewMesh);
+
+        // Show Exit Button
+        document.getElementById('btn-exit-preview').classList.remove('hidden');
+
+        // Reset controls to focus on it
+        this.controls.reset();
+    }
+
+    exitPreview() {
+        if (this.previewMesh) {
+            this.scene.remove(this.previewMesh);
+            this.previewMesh = null;
+        }
+
+        if (this.mesh) this.mesh.visible = true;
+        if (this.boundsGuide) this.boundsGuide.visible = true;
+        if (this.gridGuide) this.gridGuide.visible = true;
+
+        document.getElementById('btn-exit-preview').classList.add('hidden');
+    }
+
     fixInternalColors(targetGeo, sourceGeo, bvh) {
         const posAttr = targetGeo.attributes.position;
         const colorAttr = targetGeo.attributes.color;
+        const isCutAttr = targetGeo.attributes._isCut;
+        if (!isCutAttr) return;
+
+        const useSingle = this.config.cut.useSingleColor;
+        const singleHex = this.config.cut.singleColor || '#222222';
+        const singleColor = new THREE.Color(singleHex);
+
         const tempVec = new THREE.Vector3();
         const targetColor = new THREE.Color();
 
         for (let i = 0; i < posAttr.count; i++) {
-            tempVec.fromBufferAttribute(posAttr, i);
+            // Check _isCut. 
+            // 0 = Surface (Source), 1 = Cut (Box).
+            // Skip Surface vertices to preserve original file colors.
+            // Using low threshold to catch any interpolated values on the edge of the cut
+            if (isCutAttr.getX(i) < 0.1) continue;
 
-            const hit = bvh.closestPointToPoint(tempVec);
-            if (hit) {
-                // Determine if we should override.
-                // If it's pure white (from box), we definitely override.
-                // If it's already colored (from source surface), we probably keep it?
-                // But simplified: Just override everything with nearest surface color. 
-                // This ensures continuity and wraps texture around cuts.
+            if (useSingle) {
+                // Apply Single Solid Color
+                colorAttr.setXYZ(i, singleColor.r, singleColor.g, singleColor.b);
+            } else {
+                // Smooth Interpolation
+                tempVec.fromBufferAttribute(posAttr, i);
+                const hit = bvh.closestPointToPoint(tempVec);
+                if (hit) {
+                    const faceIndex = hit.faceIndex;
+                    const i1 = sourceGeo.index ? sourceGeo.index.getX(faceIndex * 3) : faceIndex * 3;
+                    const i2 = sourceGeo.index ? sourceGeo.index.getX(faceIndex * 3 + 1) : faceIndex * 3 + 1;
+                    const i3 = sourceGeo.index ? sourceGeo.index.getX(faceIndex * 3 + 2) : faceIndex * 3 + 2;
 
-                // Interpolate
-                const faceIndex = hit.faceIndex;
-                const i1 = sourceGeo.index ? sourceGeo.index.getX(faceIndex * 3) : faceIndex * 3;
-                const i2 = sourceGeo.index ? sourceGeo.index.getX(faceIndex * 3 + 1) : faceIndex * 3 + 1;
-                const i3 = sourceGeo.index ? sourceGeo.index.getX(faceIndex * 3 + 2) : faceIndex * 3 + 2;
+                    const sc1 = new THREE.Color().fromBufferAttribute(sourceGeo.attributes.color, i1);
+                    const sc2 = new THREE.Color().fromBufferAttribute(sourceGeo.attributes.color, i2);
+                    const sc3 = new THREE.Color().fromBufferAttribute(sourceGeo.attributes.color, i3);
 
-                const c1 = new THREE.Color().fromBufferAttribute(sourceGeo.attributes.color, i1);
-                const c2 = new THREE.Color().fromBufferAttribute(sourceGeo.attributes.color, i2);
-                const c3 = new THREE.Color().fromBufferAttribute(sourceGeo.attributes.color, i3);
+                    const bary = THREE.Triangle.getBarycoord(hit.point,
+                        new THREE.Vector3().fromBufferAttribute(sourceGeo.attributes.position, i1),
+                        new THREE.Vector3().fromBufferAttribute(sourceGeo.attributes.position, i2),
+                        new THREE.Vector3().fromBufferAttribute(sourceGeo.attributes.position, i3),
+                        new THREE.Vector3()
+                    );
 
-                const p1 = new THREE.Vector3().fromBufferAttribute(sourceGeo.attributes.position, i1);
-                const p2 = new THREE.Vector3().fromBufferAttribute(sourceGeo.attributes.position, i2);
-                const p3 = new THREE.Vector3().fromBufferAttribute(sourceGeo.attributes.position, i3);
+                    targetColor.setRGB(
+                        sc1.r * bary.x + sc2.r * bary.y + sc3.r * bary.z,
+                        sc1.g * bary.x + sc2.g * bary.y + sc3.g * bary.z,
+                        sc1.b * bary.x + sc2.b * bary.y + sc3.b * bary.z
+                    );
 
-                const bary = THREE.Triangle.getBarycoord(hit.point, p1, p2, p3, new THREE.Vector3());
-
-                targetColor.setRGB(
-                    c1.r * bary.x + c2.r * bary.y + c3.r * bary.z,
-                    c1.g * bary.x + c2.g * bary.y + c3.g * bary.z,
-                    c1.b * bary.x + c2.b * bary.y + c3.b * bary.z
-                );
-
-                colorAttr.setXYZ(i, targetColor.r, targetColor.g, targetColor.b);
+                    colorAttr.setXYZ(i, targetColor.r, targetColor.g, targetColor.b);
+                }
             }
         }
         colorAttr.needsUpdate = true;

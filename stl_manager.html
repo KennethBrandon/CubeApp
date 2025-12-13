@@ -148,7 +148,7 @@
                             <input type="number" id="val-scale" value="1.0" step="0.01"
                                 class="w-16 bg-gray-800 border border-gray-600 rounded px-1 py-0.5 text-xs text-right">
                         </div>
-                        <input type="range" id="inp-scale" min="0.01" max="10" step="0.01" value="1.0" class="w-full">
+                        <input type="range" id="inp-scale" min="0.01" max="100" step="0.01" value="1.0" class="w-full">
 
                         <div class="flex items-center justify-between">
                             <label class="text-xs text-gray-500 w-24">Offset X:</label>
@@ -285,6 +285,24 @@
                             <input type="range" id="inp-fillet" min="0" max="0.5" step="0.01" value="0.14"
                                 class="w-full">
                         </div>
+
+                        <!-- Internal Color Settings -->
+                        <div class="pt-2 border-t border-gray-700 mt-2">
+                            <div class="flex items-center gap-2 mb-2">
+                                <input type="checkbox" id="chk-internal-single"
+                                    class="form-checkbox h-4 w-4 text-blue-600 transition duration-150 ease-in-out bg-gray-800 border-gray-600 rounded">
+                                <label for="chk-internal-single" class="text-xs text-gray-500">Single Internal
+                                    Color</label>
+                            </div>
+
+                            <div id="div-internal-color"
+                                class="flex gap-2 items-center pl-6 opacity-50 pointer-events-none transition-opacity duration-200">
+                                <input type="color" id="val-internal-color" value="#222222"
+                                    class="h-6 w-6 rounded cursor-pointer bg-transparent border-0 p-0">
+                                <input type="text" id="hex-internal-color" value="#222222"
+                                    class="w-20 bg-gray-800 border border-gray-600 rounded px-1 py-0.5 text-xs text-gray-300 font-mono uppercase">
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -307,6 +325,16 @@
                             disabled>
                             💾 Export Binary Assets
                         </button>
+
+                        <button id="btn-view-exploded"
+                            class="hidden w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-1 px-4 mt-2 rounded transition text-xs">
+                            💥 View All (Exploded)
+                        </button>
+
+                        <!-- Cubie List -->
+                        <div id="cubie-list" class="max-h-40 overflow-y-auto mt-2 space-y-1 pr-1 hidden">
+                            <!-- Items inserted by JS -->
+                        </div>
                     </div>
                 </div>
 
@@ -319,6 +347,12 @@
             <div id="loading-overlay" class="hidden absolute inset-0 flex items-center justify-center bg-black/50 z-20">
                 <div class="text-blue-400 font-bold text-xl animate-pulse">Processing...</div>
             </div>
+
+            <!-- Preview Controls -->
+            <button id="btn-exit-preview"
+                class="hidden absolute top-4 right-4 bg-red-600 hover:bg-red-500 text-white font-bold py-2 px-4 rounded shadow-lg z-10 text-sm">
+                Exit Preview
+            </button>
 
             <!-- Instructions Overlay -->
             <div class="absolute bottom-4 left-4 text-xs text-gray-500 pointer-events-none select-none">
