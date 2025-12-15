@@ -1,5 +1,9 @@
 [
     {
+        "id": "fisher_cube",
+        "name": "Fisher Cube"
+    },
+    {
         "id": "grinch",
         "name": "The Grinch"
     },
@@ -10,9 +14,5 @@
     {
         "id": "baby_yoda",
         "name": "Baby Yoda"
-    },
-    {
-        "id": "fisher_cube",
-        "name": "Fisher Cube"
     }
 ]
