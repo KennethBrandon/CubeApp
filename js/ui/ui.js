@@ -3,6 +3,27 @@ import { puzzleCategories } from './puzzleSelector.js';
 import { overlayManager } from './overlayManager.js';
 import { makeDraggable } from './tuners/TunerBase.js';
 
+export function toggleDrawer(isOpen) {
+    const drawer = document.getElementById('side-drawer');
+    const backdrop = document.getElementById('side-drawer-backdrop');
+
+    if (isOpen) {
+        backdrop.classList.remove('hidden');
+        // Force reflow
+        void backdrop.offsetWidth;
+        backdrop.classList.remove('opacity-0');
+
+        drawer.classList.remove('translate-x-full');
+    } else {
+        backdrop.classList.add('opacity-0');
+        drawer.classList.add('translate-x-full');
+
+        setTimeout(() => {
+            backdrop.classList.add('hidden');
+        }, 300);
+    }
+}
+
 export function initHistoryWindow() {
     const windowEl = document.getElementById('history-window');
     const headerEl = document.getElementById('history-window-header');

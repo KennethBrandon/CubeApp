@@ -121,37 +121,138 @@
         </div>
     </div>
 
-    <!-- Main Menu Dropup (Hidden by default) -->
-    <div id="main-menu-dropdown"
-        class="hidden absolute bottom-24 left-1/2 transform -translate-x-1/2 z-40 w-64 bg-gray-900/95 backdrop-blur-xl border border-gray-700 rounded-2xl shadow-2xl p-2 flex-col gap-1 transition-all origin-bottom scale-95 opacity-0">
+    <!-- Side Drawer (Right) -->
+    <div id="side-drawer-backdrop"
+        class="fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm hidden opacity-0 transition-opacity duration-300">
+    </div>
 
-        <!-- Utility Toggles Row -->
-        <div class="flex gap-2 p-2 border-b border-gray-800 mb-1 justify-between">
-            <button id="btn-toggle-mirrors"
-                class="flex-1 bg-gray-800 hover:bg-gray-700 text-white p-2 rounded-lg transition"
-                title="Toggle Mirrors">
-                <span class="text-xl">🪞</span>
-            </button>
-            <button id="btn-toggle-sound"
-                class="flex-1 bg-gray-800 hover:bg-gray-700 text-white p-2 rounded-lg transition" title="Toggle Sound">
-                <span class="text-xl">🔊</span>
-            </button>
-            <button id="btn-leaderboard"
-                class="flex-1 bg-gray-800 hover:bg-gray-700 text-white p-2 rounded-lg transition" title="Leaderboards">
-                <span class="text-xl">🏆</span>
+    <div id="side-drawer"
+        class="fixed top-0 right-0 z-[70] h-full w-[85vw] max-w-md bg-gray-900/95 backdrop-blur-xl border-l border-white/10 shadow-2xl transform translate-x-full transition-transform duration-300 flex flex-col safe-pt safe-pr">
+
+        <!-- Drawer Header -->
+        <div class="flex items-center justify-between p-5 border-b border-white/10">
+            <h2 class="text-2xl font-bold text-white tracking-wide">Menu</h2>
+            <button id="btn-close-drawer"
+                class="p-2 text-gray-400 hover:text-white transition rounded-full hover:bg-white/5">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                    </path>
+                </svg>
             </button>
         </div>
 
-        <!-- Menu Links -->
-        <button id="btn-menu-history"
-            class="text-left w-full px-4 py-3 rounded-lg hover:bg-gray-800 text-gray-300 hover:text-white transition flex items-center gap-3 font-medium">
-            <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-            </svg>
-            History
-        </button>
+        <!-- Scrollable Content -->
+        <div class="flex-1 overflow-y-auto p-4 space-y-6">
 
+            <!-- Section 1: Preferences -->
+            <div>
+                <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 px-2">Preferences</h3>
+                <div class="space-y-2">
+                    <!-- Sound Toggle -->
+                    <button id="btn-drawer-sound"
+                        class="w-full flex items-center justify-between p-3 rounded-xl bg-gray-800/50 hover:bg-gray-800 border border-white/5 transition group">
+                        <div class="flex items-center gap-3">
+                            <span
+                                class="p-2 rounded-lg bg-gray-700/50 group-hover:bg-gray-700 text-green-400 transition"
+                                id="drawer-sound-icon">🔊</span>
+                            <span class="font-medium text-gray-200">Sound</span>
+                        </div>
+                        <div class="w-10 h-6 bg-green-600 rounded-full relative transition-colors"
+                            id="drawer-sound-toggle-bg">
+                            <div class="absolute top-1 left-5 w-4 h-4 bg-white rounded-full shadow-md transition-all"
+                                id="drawer-sound-toggle-dot"></div>
+                        </div>
+                    </button>
+
+                    <!-- Mirror Toggle -->
+                    <button id="btn-drawer-mirror"
+                        class="w-full flex items-center justify-between p-3 rounded-xl bg-gray-800/50 hover:bg-gray-800 border border-white/5 transition group">
+                        <div class="flex items-center gap-3">
+                            <span
+                                class="p-2 rounded-lg bg-gray-700/50 group-hover:bg-gray-700 text-purple-400 transition">🪞</span>
+                            <span class="font-medium text-gray-200">Mirror Mode</span>
+                        </div>
+                        <div class="w-10 h-6 bg-gray-600 rounded-full relative transition-colors"
+                            id="drawer-mirror-toggle-bg">
+                            <div class="absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-md transition-all"
+                                id="drawer-mirror-toggle-dot"></div>
+                        </div>
+                    </button>
+                </div>
+            </div>
+
+            <hr class="border-white/10">
+
+            <!-- Section 2: Navigation -->
+            <div>
+                <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 px-2">Navigation</h3>
+                <div class="grid grid-cols-1 gap-2">
+
+                    <button id="btn-drawer-history"
+                        class="w-full text-left p-3 rounded-xl hover:bg-white/5 transition flex items-center gap-3 text-gray-300 hover:text-white group">
+                        <svg class="w-5 h-5 text-gray-500 group-hover:text-blue-400 transition" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span class="font-medium">History</span>
+                    </button>
+
+                    <button id="btn-drawer-leaderboard"
+                        class="w-full text-left p-3 rounded-xl hover:bg-white/5 transition flex items-center gap-3 text-gray-300 hover:text-white group">
+                        <svg class="w-5 h-5 text-gray-500 group-hover:text-yellow-400 transition" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M8 21h8M12 21v-7M7 4h10v5a5 5 0 01-10 0v-5zM7 6H5a2 2 0 00-2 2v1a2 2 0 002 2h2M17 6h2a2 2 0 012 2v1a2 2 0 01-2 2h-2">
+                            </path>
+                        </svg>
+                        <span class="font-medium">Leaderboards</span>
+                    </button>
+
+                    <!-- Placeholders -->
+                    <button
+                        class="w-full text-left p-3 rounded-xl hover:bg-white/5 transition flex items-center gap-3 text-gray-500 cursor-not-allowed opacity-50">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z">
+                            </path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        </svg>
+                        <span class="font-medium">Settings (Soon)</span>
+                    </button>
+
+
+
+                    <button
+                        class="w-full text-left p-3 rounded-xl hover:bg-white/5 transition flex items-center gap-3 text-gray-500 cursor-not-allowed opacity-50">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z">
+                            </path>
+                        </svg>
+                        <span class="font-medium">Solver (Soon)</span>
+                    </button>
+
+                    <button id="btn-drawer-about"
+                        class="w-full text-left p-3 rounded-xl hover:bg-white/5 transition flex items-center gap-3 text-gray-300 hover:text-white group">
+                        <svg class="w-5 h-5 text-gray-500 group-hover:text-blue-400 transition" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span class="font-medium">About</span>
+                    </button>
+
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Drawer Footer -->
+        <div class="p-4 border-t border-white/5 text-center text-xs text-gray-600 safe-pb">
+            v1.2.0 • Cube App
+        </div>
     </div>
 
     <!-- Puzzle Selector Modal -->
@@ -498,6 +599,57 @@
         </div>
     </div>
 
+
+
+    <!-- About Modal -->
+    <div id="about-modal"
+        class="hidden fixed inset-0 z-[80] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 opacity-0 transition-opacity duration-300">
+        <div
+            class="bg-gray-900 border border-gray-700 p-6 sm:p-8 rounded-2xl max-w-sm w-full relative shadow-2xl text-center">
+
+            <button onclick="overlayManager.close()"
+                class="absolute top-4 right-4 text-gray-400 hover:text-white transition rounded-full p-1 hover:bg-white/5">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                    </path>
+                </svg>
+            </button>
+
+            <div class="mb-6">
+                <div class="w-16 h-16 bg-transparent rounded-2xl mx-auto flex items-center justify-center mb-4">
+                    <img src="assets/icon.png" alt="Cube App Icon" class="w-full h-full object-contain drop-shadow-lg">
+                </div>
+                <h2 class="text-2xl font-bold text-white mb-1">Cube App</h2>
+                <p class="text-xs text-gray-500 uppercase tracking-widest font-bold">v1.2.0</p>
+            </div>
+
+            <div class="space-y-4 text-sm text-gray-300">
+                <div class="bg-white/5 rounded-xl p-4 border border-white/5">
+                    <h3 class="text-xs font-bold text-gray-500 uppercase mb-2">Created By</h3>
+                    <p class="font-medium text-white">Kenneth Brandon</p>
+                    <p class="text-xs text-blue-400">aka RedKB</p>
+                </div>
+
+                <div class="bg-white/5 rounded-xl p-4 border border-white/5">
+                    <h3 class="text-xs font-bold text-gray-500 uppercase mb-2">Credits</h3>
+                    <p class="text-xs leading-relaxed">
+                        <a id="link-grinch-credit"
+                            href="https://www.printables.com/model/48093-grinch-christmas-ornament" target="_blank"
+                            class="text-green-400 font-bold hover:underline hover:text-green-300 transition">The Grinch
+                            Model</a><br>
+                        by Vlado Turek<br>
+                        <span class="text-[10px] text-gray-500">(CC BY-SA 4.0)</span>
+                    </p>
+                </div>
+            </div>
+
+            <div class="mt-8">
+                <p class="text-[10px] text-gray-600">
+                    &copy; 2025 Kenneth Brandon. All rights reserved.
+                </p>
+            </div>
+        </div>
+    </div>
 
 
     <!-- Menu & Modal Logic -->

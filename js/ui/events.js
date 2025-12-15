@@ -6,7 +6,7 @@ import { startScramble, handleResetClick, hardReset } from '../game/scramble.js'
 import { toggleMirrors } from '../core/environment.js';
 import { playSolveAnimation, animateVictory } from '../animations/victory.js';
 
-import { showWinModal, togglePanel, openDetailModal, updateHistoryUI, updateActivePuzzleTab, initHistoryWindow } from './ui.js';
+import { showWinModal, togglePanel, openDetailModal, updateHistoryUI, updateActivePuzzleTab, initHistoryWindow, toggleDrawer } from './ui.js';
 import { submitScore, fetchLeaderboard } from '../leaderboard/firebase.js';
 import { playCubeAnimation, animateWrapperReset } from '../animations/transitions.js';
 import { adjustCameraForCubeSize } from '../core/controls.js';
@@ -50,15 +50,13 @@ export function setupUIEventListeners() {
         }, 500);
     });
 
-    const btnToggleSound = document.getElementById('btn-toggle-sound');
-    if (btnToggleSound) {
-        // Set initial state
-        updateSoundButton(btnToggleSound);
-
-        btnToggleSound.addEventListener('click', () => {
+    // Sound Toggle (Drawer)
+    const btnDrawerSound = document.getElementById('btn-drawer-sound');
+    if (btnDrawerSound) {
+        updateSoundButton(); // Initial state
+        btnDrawerSound.addEventListener('click', () => {
             soundManager.toggleMute();
-            updateSoundButton(btnToggleSound);
-            // Also init on click if not already
+            updateSoundButton();
             soundManager.init();
             gtag('event', 'toggle_sound', { state: soundManager.isMuted ? 'off' : 'on' });
         });
@@ -76,8 +74,10 @@ export function setupUIEventListeners() {
     window.addEventListener('touchstart', initAudio);
 
     // Leaderboard Listeners
-    document.getElementById('btn-leaderboard').addEventListener('click', () => {
-        showLeaderboard();
+    // Leaderboard (Drawer)
+    document.getElementById('btn-drawer-leaderboard')?.addEventListener('click', () => {
+        toggleDrawer(false);
+        setTimeout(() => showLeaderboard(), 300);
         gtag('event', 'open_leaderboard');
     });
 
@@ -89,68 +89,80 @@ export function setupUIEventListeners() {
     initHistoryWindow();
 
     // Menu Item: History
-    document.getElementById('btn-menu-history')?.addEventListener('click', () => {
+    // History (Drawer)
+    document.getElementById('btn-drawer-history')?.addEventListener('click', () => {
+        toggleDrawer(false);
         const win = document.getElementById('history-window');
-        const menu = document.getElementById('main-menu-dropdown');
         if (win) {
-            win.classList.toggle('hidden');
-            // If opening, ensure not overlapped by menu? 
-            // Just close menu
-            if (!win.classList.contains('hidden')) {
-                // Ensure it's on top if needed, but z-index handles it.
-            }
-        }
-        if (menu) {
-            menu.classList.add('opacity-0', 'scale-95');
-            setTimeout(() => menu.classList.add('hidden'), 200);
+            win.classList.remove('hidden');
         }
         gtag('event', 'toggle_history_window');
     });
 
-    // Main Menu Toggle & Dismiss Logic
-    const menuBtn = document.getElementById('btn-main-menu-toggle');
-    const menuDropdown = document.getElementById('main-menu-dropdown');
 
-    if (menuBtn && menuDropdown) {
-        console.log("Main Menu Logic Initialized");
-        // Toggle Menu
-        menuBtn.addEventListener('click', (e) => {
+    // About (Drawer)
+    document.getElementById('btn-drawer-about')?.addEventListener('click', () => {
+        toggleDrawer(false);
+        overlayManager.open('about-modal');
+        gtag('event', 'open_about_modal');
+    });
+
+    // Handle External Links (e.g. Grinch Credit)
+    document.getElementById('link-grinch-credit')?.addEventListener('click', (e) => {
+        // If in Capacitor/Mobile, force open in system browser
+        if (window.Capacitor) {
+            e.preventDefault();
+            window.open(e.target.href, '_system');
+        }
+        gtag('event', 'click_external_link', { url: e.target.href });
+    });
+
+    // Side Drawer Logic
+    const btnMenu = document.getElementById('btn-main-menu-toggle');
+    const btnCloseDrawer = document.getElementById('btn-close-drawer');
+    const drawerBackdrop = document.getElementById('side-drawer-backdrop');
+
+    if (btnMenu) {
+        btnMenu.addEventListener('click', (e) => {
             e.stopPropagation();
-            const isHidden = menuDropdown.classList.contains('hidden');
-            if (isHidden) {
-                menuDropdown.classList.remove('hidden');
-                // Small delay to allow transition from display:none
-                setTimeout(() => {
-                    menuDropdown.classList.remove('opacity-0', 'scale-95');
-                }, 10);
-            } else {
-                menuDropdown.classList.add('opacity-0', 'scale-95');
-                setTimeout(() => {
-                    menuDropdown.classList.add('hidden');
-                }, 200);
-            }
+            toggleDrawer(true);
         });
+    }
 
-        // Close when clicking outside (Capture phase to catch canvas clicks)
-        // Use pointerdown to catch touch events that might be preventDefault'ed by canvas controls
-        document.addEventListener('pointerdown', (e) => {
-            if (menuDropdown.classList.contains('hidden')) return;
+    if (btnCloseDrawer) {
+        btnCloseDrawer.addEventListener('click', () => {
+            toggleDrawer(false);
+        });
+    }
 
-            if (!menuDropdown.contains(e.target) && !menuBtn.contains(e.target)) {
-                menuDropdown.classList.add('opacity-0', 'scale-95');
-                setTimeout(() => {
-                    menuDropdown.classList.add('hidden');
-                }, 200);
-            }
-        }, { capture: true });
+    if (drawerBackdrop) {
+        drawerBackdrop.addEventListener('click', () => {
+            toggleDrawer(false);
+        });
     }
 
 
 
 
-    document.getElementById('btn-toggle-mirrors').addEventListener('click', () => {
+    // Mirror Toggle (Drawer)
+    const updateMirrorUI = () => {
+        const bg = document.getElementById('drawer-mirror-toggle-bg');
+        const dot = document.getElementById('drawer-mirror-toggle-dot');
+        if (state.showMirrors) {
+            if (bg) { bg.classList.remove('bg-gray-600'); bg.classList.add('bg-purple-600'); }
+            if (dot) { dot.classList.remove('left-1'); dot.classList.add('left-5'); }
+        } else {
+            if (bg) { bg.classList.remove('bg-purple-600'); bg.classList.add('bg-gray-600'); }
+            if (dot) { dot.classList.remove('left-5'); dot.classList.add('left-1'); }
+        }
+    };
+    // Init state
+    updateMirrorUI();
+
+    document.getElementById('btn-drawer-mirror')?.addEventListener('click', () => {
         const newState = !state.showMirrors;
         toggleMirrors(newState);
+        updateMirrorUI();
         gtag('event', 'toggle_mirror', { state: newState ? 'on' : 'off' });
         handleDebugSequence('mirror');
     });
@@ -331,15 +343,37 @@ export function setupUIEventListeners() {
     });
 }
 
-function updateSoundButton(btn) {
+export function updateSoundButton(unusedBtn) {
+    // We ignore the passed button because we now target specific IDs in the drawer
+
+    const icon = document.getElementById('drawer-sound-icon');
+    const bg = document.getElementById('drawer-sound-toggle-bg');
+    const dot = document.getElementById('drawer-sound-toggle-dot');
+
+    // Also update any other sound indicators if they exist
+
     if (soundManager.isMuted) {
-        btn.innerHTML = '<span class="text-lg">🔇</span>';
-        btn.classList.remove('bg-green-700', 'hover:bg-green-600');
-        btn.classList.add('bg-gray-600', 'hover:bg-gray-500');
+        if (icon) icon.textContent = '🔇';
+        if (bg) {
+            bg.classList.remove('bg-green-600');
+            bg.classList.add('bg-gray-600');
+        }
+        if (dot) {
+            dot.style.transform = 'translateX(0px)';
+            dot.classList.remove('left-5');
+            dot.classList.add('left-1');
+        }
     } else {
-        btn.innerHTML = '<span class="text-lg">🔊</span>';
-        btn.classList.remove('bg-gray-600', 'hover:bg-gray-500');
-        btn.classList.add('bg-green-700', 'hover:bg-green-600');
+        if (icon) icon.textContent = '🔊';
+        if (bg) {
+            bg.classList.remove('bg-gray-600');
+            bg.classList.add('bg-green-600');
+        }
+        if (dot) {
+            dot.style.transform = 'translateX(0px)'; // logic handled by class usually
+            dot.classList.remove('left-1');
+            dot.classList.add('left-5');
+        }
     }
 }
 
