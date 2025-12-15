@@ -42,7 +42,16 @@ export function onMouseDown(event) {
         state.currentDragAngle = 0;
 
         const S = CUBE_SIZE + SPACING;
-        const referencePointWorld = new THREE.Vector3(S * 1.5, 0, S * 1.5);
+        // Use the corner that defines the split between Left (Z-face?) and Right (X-face?)
+        // Standard view: Camera at +X,+Z. 
+        // Corner at max X, max Z is the vertical divider.
+        const dimX = state.activeDimensions.x;
+        const dimZ = state.activeDimensions.z;
+        const localRef = new THREE.Vector3((dimX/2) * S, 0, (dimZ/2) * S);
+        
+        // Transform to world space to account for puzzle rotation
+        const referencePointWorld = localRef.applyMatrix4(state.cubeWrapper.matrixWorld);
+        
         const tempCamera = state.camera.clone();
         tempCamera.rotation.setFromRotationMatrix(state.controls.object.matrix);
         const projectedPoint = referencePointWorld.clone().project(tempCamera);

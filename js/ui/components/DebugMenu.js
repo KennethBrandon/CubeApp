@@ -96,6 +96,17 @@ function createDebugMenu() {
                     </label>
                 </div>
 
+                <!-- Camera Tuner Toggle -->
+                <div class="flex items-center justify-between p-3 bg-gray-900/50 rounded-lg">
+                    <span class="text-gray-300">Camera Tuner</span>
+                    <label class="relative inline-block w-12 h-6">
+                        <input type="checkbox" id="toggle-camera-tuner" class="sr-only peer">
+                        <div
+                            class="w-12 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-6 peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-600">
+                        </div>
+                    </label>
+                </div>
+
                 <div class="flex items-center justify-between p-3 bg-gray-900/50 rounded-lg">
                     <span class="text-gray-300">Animation Speed (ms)</span>
                     <div class="flex items-center gap-2">
@@ -310,6 +321,16 @@ function attachDebugListeners() {
             else ui.classList.add('hidden');
         } else if (e.target.checked) {
             import('../tuners/index.js').then(module => module.showEnvironmentTuner());
+        }
+    });
+
+    document.getElementById('toggle-camera-tuner').addEventListener('change', (e) => {
+        const ui = document.getElementById('camera-tuner-ui');
+        if (ui) {
+            if (e.target.checked) ui.classList.remove('hidden');
+            else ui.classList.add('hidden');
+        } else if (e.target.checked) {
+            import('../tuners/index.js').then(module => module.showCameraTuner());
         }
     });
 }

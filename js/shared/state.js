@@ -23,6 +23,15 @@ export const state = {
     snapSpeed: 80,
     freeRotation: true,
 
+    // Camera Settings
+    // Camera Settings
+    cameraSettings: {
+        azimuth: 26.6,   // Degrees (matches approx atan(6/12))
+        elevation: 24.1, // Degrees (matches approx asin(6/14.7))
+        zoom: 0.14,      // Zoom factor (relative default)
+        puzzleRotation: -13 // Degrees (Y-axis rotation)
+    },
+
     // Interaction State
     raycaster: new THREE.Raycaster(),
     mouse: new THREE.Vector2(),
