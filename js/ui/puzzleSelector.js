@@ -561,7 +561,7 @@ export function getPuzzleIconPath(value) {
     // Check STL Custom
     if (valStr.startsWith('stl:')) {
         const id = valStr.split(':')[1];
-        return `assets/puzzles/${id}/thumbnail.png`;
+        return `assets/icons/puzzle-stl_${id}.png`;
     }
 
     // Check if it fits a known custom puzzle ID (from registry)
@@ -569,7 +569,7 @@ export function getPuzzleIconPath(value) {
         (window.puzzleRegistry && window.puzzleRegistry[valStr] ? { id: valStr } : null);
 
     if (knownCustom) {
-        return `assets/puzzles/${valStr}/thumbnail.png`;
+        return `assets/icons/puzzle-stl_${valStr}.png`;
     }
 
     // Check Standard/Big
