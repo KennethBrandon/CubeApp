@@ -15,11 +15,11 @@ export function ensurePuzzleSelectorModal() {
         <div id="puzzle-selector-panel"
             class="absolute bg-gray-900 shadow-2xl transition-transform duration-300 ease-out flex flex-col overflow-hidden
             
-            bottom-0 left-0 right-0 h-[70vh] rounded-t-2xl 
+            bottom-0 left-0 right-0 h-[90vh] rounded-t-2xl 
             transform translate-y-0
             [.opacity-0_&]:translate-y-full
 
-            md:top-0 md:bottom-0 md:left-0 md:w-[400px] md:h-auto md:rounded-none md:border-r md:border-gray-700
+            md:top-0 md:bottom-0 md:left-0 md:w-[600px] md:h-auto md:rounded-none md:border-r md:border-gray-700
             md:transform md:translate-x-0
             md:[.opacity-0_&]:-translate-x-full
             md:[.opacity-0_&]:translate-y-0">
