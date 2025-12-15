@@ -398,9 +398,7 @@ class StlManager {
 
         // Generation Controls
         const btnGen = document.getElementById('btn-generate');
-        const btnExportBin = document.getElementById('btn-export-binary');
         if (btnGen) btnGen.addEventListener('click', () => this.generateCubies());
-        if (btnExportBin) btnExportBin.addEventListener('click', () => this.exportGeneratedAssets());
 
         // Import Controls
         document.getElementById('btn-import-config').addEventListener('click', () => document.getElementById('file-input-config').click());

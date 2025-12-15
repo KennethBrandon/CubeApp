@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { StandardCube } from './StandardCube.js';
 import { STLLoader } from 'three/addons/loaders/STLLoader.js';
+import { ThreeMFLoader } from 'three/addons/loaders/3MFLoader.js';
+import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
 import { Brush, Evaluator, INTERSECTION } from 'three-bvh-csg';
 import { MeshBVH } from 'three-mesh-bvh';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
@@ -22,8 +24,11 @@ export class StlPuzzleMod extends StandardCube {
         try {
             const basePath = `assets/puzzles/${this.puzzleId}/cubies/`;
 
-            // Use main config to check format
-            if (this.puzzleConfig.format !== 'binary_v1') return null;
+            // Use binaries if explicitly set OR if stlPath is missing (implies binary or default file)
+            // But if stlPath is failing, we might as well try binaries if they exist.
+            const useBinaries = this.puzzleConfig.format === 'binary_v1' || !this.puzzleConfig.stlPath;
+
+            if (!useBinaries) return null;
 
             const config = this.puzzleConfig;
             const cubies = [];
@@ -54,6 +59,7 @@ export class StlPuzzleMod extends StandardCube {
             const zRange = getRange(config.dimensions.z);
 
             const promises = [];
+            let foundAny = false;
 
             for (let x of xRange) {
                 for (let y of yRange) {
@@ -63,6 +69,7 @@ export class StlPuzzleMod extends StandardCube {
                             puzzleCache.fetch(new Request(basePath + filename))
                                 .then(res => {
                                     if (!res.ok) return null;
+                                    foundAny = true;
                                     return res.arrayBuffer();
                                 })
                                 .then(buffer => {
@@ -74,6 +81,8 @@ export class StlPuzzleMod extends StandardCube {
             }
 
             await Promise.all(promises);
+
+            if (!foundAny) return null; // No binaries found, fallback to STL/3MF
 
             return { cubies, config };
 
@@ -259,11 +268,21 @@ export class StlPuzzleMod extends StandardCube {
                 // Don't set isAnimating = false yet if we are transitioning
             } else {
 
+                // MODEL FALLBACK
+                let fileType = this.puzzleConfig.fileType || 'stl';
+                let stlPath = this.puzzleConfig.stlPath;
 
-                const loader = new STLLoader();
-                let stlUrl = `assets/puzzles/${this.puzzleId}/${this.puzzleConfig.stlPath}`;
+                // Auto-detect path if missing
+                if (!stlPath) {
+                    if (fileType === '3mf') stlPath = `${this.puzzleId}.3mf`;
+                    else stlPath = `${this.puzzleId}.stl`;
+                } else if (stlPath.endsWith('.3mf')) {
+                    fileType = '3mf';
+                }
 
-                // Try caching for STL (Blob URL)
+                let stlUrl = `assets/puzzles/${this.puzzleId}/${stlPath}`;
+
+                // Try caching for Model (Blob URL)
                 try {
                     const cache = await puzzleCache.open();
                     const cached = await cache.match(stlUrl);
@@ -272,13 +291,48 @@ export class StlPuzzleMod extends StandardCube {
                         stlUrl = URL.createObjectURL(blob);
                     }
                 } catch (e) {
-                    console.warn("Error accessing cache for STL, using network url", e);
+                    console.warn("Error accessing cache for Model, using network url", e);
                 }
 
-                const stlPromise = loader.loadAsync(stlUrl)
-                    .then(g => {
-                        return g;
+                let geometry;
+
+                if (fileType === '3mf') {
+                    const loader = new ThreeMFLoader();
+                    const group = await loader.loadAsync(stlUrl);
+
+                    // Flatten 3MF group to single geometry
+                    const geometries = [];
+                    group.traverse(child => {
+                        if (child.isMesh) {
+                            child.geometry.computeVertexNormals();
+                            child.updateMatrixWorld();
+                            const g = child.geometry.clone();
+                            g.applyMatrix4(child.matrix);
+                            // Apply color from material to geometry if missing
+                            if (!g.attributes.color && child.material && child.material.color) {
+                                const count = g.attributes.position.count;
+                                const c = child.material.color;
+                                const arr = new Float32Array(count * 3);
+                                for (let i = 0; i < count; i++) {
+                                    arr[i * 3] = c.r; arr[i * 3 + 1] = c.g; arr[i * 3 + 2] = c.b;
+                                }
+                                g.setAttribute('color', new THREE.BufferAttribute(arr, 3));
+                            }
+                            geometries.push(g);
+                        }
                     });
+
+                    if (geometries.length > 0) {
+                        // Merge
+                        geometry = BufferGeometryUtils.mergeGeometries(geometries);
+                    } else {
+                        throw new Error("No mesh found in 3MF");
+                    }
+
+                } else {
+                    const loader = new STLLoader();
+                    geometry = await loader.loadAsync(stlUrl);
+                }
 
                 let colorPromise = Promise.resolve(null);
                 if (this.colorPath) {
@@ -304,7 +358,7 @@ export class StlPuzzleMod extends StandardCube {
                     });
                 }
 
-                const [geometry, colorData] = await Promise.all([stlPromise, colorPromise]);
+                const colorData = await colorPromise;
 
                 this.colorData = colorData;
                 this.processSTL(geometry);
