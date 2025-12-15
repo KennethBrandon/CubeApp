@@ -56,115 +56,102 @@
 
 <body>
 
-    <!-- Top Bar: Unified Controls (Title, Timer, Buttons) -->
-    <div class="absolute top-0 left-0 w-full z-30 pointer-events-none p-2 sm:p-4 safe-mt">
+    <!-- Top HUD: Floating Info Only -->
+    <div class="absolute top-0 left-0 w-full z-30 pointer-events-none p-4 safe-mt flex flex-col items-center gap-2">
+        <!-- Timer -->
+        <div id="timer"
+            class="pointer-events-auto text-6xl sm:text-7xl font-mono text-white font-bold drop-shadow-[0_4px_4px_rgba(0,0,0,0.5)] tracking-wider">
+            00:00.00
+        </div>
+
+        <!-- Puzzle Selector Pill -->
+        <button id="btn-puzzle-select"
+            class="pointer-events-auto bg-black/40 backdrop-blur-md border border-white/10 rounded-full px-4 py-1 flex items-center gap-2 transition hover:bg-black/60 active:scale-95 group shadow-lg">
+            <span class="text-white/80 text-sm font-medium tracking-wide group-hover:text-white transition-colors">3x3x3
+                Cube</span>
+            <svg class="w-3 h-3 text-white/50 group-hover:text-white transition-colors" fill="none"
+                stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+            </svg>
+        </button>
+    </div>
+
+    <!-- Bottom Action Bar (Thumb Zone) -->
+    <div class="absolute bottom-8 left-0 w-full z-30 pointer-events-none flex justify-center px-4">
         <div
-            class="pointer-events-auto bg-gray-900/90 backdrop-blur-md rounded-xl border border-gray-700 shadow-2xl p-3 flex flex-wrap items-center justify-center lg:justify-between gap-3 mx-auto max-w-4xl">
+            class="pointer-events-auto bg-gray-900/80 backdrop-blur-xl rounded-full px-4 py-2 flex items-center gap-2 sm:gap-4 max-w-lg w-full justify-between shadow-[0_8px_20px_rgba(0,0,0,0.4)] border border-white/5">
 
-            <!-- Left: Title & Timer -->
-            <div class="flex flex-wrap justify-center items-center gap-4">
-                <button id="btn-puzzle-select"
-                    class="bg-gray-800 text-blue-400 font-bold text-lg border border-gray-600 rounded-lg px-4 py-2 hover:bg-gray-700 transition flex items-center shadow-lg">
-                    <span class="mr-2">🧩</span> 3x3x3 Cube <span class="ml-2 text-xs opacity-50">▼</span>
-                </button>
-                <div class="bg-black/50 px-3 py-1 rounded-lg border border-gray-600">
-                    <div class="text-gray-500 text-[10px] uppercase tracking-wider leading-none mb-1" id="timer-label">
-                        Time</div>
-                    <div id="timer" class="text-2xl sm:text-3xl font-mono text-green-400 leading-none">00:00.00</div>
-                </div>
-            </div>
+            <!-- Lock Button -->
+            <button id="btn-toggle-axis-lock"
+                class="p-4 text-gray-400 hover:text-white transition active:scale-95 rounded-full hover:bg-white/5"
+                title="Toggle Lock">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z">
+                    </path>
+                </svg>
+            </button>
 
-            <!-- Right: Actions -->
-            <div class="flex flex-wrap justify-center gap-2">
-                <button id="btn-toggle-mirrors"
-                    class="bg-blue-700 hover:bg-blue-600 text-white p-2 rounded transition shadow-lg active:transform active:scale-95"
-                    title="Toggle Mirrors">
-                    <span class="text-lg">🪞</span>
-                </button>
-                <button id="btn-toggle-sound"
-                    class="bg-green-700 hover:bg-green-600 text-white p-2 rounded transition shadow-lg active:transform active:scale-95"
-                    title="Toggle Sound">
-                    <span class="text-lg">🔊</span>
-                </button>
-                <button id="btn-leaderboard"
-                    class="bg-purple-700 hover:bg-purple-600 text-white p-2 rounded transition shadow-lg active:transform active:scale-95"
-                    title="Leaderboard">
-                    <span class="text-lg">🏆</span>
-                </button>
-                <button id="btn-toggle-axis-lock"
-                    class="bg-orange-700 hover:bg-orange-600 text-white p-2 rounded transition shadow-lg active:transform active:scale-95"
-                    title="Enable Free Rotation">
-                    <span class="text-lg">🔒</span>
-                </button>
-                <div class="w-px bg-gray-600 mx-1"></div>
-                <button id="btn-scramble"
-                    class="bg-yellow-600 hover:bg-yellow-500 text-white text-sm font-bold py-2 px-4 rounded transition shadow-lg active:transform active:scale-95">
-                    Scramble
-                </button>
-                <button id="btn-reset"
-                    class="bg-red-600 hover:bg-red-500 text-white text-sm font-bold py-2 px-4 rounded transition shadow-lg active:transform active:scale-95">
-                    Reset
-                </button>
-            </div>
+            <!-- Scramble Button (Hero) -->
+            <button id="btn-scramble"
+                class="flex-1 bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400 text-black font-extrabold py-3 px-6 rounded-full shadow-lg transition transform active:scale-95 text-center tracking-widest text-sm sm:text-base uppercase">
+                Scramble
+            </button>
+
+            <!-- Reset Button -->
+            <button id="btn-reset"
+                class="p-4 text-gray-400 hover:text-red-500 transition active:scale-95 rounded-full hover:bg-white/5"
+                title="Reset">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
+                    </path>
+                </svg>
+            </button>
+
+            <!-- Hamburger / Menu Toggle -->
+            <button id="btn-main-menu-toggle"
+                class="p-4 text-gray-400 hover:text-white transition active:scale-95 relative rounded-full hover:bg-white/5"
+                title="Menu">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16">
+                    </path>
+                </svg>
+            </button>
         </div>
     </div>
 
-    <!-- Bottom Left: History Panel (Expands Upwards) -->
-    <div class="absolute bottom-4 left-4 z-20 pointer-events-none">
-        <div class="panel-container">
-            <!-- Header (Always Visible Button) -->
-            <div class="pointer-events-auto bg-gray-900/90 backdrop-blur-md rounded-lg border border-gray-700 shadow-xl p-3 cursor-pointer hover:bg-gray-800 transition flex items-center gap-2 collapsed"
-                onclick="togglePanel('history-content', this)">
-                <span class="text-purple-400 font-bold text-sm">History</span>
-                <svg class="chevron w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                </svg>
-            </div>
+    <!-- Main Menu Dropup (Hidden by default) -->
+    <div id="main-menu-dropdown"
+        class="hidden absolute bottom-24 left-1/2 transform -translate-x-1/2 z-40 w-64 bg-gray-900/95 backdrop-blur-xl border border-gray-700 rounded-2xl shadow-2xl p-2 flex-col gap-1 transition-all origin-bottom scale-95 opacity-0">
 
-            <!-- Content (Expands Up) -->
-            <div id="history-content"
-                class="pointer-events-auto panel-content collapsed bg-gray-900/90 backdrop-blur-md rounded-lg border border-gray-700 shadow-xl mb-2 w-64">
-                <div class="h-48 flex flex-col">
-                    <div id="history-log" class="flex-1 overflow-y-auto content-start p-3">
-                        <div class="text-gray-500 text-xs italic w-full text-center" id="empty-msg">Moves will appear
-                            here...</div>
-                    </div>
-                </div>
-            </div>
+        <!-- Utility Toggles Row -->
+        <div class="flex gap-2 p-2 border-b border-gray-800 mb-1 justify-between">
+            <button id="btn-toggle-mirrors"
+                class="flex-1 bg-gray-800 hover:bg-gray-700 text-white p-2 rounded-lg transition"
+                title="Toggle Mirrors">
+                <span class="text-xl">🪞</span>
+            </button>
+            <button id="btn-toggle-sound"
+                class="flex-1 bg-gray-800 hover:bg-gray-700 text-white p-2 rounded-lg transition" title="Toggle Sound">
+                <span class="text-xl">🔊</span>
+            </button>
+            <button id="btn-leaderboard"
+                class="flex-1 bg-gray-800 hover:bg-gray-700 text-white p-2 rounded-lg transition" title="Leaderboards">
+                <span class="text-xl">🏆</span>
+            </button>
         </div>
-    </div>
 
-    <!-- Bottom Right: Controls Legend (Expands Upwards) -->
-    <div id="controls-panel-container" class="absolute bottom-4 right-4 z-20 pointer-events-none">
-        <div class="panel-container right-aligned">
-            <!-- Header (Always Visible Button) -->
-            <div class="pointer-events-auto bg-gray-900/90 backdrop-blur-md rounded-lg border border-gray-700 shadow-xl p-3 cursor-pointer hover:bg-gray-800 transition flex items-center gap-2 collapsed"
-                onclick="togglePanel('controls-content', this)">
-                <span class="text-blue-400 font-bold text-sm">Controls</span>
-                <svg class="chevron w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                </svg>
-            </div>
+        <!-- Menu Links -->
+        <button id="btn-menu-history"
+            class="text-left w-full px-4 py-3 rounded-lg hover:bg-gray-800 text-gray-300 hover:text-white transition flex items-center gap-3 font-medium">
+            <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            History
+        </button>
 
-            <!-- Content (Expands Up) -->
-            <div id="controls-content"
-                class="pointer-events-auto panel-content collapsed bg-gray-900/90 backdrop-blur-md rounded-lg border border-gray-700 shadow-xl mb-2 w-72">
-                <div class="p-4 text-sm text-gray-300">
-                    <p class="text-xs text-blue-400 mb-2">🖱️ Drag <b>Pieces</b> to Move Layers</p>
-                    <p class="text-xs text-gray-400 mb-2">🖱️ Drag <b>Background</b> to Rotate Cube</p>
-                    <p class="text-xs text-gray-500 mb-3">🖱️ Scroll to <b>Zoom</b></p>
-                    <div class="grid grid-cols-2 gap-x-2 gap-y-1 text-xs font-mono">
-                        <span>R / Shift+R</span> <span class="text-right text-gray-500">Right</span>
-                        <span>L / Shift+L</span> <span class="text-right text-gray-500">Left</span>
-                        <span>U / Shift+U</span> <span class="text-right text-gray-500">Up</span>
-                        <span>D / Shift+D</span> <span class="text-right text-gray-500">Down</span>
-                        <span>F / Shift+F</span> <span class="text-right text-gray-500">Front</span>
-                        <span>B / Shift+B</span> <span class="text-right text-gray-500">Back</span>
-
-                    </div>
-                </div>
-            </div>
-        </div>
     </div>
 
     <!-- Puzzle Selector Modal -->
@@ -485,6 +472,36 @@
 
 
     <!-- Floating Controls (Zoom & Mirror) -->
+
+    <!-- History Window (Draggable) -->
+    <div id="history-window"
+        class="hidden fixed top-24 left-8 z-40 bg-gray-900/90 backdrop-blur-md border border-gray-700 rounded-xl w-72 shadow-2xl flex flex-col max-h-[400px]">
+        <!-- Header (Drag Handle) -->
+        <div id="history-window-header"
+            class="bg-gray-800/80 p-3 rounded-t-xl cursor-move flex items-center justify-between border-b border-gray-700 select-none">
+            <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                <span class="text-purple-400">📜</span> History
+            </h3>
+            <button onclick="document.getElementById('history-window').classList.add('hidden')"
+                class="text-gray-400 hover:text-white transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                    </path>
+                </svg>
+            </button>
+        </div>
+
+        <div id="history-log"
+            class="flex-1 overflow-y-auto p-2 bg-black/20 text-sm font-mono space-y-1 content-start min-h-[150px]">
+            <div class="text-gray-500 text-xs italic w-full text-center py-4" id="empty-msg">Moves will appear
+                here...</div>
+        </div>
+    </div>
+
+
+
+    <!-- Menu & Modal Logic -->
+    <!-- Menu Logic moved to js/ui/events.js -->
 
     <div id="canvas-container"></div>
 

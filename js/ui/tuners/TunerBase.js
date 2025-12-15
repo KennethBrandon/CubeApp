@@ -12,7 +12,13 @@ export function makeDraggable(elmnt, handleId) {
     function dragMouseDown(e) {
         e = e || window.event;
         // Allow input interactions without dragging
-        if (['INPUT', 'BUTTON', 'SELECT', 'TEXTAREA', 'LABEL'].includes(e.target.tagName)) return;
+        // Check if target or any parent up to dragTarget is a button/input
+        let target = e.target;
+        while (target && target !== dragTarget) {
+            if (['INPUT', 'BUTTON', 'SELECT', 'TEXTAREA', 'LABEL'].includes(target.tagName)) return;
+            target = target.parentNode;
+        }
+
         e.preventDefault();
         pos3 = e.clientX;
         pos4 = e.clientY;
@@ -21,7 +27,12 @@ export function makeDraggable(elmnt, handleId) {
     }
 
     function dragTouchStart(e) {
-        if (['INPUT', 'BUTTON', 'SELECT', 'TEXTAREA', 'LABEL'].includes(e.target.tagName)) return;
+        let target = e.target;
+        while (target && target !== dragTarget) {
+            if (['INPUT', 'BUTTON', 'SELECT', 'TEXTAREA', 'LABEL'].includes(target.tagName)) return;
+            target = target.parentNode;
+        }
+
         if (e.cancelable) e.preventDefault();
         const touch = e.touches[0];
         pos3 = touch.clientX;

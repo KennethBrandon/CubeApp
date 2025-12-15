@@ -20,7 +20,7 @@ export function startInspection() {
     }
 
     if (timerDisplay) {
-        timerDisplay.className = "text-2xl sm:text-3xl font-mono text-orange-500 leading-none";
+        timerDisplay.className = "text-6xl sm:text-7xl font-mono text-orange-500 font-bold drop-shadow-[0_4px_4px_rgba(0,0,0,0.5)] tracking-wider leading-none";
     }
 
     // Run interval frequently for smooth decimal updates
@@ -109,7 +109,7 @@ export function startTimer() {
         timerLabel.className = "text-yellow-400 text-[10px] uppercase tracking-wider leading-none mb-1 font-bold";
     }
     if (timerDisplay) {
-        timerDisplay.className = "text-2xl sm:text-3xl font-mono text-yellow-400 leading-none";
+        timerDisplay.className = "text-6xl sm:text-7xl font-mono text-yellow-400 font-bold drop-shadow-[0_4px_4px_rgba(0,0,0,0.5)] tracking-wider leading-none";
     }
 
     // Update immediately to show 00:00.00

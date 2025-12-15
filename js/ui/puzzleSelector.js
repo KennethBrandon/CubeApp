@@ -405,13 +405,15 @@ function fetchRegistry() {
 
 function createPuzzleButton(label, value) {
     const btn = document.createElement('button');
-    btn.className = "bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-xl transition transform hover:scale-105 shadow-lg flex flex-col items-center justify-center gap-2";
+    // Removed bg-gray-700, shadow-lg. Added group for hover effects.
+    btn.className = "group text-gray-400 hover:text-white font-medium py-2 px-2 rounded-xl transition transform hover:scale-105 flex flex-col items-center justify-center gap-2";
 
     // Dynamic Icon
     const icon = createPuzzleIcon(value);
 
     const text = document.createElement('span');
     text.textContent = label;
+    text.className = "text-xs tracking-wide opacity-80 group-hover:opacity-100 transition-opacity text-center";
 
     btn.appendChild(icon);
     btn.appendChild(text);
@@ -508,7 +510,8 @@ async function downloadAndSelect(puzzleId, value) {
 
 function createPuzzleIcon(value) {
     const container = document.createElement('div');
-    container.className = "w-16 h-16 flex items-center justify-center bg-gray-800 rounded-lg overflow-hidden border border-gray-600";
+    // Removed bg-gray-800, border. Added transparent relative container.
+    container.className = "w-16 h-16 flex items-center justify-center rounded-lg overflow-hidden relative transition opacity-90 group-hover:opacity-100";
 
     const img = document.createElement('img');
     img.className = "w-full h-full object-contain";
@@ -803,7 +806,14 @@ function updatePuzzleButtonText(dims, isMirror, puzzleType) {
         else text += " Cube";
     }
 
-    btn.innerHTML = `<span class="mr-2">🧩</span> ${text} <span class="ml-2 text-xs opacity-50">▼</span>`;
+    // Check for new structure (span for text)
+    const textSpan = btn.querySelector('span');
+    if (textSpan) {
+        textSpan.textContent = text;
+    } else {
+        // Fallback for old structure or if span missing
+        btn.innerHTML = `<span class="mr-2">🧩</span> ${text} <span class="ml-2 text-xs opacity-50">▼</span>`;
+    }
     return text; // Return text for other uses
 }
 

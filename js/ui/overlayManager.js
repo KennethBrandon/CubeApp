@@ -88,11 +88,11 @@ export class OverlayManager {
 
     hideElement(element) {
         // Special handling for fade-out
-        if (element.id === 'solved-modal') {
+        if (element.id === 'solved-modal' || element.id === 'puzzle-selector-modal') {
             element.classList.add('opacity-0');
             setTimeout(() => {
                 element.classList.add('hidden');
-            }, 500);
+            }, 300); // 300ms matches typical transition duration
         } else {
             element.classList.add('hidden');
         }

@@ -177,7 +177,7 @@ export async function hardReset(keepCamera = false) {
     const timerDisplay = document.getElementById('timer');
     if (timerDisplay) {
         timerDisplay.textContent = "00:00.00";
-        timerDisplay.className = "text-2xl sm:text-3xl font-mono text-green-400 leading-none";
+        timerDisplay.className = "text-6xl sm:text-7xl font-mono text-white font-bold drop-shadow-[0_4px_4px_rgba(0,0,0,0.5)] tracking-wider leading-none";
     }
 
     state.timerRunning = false;

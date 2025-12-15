@@ -5,7 +5,8 @@ import { showLeaderboard } from './components/LeaderboardModal.js';
 import { startScramble, handleResetClick, hardReset } from '../game/scramble.js';
 import { toggleMirrors } from '../core/environment.js';
 import { playSolveAnimation, animateVictory } from '../animations/victory.js';
-import { showWinModal, togglePanel, openDetailModal, updateHistoryUI, updateActivePuzzleTab } from './ui.js';
+
+import { showWinModal, togglePanel, openDetailModal, updateHistoryUI, updateActivePuzzleTab, initHistoryWindow } from './ui.js';
 import { submitScore, fetchLeaderboard } from '../leaderboard/firebase.js';
 import { playCubeAnimation, animateWrapperReset } from '../animations/transitions.js';
 import { adjustCameraForCubeSize } from '../core/controls.js';
@@ -84,6 +85,66 @@ export function setupUIEventListeners() {
         overlayManager.close();
     });
 
+    // Initialize Draggable Windows
+    initHistoryWindow();
+
+    // Menu Item: History
+    document.getElementById('btn-menu-history')?.addEventListener('click', () => {
+        const win = document.getElementById('history-window');
+        const menu = document.getElementById('main-menu-dropdown');
+        if (win) {
+            win.classList.toggle('hidden');
+            // If opening, ensure not overlapped by menu? 
+            // Just close menu
+            if (!win.classList.contains('hidden')) {
+                // Ensure it's on top if needed, but z-index handles it.
+            }
+        }
+        if (menu) {
+            menu.classList.add('opacity-0', 'scale-95');
+            setTimeout(() => menu.classList.add('hidden'), 200);
+        }
+        gtag('event', 'toggle_history_window');
+    });
+
+    // Main Menu Toggle & Dismiss Logic
+    const menuBtn = document.getElementById('btn-main-menu-toggle');
+    const menuDropdown = document.getElementById('main-menu-dropdown');
+
+    if (menuBtn && menuDropdown) {
+        console.log("Main Menu Logic Initialized");
+        // Toggle Menu
+        menuBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isHidden = menuDropdown.classList.contains('hidden');
+            if (isHidden) {
+                menuDropdown.classList.remove('hidden');
+                // Small delay to allow transition from display:none
+                setTimeout(() => {
+                    menuDropdown.classList.remove('opacity-0', 'scale-95');
+                }, 10);
+            } else {
+                menuDropdown.classList.add('opacity-0', 'scale-95');
+                setTimeout(() => {
+                    menuDropdown.classList.add('hidden');
+                }, 200);
+            }
+        });
+
+        // Close when clicking outside (Capture phase to catch canvas clicks)
+        // Use pointerdown to catch touch events that might be preventDefault'ed by canvas controls
+        document.addEventListener('pointerdown', (e) => {
+            if (menuDropdown.classList.contains('hidden')) return;
+
+            if (!menuDropdown.contains(e.target) && !menuBtn.contains(e.target)) {
+                menuDropdown.classList.add('opacity-0', 'scale-95');
+                setTimeout(() => {
+                    menuDropdown.classList.add('hidden');
+                }, 200);
+            }
+        }, { capture: true });
+    }
+
 
 
 
@@ -150,16 +211,62 @@ export function setupUIEventListeners() {
         const checkbox = document.getElementById('toggle-free-rotation');
 
         if (btn) {
+            // Find the icon/path to color it, or just color the button text
             if (state.freeRotation) {
-                btn.innerHTML = '<span class="text-lg">🔓</span>';
-                btn.classList.remove('bg-orange-700', 'hover:bg-orange-600');
-                btn.classList.add('bg-blue-600', 'hover:bg-blue-500');
-                btn.title = "Disable Free Rotation";
+                // Free Rotation (Unlocked) -> Gray/Default
+                btn.classList.add('text-gray-400');
+                btn.classList.remove('text-yellow-400', 'text-amber-400');
+
+                // Update icon content if needed, but we wanted to preserve SVG.
+                // Actually the SVG path differs for lock/unlock.
+                // We can swap the SVG content CAREFULLY or just use opacity.
+                // For now, let's keep the icon swap BUT respect the container classes.
+                // The icon needs to be swapped because "Locked" has a closed padlock.
+
+                // Simpler: Just swap the SVG path? Or the whole SVG?
+                // The requirements said: "When 'Locked,' simply change the Icon Color to the accent color"
+                // But we still need to visually show closed vs open padlock if we want to be correct.
+                // Assuming we want to show state:
+
+                // UNLOCKED STATE
+                btn.innerHTML = `
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"></path>
+                </svg>`;
+                /* Note: The above path is a rough "Unlock" or "Lock". Ideally we keep the one from HTML. */
+
+                // Let's stick to the prompt's instruction: "Remove solid background. Change Icon Color."
+                // But wait, the previous code SWAPPED icons.
+                // Let's rewrite innerHTML but with the NEW styling (no background classes).
+
+                btn.innerHTML = `
+                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                 </svg>`;
+                // This is the UNLOCKED icon (shackle up)? Actually M12 15v2... 
+                // Wait, the original HTML has the LOCK icon as default?
+                // Let's look at the original SVG in index.html line 89: 
+                // d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                // That looks like a LOCKED padlock (body + shackle down).
+
+                // So if Free Rotation is ON (Unlocked), we should show UNLOCKED icon.
+                btn.innerHTML = `
+                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"></path>
+                 </svg>`;
+
+                btn.title = "Disable Free Rotation (Lock)";
             } else {
-                btn.innerHTML = '<span class="text-lg">🔒</span>';
-                btn.classList.remove('bg-blue-600', 'hover:bg-blue-500');
-                btn.classList.add('bg-orange-700', 'hover:bg-orange-600');
-                btn.title = "Enable Free Rotation";
+                // Locked State
+                btn.classList.remove('text-gray-400');
+                btn.classList.add('text-yellow-400');
+
+                // Show LOCKED icon
+                btn.innerHTML = `
+                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                 </svg>`;
+                btn.title = "Enable Free Rotation (Unlock)";
             }
         }
 

@@ -1,6 +1,16 @@
 import { state } from '../shared/state.js';
 import { puzzleCategories } from './puzzleSelector.js';
 import { overlayManager } from './overlayManager.js';
+import { makeDraggable } from './tuners/TunerBase.js';
+
+export function initHistoryWindow() {
+    const windowEl = document.getElementById('history-window');
+    const headerEl = document.getElementById('history-window-header');
+
+    if (windowEl && headerEl) {
+        makeDraggable(windowEl, 'history-window-header');
+    }
+}
 
 export function togglePanel(contentId, headerElement) {
     const content = document.getElementById(contentId);
@@ -331,7 +341,7 @@ export function enableDebugButton() {
     const debugBtn = document.createElement('button');
     debugBtn.id = 'btn-debug-floating';
     debugBtn.innerText = 'd';
-    debugBtn.className = 'fixed bottom-4 left-32 z-50 bg-red-600 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold shadow-lg hover:bg-red-500 transition transform hover:scale-110';
+    debugBtn.className = 'fixed bottom-[1px] left-[1px] z-50 bg-red-600 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold shadow-lg hover:bg-red-500 transition transform hover:scale-110';
     debugBtn.onclick = () => {
         import('./components/DebugMenu.js').then(module => {
             module.showDebugMenu();
