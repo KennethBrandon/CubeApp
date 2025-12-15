@@ -767,23 +767,15 @@ export class StlPuzzleMod extends StandardCube {
                 // Check Position Distance
                 if (group.position.distanceTo(expectedPos) > epsilon) {
                     matches = false;
-                    // console.log(`[Fail Attempt ${attempt}] Pos mismatch at [${x},${y},${z}]`);
                     break;
                 }
 
                 // 2. Check Orientation
-                // For a Super Cube, the piece orientation must match the Global Orientation exactly.
-                // UNLESS it is configured to ignore orientation (e.g. symmetric centers).
                 if (!isIgnored(x, y, z)) {
                     if (group.quaternion.angleTo(globalQuat) > angleEpsilon) {
                         matches = false;
-                        if (attempt === 1) { // Only log for first orientation attempt to reduce spam
-                            // console.log(`[StlPuzzle] Orientation mismatch at [${x},${y},${z}]. Diff: ${group.quaternion.angleTo(globalQuat).toFixed(2)} rad`);
-                        }
                         break;
                     }
-                } else {
-                    // console.log(`[StlPuzzle] Ignored orientation check for [${x},${y},${z}]`);
                 }
             }
 
@@ -793,9 +785,6 @@ export class StlPuzzleMod extends StandardCube {
                 return true;
             }
         }
-
-        // Rate limit failure log, only occasionally
-        // if (Math.random() < 0.01) console.log("[StlPuzzle] Not Solved");
 
         return false;
     }
