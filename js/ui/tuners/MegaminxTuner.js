@@ -26,6 +26,10 @@ function createMegaminxTuner() {
             ${createSlider('Sticker Scale', 'stickerScale', 0.1, 1.0, 0.01)}
             ${createSlider('Sticker Offset', 'stickerOffset', 0.001, 0.1, 0.001)}
             ${createSlider('Sticker Radius', 'stickerRadius', 0.0, 0.2, 0.01)}
+            ${createSlider('Sticker Roughness', 'stickerRoughness', 0.0, 1.0, 0.01)}
+            ${createSlider('Sticker Metalness', 'stickerMetalness', 0.0, 1.0, 0.01)}
+            ${createSlider('Sticker Normal Scale', 'stickerNormalScale', 0.0, 1.0, 0.01)}
+            ${createCheckbox('Use Sparkle', 'stickerUseSparkle')}
             ${createSlider('Fillet Radius', 'filletRadius', 0.0, 0.25, 0.005)}
             ${createSlider('Y Rotation', 'yRotation', -180, 180, 5)}
             ${createSlider('Cubie Gap', 'cubieGap', 0.0, 1.0, 0.01)}
@@ -53,13 +57,22 @@ function createSlider(label, id, min, max, step) {
     </div>`;
 }
 
+function createCheckbox(label, id) {
+    return `
+    <div class="flex items-center justify-between">
+        <label class="text-gray-300 text-xs">${label}</label>
+        <input type="checkbox" id="megaminx-${id}" class="w-4 h-4 text-pink-500 bg-gray-600 rounded cursor-pointer">
+    </div>`;
+}
+
 function syncValues() {
     if (!state.activePuzzle || state.activePuzzle.constructor.name !== 'Megaminx') return;
     const p = state.activePuzzle;
 
     const params = [
         'radius', 'surfaceDist', 'cutDist', 'stickerScale', 'stickerOffset',
-        'stickerRadius', 'filletRadius', 'yRotation', 'cubieGap'
+        'stickerRadius', 'filletRadius', 'yRotation', 'cubieGap',
+        'stickerRoughness', 'stickerMetalness', 'stickerNormalScale'
     ];
 
     params.forEach(prop => {
@@ -70,6 +83,9 @@ function syncValues() {
             valEl.textContent = typeof p[prop] === 'number' ? p[prop].toFixed(3) : p[prop];
         }
     });
+
+    const sparkleCheck = document.getElementById('megaminx-stickerUseSparkle');
+    if (sparkleCheck) sparkleCheck.checked = p.stickerUseSparkle;
 }
 
 function attachMegaminxListeners() {
@@ -98,15 +114,31 @@ function attachMegaminxListeners() {
         input.addEventListener('input', updatePuzzle);
     });
 
+    const checkboxes = document.querySelectorAll('#megaminx-tuner-ui input[type="checkbox"]');
+    checkboxes.forEach(chk => {
+        chk.addEventListener('change', (e) => {
+            if (!state.activePuzzle || state.activePuzzle.constructor.name !== 'Megaminx') return;
+            const prop = e.target.id.replace('megaminx-', '');
+            state.activePuzzle[prop] = e.target.checked;
+            if (state.activePuzzle.rebuildGeometry) {
+                state.activePuzzle.rebuildGeometry();
+            }
+        });
+    });
+
     document.getElementById('btn-reset-megaminx-defaults').addEventListener('click', () => {
         // Hardcoded defaults based on current Megaminx.js
         const defaults = {
             radius: 1.25,
-            surfaceDist: 1.29,
-            cutDist: 0.87,
+            surfaceDist: 2.0,
+            cutDist: 1.3,
             stickerScale: 0.86,
             stickerOffset: 0.005,
             stickerRadius: 0.08,
+            stickerRoughness: 0.30,
+            stickerMetalness: 0.18,
+            stickerNormalScale: 0.75,
+            stickerUseSparkle: true,
             filletRadius: 0.015,
             yRotation: 165,
             cubieGap: 0.02

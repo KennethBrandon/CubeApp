@@ -32,8 +32,8 @@ export class Megaminx extends Puzzle {
 
         // Tunable Geometry Parameters
         this.radius = 1.25;
-        this.surfaceDist = 1.29;
-        this.cutDist = 0.87;
+        this.surfaceDist = 2.0;
+        this.cutDist = 1.3;
         this.stickerScale = 0.86;
         this.stickerOffset = 0.005;
         this.yRotation = 165;
@@ -43,6 +43,11 @@ export class Megaminx extends Puzzle {
 
         this.cubieGap = 0.020;
         this.filletRadius = 0.015;
+        this.stickerRoughness = 0.30;
+        this.stickerMetalness = 0.18;
+        this.stickerNormalScale = 0.75;
+        this.stickerUseSparkle = true;
+        this.sparkleMap = null;
     }
 
 
@@ -348,11 +353,23 @@ export class Megaminx extends Puzzle {
                     }
 
                     const sGeo = new THREE.ShapeGeometry(shape);
-                    const sMat = new THREE.MeshBasicMaterial({
+                    const sMat = new THREE.MeshStandardMaterial({
                         color: this.faceColors[idx],
-                        side: THREE.DoubleSide
+                        side: THREE.DoubleSide,
+                        roughness: this.stickerRoughness,
+                        metalness: this.stickerMetalness
                     });
+
+                    if (this.stickerUseSparkle) {
+                        if (!this.sparkleMap) {
+                            this.sparkleMap = createSparkleMap();
+                        }
+                        sMat.normalMap = this.sparkleMap;
+                        sMat.normalScale = new THREE.Vector2(this.stickerNormalScale, this.stickerNormalScale);
+                    }
+
                     const sticker = new THREE.Mesh(sGeo, sMat);
+                    sticker.receiveShadow = true;
 
                     // Place it back in 3D
                     // ShapeGeometry is on XY plane.
@@ -423,6 +440,11 @@ export class Megaminx extends Puzzle {
 
         const finalizePiece = (mesh, type, faces, extraData = {}, stickerMesh = null) => {
             if (!mesh) return;
+
+            // Enable Shadows
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+
             const group = new THREE.Group();
             group.add(mesh);
 
@@ -997,4 +1019,52 @@ export class Megaminx extends Puzzle {
         }
         return false;
     }
+}
+
+function createSparkleMap(maxDim = 3) {
+    const size = 512;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+
+    const noiseScale = Math.max(1, maxDim / 4);
+    const noiseSize = Math.floor(size / noiseScale);
+
+    const noiseCanvas = document.createElement('canvas');
+    noiseCanvas.width = noiseSize;
+    noiseCanvas.height = noiseSize;
+    const noiseCtx = noiseCanvas.getContext('2d');
+
+    noiseCtx.fillStyle = 'rgb(128, 128, 255)';
+    noiseCtx.fillRect(0, 0, noiseSize, noiseSize);
+
+    const imgData = noiseCtx.getImageData(0, 0, noiseSize, noiseSize);
+    const data = imgData.data;
+
+    for (let i = 0; i < data.length; i += 4) {
+        data[i] = 128 + (Math.random() - 0.5) * 64;
+        data[i + 1] = 128 + (Math.random() - 0.5) * 64;
+        data[i + 2] = 255;
+    }
+
+    noiseCtx.putImageData(imgData, 0, 0);
+
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(noiseCanvas, 0, 0, size, size);
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(1, 1);
+    tex.generateMipmaps = true;
+    tex.minFilter = THREE.LinearMipmapLinearFilter;
+    tex.magFilter = THREE.LinearFilter;
+
+    if (state.renderer) {
+        tex.anisotropy = state.renderer.capabilities.getMaxAnisotropy();
+    }
+
+    return tex;
 }
