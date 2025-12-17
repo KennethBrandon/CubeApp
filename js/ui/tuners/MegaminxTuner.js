@@ -33,6 +33,7 @@ function createMegaminxTuner() {
             ${createSlider('Fillet Radius', 'filletRadius', 0.0, 0.25, 0.005)}
             ${createSlider('Y Rotation', 'yRotation', -180, 180, 5)}
             ${createSlider('Cubie Gap', 'cubieGap', 0.0, 1.0, 0.01)}
+            ${createSlider('Scramble Length', 'scrambleLength', 1, 100, 1)}
         </div>
 
         <div class="mt-6 text-center pb-4">
@@ -72,7 +73,8 @@ function syncValues() {
     const params = [
         'radius', 'surfaceDist', 'cutDist', 'stickerScale', 'stickerOffset',
         'stickerRadius', 'filletRadius', 'yRotation', 'cubieGap',
-        'stickerRoughness', 'stickerMetalness', 'stickerNormalScale'
+        'stickerRoughness', 'stickerMetalness', 'stickerNormalScale',
+        'scrambleLength'
     ];
 
     params.forEach(prop => {
@@ -141,7 +143,8 @@ function attachMegaminxListeners() {
             stickerUseSparkle: true,
             filletRadius: 0.015,
             yRotation: 165,
-            cubieGap: 0.02
+            cubieGap: 0.02,
+            scrambleLength: 45
         };
 
         if (state.activePuzzle && state.activePuzzle.constructor.name === 'Megaminx') {

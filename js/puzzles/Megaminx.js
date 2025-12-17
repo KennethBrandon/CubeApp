@@ -8,6 +8,7 @@ import { queueMove } from '../game/moves.js';
 export class Megaminx extends Puzzle {
     constructor(config) {
         super(config);
+        this.scrambleLength = 45; // Default
         this.phi = (1 + Math.sqrt(5)) / 2;
         this.parent = config.parent || state.cubeWrapper;
         this.cubieList = config.cubieList || state.allCubies;
@@ -784,43 +785,109 @@ export class Megaminx extends Puzzle {
             axis: moveId
         };
     }
+    getScramble() {
+        console.log("Megaminx.getScramble called");
+        // Generate random sequence of face turns
+        const numMoves = this.scrambleLength;
+        const moves = [];
+        let lastFace = -1;
+
+        for (let i = 0; i < numMoves; i++) {
+            let face;
+            // Prevent same face twice in a row
+            do {
+                face = Math.floor(Math.random() * 12);
+            } while (face === lastFace);
+
+            lastFace = face;
+
+            // Direction: 1 or -1
+            const dir = Math.random() > 0.5 ? 1 : -1;
+
+            moves.push({
+                axis: String(face),
+                dir: dir,
+                sliceVal: null
+            });
+        }
+        return moves;
+    }
+
+    getNotation(axis, sliceVal, turns) {
+        const faceIdx = parseInt(axis);
+        if (isNaN(faceIdx)) return axis;
+
+        const colors = [
+            "Red", "Purple", "Pink", "Orange", "White", "Lime",
+            "Green", "Gray", "Blue", "Yellow", "Cream", "LtBlue"
+        ];
+
+        const name = colors[faceIdx] || ("Face" + faceIdx);
+        const suffix = turns === -1 ? "'" : (Math.abs(turns) === 2 ? "2" : "");
+
+        return name + suffix;
+    }
 
     isSolved() {
+        console.log("Checking isSolved...");
+        let totalStickersFound = 0;
+
         for (const faceDir of this.faceNormals) {
             let faceColorHex = null;
             let count = 0;
 
             for (const group of this.cubieList) {
                 // Determine group rotation
-                // Sticker hierarchy: Group -> Mesh -> Sticker
-                const mesh = group.children[0];
-                if (!mesh) continue;
+                // Check direct children for stickers first (StandardCube style)
+                let stickers = group.children.filter(c => c.userData.isSticker);
 
-                for (const child of mesh.children) {
-                    if (child.userData.isSticker) {
-                        const v = new THREE.Vector3(0, 0, 1);
-                        v.applyQuaternion(child.quaternion);
-                        v.applyQuaternion(mesh.quaternion);
-                        v.applyQuaternion(group.quaternion);
+                // If no stickers found on group, check if they are on a child mesh (STL style?)
+                if (stickers.length === 0 && group.children.length > 0) {
+                    // Assuming first child is the mesh if it exists
+                    const mesh = group.children[0];
+                    if (mesh) {
+                        stickers = mesh.children.filter(c => c.userData.isSticker);
+                    }
+                }
 
-                        if (v.dot(faceDir) > 0.9) {
-                            const color = child.material.color.getHex();
-                            if (faceColorHex === null) faceColorHex = color;
-                            else if (faceColorHex !== color) return false;
-                            count++;
+                for (const child of stickers) {
+                    const v = new THREE.Vector3(0, 0, 1);
+                    v.applyQuaternion(child.quaternion);
+                    // If sticker is on mesh, apply mesh rotation? 
+                    // Need to know parentage. 
+                    // child.parent.quaternion should handle it if we use world direction logic properly?
+                    // But we are in "Puzzle Space".
+
+                    // Let's assume stickers are direct children of group for now or handle the parent explicity.
+                    if (child.parent !== group) {
+                        v.applyQuaternion(child.parent.quaternion);
+                    }
+                    v.applyQuaternion(group.quaternion);
+
+                    if (v.dot(faceDir) > 0.9) {
+                        const color = child.material.color.getHex();
+                        if (faceColorHex === null) faceColorHex = color;
+                        else if (faceColorHex !== color) {
+                            console.log("Fail: Color mismatch on face", faceDir);
+                            return false;
                         }
+                        count++;
                     }
                 }
             }
-            if (count === 0) return false; // Should find stickers
+            totalStickersFound += count;
+            if (count === 0) {
+                console.log("Fail: No stickers found for face", faceDir);
+                return false;
+            }
         }
+        console.log("Pass: All faces solved. Total stickers checked:", totalStickersFound);
         return true;
     }
 
     // ... helpers ...
-    getScramble() { return []; }
-    getScramble() { return []; }
-    getNotation() { return ""; }
+
+
     isFaceRectangular(axis) { return false; }
     getSnapAngle() { return Math.PI * 2 / 5; }
 

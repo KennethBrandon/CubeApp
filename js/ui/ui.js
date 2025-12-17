@@ -126,6 +126,9 @@ export function showWinModal() {
         } else if (type === 'AcornsMod') {
             puzzleName = "Acorns Mod";
             puzzleTypeId = 'acorns';
+        } else if (type === 'Megaminx') {
+            puzzleName = "Megaminx";
+            puzzleTypeId = 'megaminx';
         } else if (type === 'StlPuzzleMod' || state.activePuzzle.puzzleId) {
             // STL Custom Puzzle
             const id = state.activePuzzle.puzzleId;
