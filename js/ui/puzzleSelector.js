@@ -4,6 +4,7 @@ import { MirrorCube } from '../puzzles/MirrorCube.js';
 import { Molecube } from '../puzzles/Molecube.js';
 import { VoidCube } from '../puzzles/VoidCube.js';
 import { AcornsMod } from '../puzzles/AcornsMod.js';
+import { Megaminx } from '../puzzles/Megaminx.js';
 
 import { StlPuzzleMod } from '../puzzles/StlPuzzleMod.js';
 import { hardReset } from '../game/scramble.js';
@@ -22,7 +23,7 @@ export const puzzleCategories = {
     'big': [8, 9, 10, 11, 12, 13, 14, 15, 16, 17],
     'cuboids': ['2x2x3', '3x3x2', '3x3x4', '3x3x5', '2x2x4', '2x2x1', '3x3x1'],
     'mirror': ['mirror-2x2x2', 'mirror-3x3x3', 'mirror-4x4x4', 'mirror-5x5x5', 'mirror-6x6x6', 'mirror-7x7x7'],
-    'mods': ['molecube', 'voidcube', 'acorns']
+    'mods': ['molecube', 'voidcube', 'acorns', 'megaminx']
 };
 
 
@@ -615,6 +616,10 @@ export function changePuzzle(val, isCustom = false, customDims = null, isMirrorC
             newSize = 2;
             newDims = { x: 2, y: 2, z: 2 };
             PuzzleClass = AcornsMod;
+        } else if (val === 'megaminx') {
+            newSize = 3; // Approx size for camera
+            newDims = { x: 3, y: 3, z: 3 };
+            PuzzleClass = Megaminx;
         } else if (val === 'mirror-2x2x2') {
             newSize = 2;
             newDims = { x: 2, y: 2, z: 2 };
@@ -791,6 +796,8 @@ function updatePuzzleButtonText(dims, isMirror, puzzleType) {
         text = "Void Cube";
     } else if (puzzleType === 'acorns') {
         text = "Acorns Mod";
+    } else if (puzzleType === 'megaminx') {
+        text = "Megaminx";
     } else if (String(puzzleType).startsWith('stl:')) {
         text = getPuzzleName(puzzleType);
     } else if (dims.x === dims.y && dims.y === dims.z) {

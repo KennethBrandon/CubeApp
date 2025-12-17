@@ -24,7 +24,7 @@ export function onMouseDown(event) {
         state.isBackgroundDrag = false;
         state.intersectedCubie = intersects[0].object.parent;
         state.intersectedFaceNormal = intersects[0].face.normal.clone();
-        state.intersectedFaceNormal.transformDirection(intersects[0].object.matrixWorld).round();
+        state.intersectedFaceNormal.transformDirection(intersects[0].object.matrixWorld).normalize();
         state.dragStartPoint.set(pos.x, pos.y);
         state.dragAxis = null;
         state.dragInputAxis = null;
@@ -47,11 +47,11 @@ export function onMouseDown(event) {
         // Corner at max X, max Z is the vertical divider.
         const dimX = state.activeDimensions.x;
         const dimZ = state.activeDimensions.z;
-        const localRef = new THREE.Vector3((dimX/2) * S, 0, (dimZ/2) * S);
-        
+        const localRef = new THREE.Vector3((dimX / 2) * S, 0, (dimZ / 2) * S);
+
         // Transform to world space to account for puzzle rotation
         const referencePointWorld = localRef.applyMatrix4(state.cubeWrapper.matrixWorld);
-        
+
         const tempCamera = state.camera.clone();
         tempCamera.rotation.setFromRotationMatrix(state.controls.object.matrix);
         const projectedPoint = referencePointWorld.clone().project(tempCamera);
@@ -213,7 +213,10 @@ export function onMouseUp() {
             // Do nothing, rotation is already applied to wrapper
             state.cubeWrapper.updateMatrixWorld(true);
         } else {
-            const piHalf = Math.PI / 2;
+            let piHalf = Math.PI / 2;
+            if (state.activePuzzle && typeof state.activePuzzle.getSnapAngle === 'function') {
+                piHalf = state.activePuzzle.getSnapAngle();
+            }
             const rawTurns = state.currentDragAngle / piHalf;
             let targetTurns = Math.round(rawTurns);
 

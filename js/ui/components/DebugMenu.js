@@ -83,6 +83,18 @@ function createDebugMenu() {
                             class="w-12 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-6 peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600">
                         </div>
                     </label>
+                    </label>
+                </div>
+
+                <!-- Megaminx Tuner Toggle -->
+                <div class="flex items-center justify-between p-3 bg-gray-900/50 rounded-lg">
+                    <span class="text-gray-300">Show Megaminx Tuner</span>
+                    <label class="relative inline-block w-12 h-6">
+                        <input type="checkbox" id="toggle-megaminx-tuner" class="sr-only peer">
+                        <div
+                            class="w-12 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-6 peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-600">
+                        </div>
+                    </label>
                 </div>
 
                 <!-- Environment Tuner Toggle -->
@@ -211,6 +223,17 @@ function attachDebugListeners() {
             import('../tuners/index.js').then(module => module.showAcornsTuner());
         }
         gtag('event', 'toggle_acorns_tuner', { state: e.target.checked ? 'on' : 'off' });
+    });
+
+    document.getElementById('toggle-megaminx-tuner').addEventListener('change', (e) => {
+        const ui = document.getElementById('megaminx-tuner-ui');
+        if (ui) {
+            if (e.target.checked) ui.classList.remove('hidden');
+            else ui.classList.add('hidden');
+        } else if (e.target.checked) {
+            import('../tuners/index.js').then(module => module.showMegaminxTuner());
+        }
+        gtag('event', 'toggle_megaminx_tuner', { state: e.target.checked ? 'on' : 'off' });
     });
 
     document.getElementById('toggle-molecube-tuner').addEventListener('change', (e) => {
