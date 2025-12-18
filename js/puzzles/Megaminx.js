@@ -915,6 +915,32 @@ export class Megaminx extends Puzzle {
         });
     }
 
+    getLockedRotationAxis(axis) {
+        const target = new THREE.Vector3();
+        if (axis === 'x') target.set(1, 0, 0);
+        else if (axis === 'y') target.set(0, 1, 0);
+        else if (axis === 'z') target.set(0, 0, 1);
+
+        // Find closest face normal
+        let bestN = null;
+        let maxAbsDot = -1;
+        let bestSign = 1;
+
+        for (const n of this.faceNormals) {
+            const dot = n.dot(target);
+            if (Math.abs(dot) > maxAbsDot) {
+                maxAbsDot = Math.abs(dot);
+                bestN = n;
+                bestSign = Math.sign(dot) || 1;
+            }
+        }
+
+        if (bestN) {
+            return bestN.clone().multiplyScalar(bestSign);
+        }
+        return target; // Fallback
+    }
+
     getDragAxis(faceNormal, screenMoveVec, intersectedCubie, camera) {
         if (!intersectedCubie) return null;
 

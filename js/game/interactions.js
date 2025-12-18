@@ -277,18 +277,30 @@ function determineDragAxis(dx, dy) {
         }
 
         if (moveX) {
-            state.dragRotationAxis = new THREE.Vector3(0, 1, 0);
+            let axis = new THREE.Vector3(0, 1, 0);
+            if (state.activePuzzle && typeof state.activePuzzle.getLockedRotationAxis === 'function') {
+                axis = state.activePuzzle.getLockedRotationAxis('y');
+            }
+            state.dragRotationAxis = axis;
             state.dragAngleScale = 1;
             state.dragAxis = 'y';
             state.dragInputAxis = 'x';
         } else {
             if (state.isRightZone) {
-                state.dragRotationAxis = new THREE.Vector3(0, 0, 1);
+                let axis = new THREE.Vector3(0, 0, 1);
+                if (state.activePuzzle && typeof state.activePuzzle.getLockedRotationAxis === 'function') {
+                    axis = state.activePuzzle.getLockedRotationAxis('z');
+                }
+                state.dragRotationAxis = axis;
                 state.dragAngleScale = -1;
                 state.dragAxis = 'z';
                 state.dragInputAxis = 'y';
             } else {
-                state.dragRotationAxis = new THREE.Vector3(1, 0, 0);
+                let axis = new THREE.Vector3(1, 0, 0);
+                if (state.activePuzzle && typeof state.activePuzzle.getLockedRotationAxis === 'function') {
+                    axis = state.activePuzzle.getLockedRotationAxis('x');
+                }
+                state.dragRotationAxis = axis;
                 state.dragAngleScale = 1;
                 state.dragAxis = 'x';
                 state.dragInputAxis = 'y';
