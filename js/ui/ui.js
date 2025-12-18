@@ -196,16 +196,20 @@ export function renderLeaderboardUI(leaderboardData, puzzleSize = 3) {
 
     // Check Standard
     if (!isFound) {
+        // Check special standard puzzles first (like megaminx)
+        if (p === 'megaminx') {
+            category = 'standard';
+            isFound = true;
+        }
         // Check exact match or "NxNxN" match
-        const std = puzzleCategories.standard; // [2,3,4,5,6,7]
-        if (std.includes(parseInt(p)) && (p.length === 1 || p.match(/^\d+$/))) {
+        else if (puzzleCategories.standard.includes(parseInt(p)) && (p.length === 1 || p.match(/^\d+$/))) {
             category = 'standard';
             isFound = true;
         } else if (p.includes('x')) {
             const parts = p.split('x');
             if (parts.length === 3 && parts[0] === parts[1] && parts[1] === parts[2]) {
                 const n = parseInt(parts[0]);
-                if (std.includes(n)) {
+                if (puzzleCategories.standard.includes(n)) {
                     category = 'standard';
                     isFound = true;
                 }
@@ -274,11 +278,12 @@ export function renderLeaderboardUI(leaderboardData, puzzleSize = 3) {
             ? puzzleSize
             : `${puzzleSize}x${puzzleSize}`;
 
-        // Map built-in mod puzzle IDs to display names
+        // Map built-in puzzle IDs to display names
         const modNames = {
             'molecube': 'Molecube',
             'voidcube': 'Void Cube',
-            'acorns': 'Acorns Mod'
+            'acorns': 'Acorns Mod',
+            'megaminx': 'Megaminx'
         };
 
         if (modNames[puzzleSize]) {

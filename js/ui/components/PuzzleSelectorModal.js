@@ -34,7 +34,7 @@ export function ensurePuzzleSelectorModal() {
 
             <!-- Categories (Chips) -->
             <div class="px-4 py-3 border-b border-gray-700 overflow-x-auto shrink-0 flex gap-2 scrollbar-hide">
-                <button class="puzzle-category-btn active px-4 py-2 rounded-full bg-blue-600 text-white font-bold text-sm whitespace-nowrap transition" data-category="standard">Standard</button>
+                <button class="puzzle-category-btn active px-4 py-2 rounded-full bg-blue-600 text-white font-bold text-sm whitespace-nowrap transition" data-category="standard">WCA Puzzles</button>
                 <button class="puzzle-category-btn px-4 py-2 rounded-full bg-gray-800 text-gray-400 hover:text-white font-bold text-sm whitespace-nowrap transition hover:bg-gray-700" data-category="big">Big Cubes</button>
                 <button class="puzzle-category-btn px-4 py-2 rounded-full bg-gray-800 text-gray-400 hover:text-white font-bold text-sm whitespace-nowrap transition hover:bg-gray-700" data-category="cuboids">Cuboids</button>
                 <button class="puzzle-category-btn px-4 py-2 rounded-full bg-gray-800 text-gray-400 hover:text-white font-bold text-sm whitespace-nowrap transition hover:bg-gray-700" data-category="mirror">Mirror</button>

@@ -135,6 +135,8 @@ export function openLeaderboardModal() {
                     }
                 }
             }
+        } else if (p === 'megaminx') {
+            initialCategory = 'standard';
         } else if (p === 'molecube' || p === 'voidcube' || p === 'acorns' || (state.customPuzzles && state.customPuzzles.some(entry => entry.id === p))) {
             initialCategory = 'mods';
         } else {
@@ -178,6 +180,11 @@ export function openLeaderboardModal() {
             // It's an Acorns Mod
             initialCategory = 'mods';
             initialPuzzle = 'acorns';
+
+        } else if (active && active.constructor.name === 'Megaminx') {
+            // It's a Megaminx
+            initialCategory = 'standard';
+            initialPuzzle = 'megaminx';
 
         } else if (dims.x !== dims.y || dims.y !== dims.z) {
             // Cuboid
@@ -417,8 +424,14 @@ function renderPuzzleChips(category, autoSelect = false, smooth = true) {
                 let value = val;
 
                 if (category === 'standard' || category === 'big') {
-                    label = `${val}x${val}x${val}`;
-                    value = `${val}x${val}x${val}`;
+                    // Handle special puzzles like megaminx
+                    if (val === 'megaminx') {
+                        label = 'Megaminx';
+                        value = 'megaminx';
+                    } else {
+                        label = `${val}x${val}x${val}`;
+                        value = `${val}x${val}x${val}`;
+                    }
                 } else if (category === 'mirror') {
                     if (val === 'mirror-3x3x3') label = '3x3 Mirror';
                     else if (val === 'mirror-2x2x2') label = '2x2 Mirror';

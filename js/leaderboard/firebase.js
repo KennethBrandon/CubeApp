@@ -153,6 +153,8 @@ export async function submitScore(name, timeMs, timeString, scramble, solution) 
     } else if (state.activePuzzle instanceof StlPuzzleMod) {
         // Use the ID from the mod (e.g. "baby_yoda")
         puzzleType = state.activePuzzle.puzzleId;
+    } else if (state.activePuzzle && state.activePuzzle.constructor.name === 'Megaminx') {
+        puzzleType = 'megaminx';
     } else {
         // Standard dimensional logic
         let puzzleSize;

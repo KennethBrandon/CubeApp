@@ -20,11 +20,11 @@ import { assetManager } from '../game/AssetManager.js';
 import { showLoading, hideLoading } from './ui.js';
 
 export const puzzleCategories = {
-    'standard': [2, 3, 4, 5, 6, 7],
+    'standard': [2, 3, 4, 5, 6, 7, 'megaminx'],
     'big': [8, 9, 10, 11, 12, 13, 14, 15, 16, 17],
     'cuboids': ['2x2x3', '3x3x2', '3x3x4', '3x3x5', '2x2x4', '2x2x1', '3x3x1'],
     'mirror': ['mirror-2x2x2', 'mirror-3x3x3', 'mirror-4x4x4', 'mirror-5x5x5', 'mirror-6x6x6', 'mirror-7x7x7'],
-    'mods': ['molecube', 'voidcube', 'acorns', 'megaminx']
+    'mods': ['molecube', 'voidcube', 'acorns']
 };
 
 
@@ -285,12 +285,20 @@ function renderPuzzleOptions() {
 
     const categories = puzzleCategories;
 
-    // Render Standard
+    // Render Standard / WCA
     const standardContainer = document.getElementById('cat-standard-list');
     if (standardContainer) {
         standardContainer.innerHTML = '';
-        categories.standard.forEach(size => {
-            const btn = createPuzzleButton(`${size}x${size}x${size}`, size);
+        categories.standard.forEach(val => {
+            let label;
+            if (typeof val === 'number') {
+                label = `${val}x${val}x${val}`;
+            } else if (val === 'megaminx') {
+                label = 'Megaminx';
+            } else {
+                label = val;
+            }
+            const btn = createPuzzleButton(label, val);
             standardContainer.appendChild(btn);
         });
     }
@@ -567,8 +575,8 @@ export function getPuzzleIconPath(value) {
     // Check Cuboids
     if (puzzleCategories.cuboids.includes(valStr)) return `assets/icons/puzzle-${valStr}.png`;
 
-    // Check Mods
-    if (puzzleCategories.mods.includes(valStr)) return `assets/icons/puzzle-${valStr}.png`;
+    // Check Mods (and special WCA puzzles like Megaminx)
+    if (puzzleCategories.mods.includes(valStr) || valStr === 'megaminx') return `assets/icons/puzzle-${valStr}.png`;
 
     // Check STL Custom
     if (valStr.startsWith('stl:')) {
