@@ -299,13 +299,20 @@ function determineDragAxis(dx, dy) {
             state.dragAxis = 'y';
             state.dragInputAxis = 'x';
         } else {
+            // Common check for Megaminx
+            const isMegaminx = state.activePuzzle && state.activePuzzle.constructor.name === 'Megaminx';
+
             if (state.isRightZone) {
                 let axis = new THREE.Vector3(0, 0, 1);
                 if (state.activePuzzle && typeof state.activePuzzle.getLockedRotationAxis === 'function') {
                     axis = state.activePuzzle.getLockedRotationAxis('z');
                 }
                 state.dragRotationAxis = axis;
-                state.dragAngleScale = 1;
+                // Megaminx uses reversed rotation (1), Standard uses normal (-1)
+                // Wait, based on analysis: 1 was "Reversed" state?
+                // Let's stick to the pattern: Standard wants OPPOSITE of what is there if it was "reversed".
+                // Current Right code has 1. If 1 is "Reversed", Standard wants -1.
+                state.dragAngleScale = isMegaminx ? 1 : -1;
                 state.dragAxis = 'z';
                 state.dragInputAxis = 'y';
             } else {
@@ -314,7 +321,8 @@ function determineDragAxis(dx, dy) {
                     axis = state.activePuzzle.getLockedRotationAxis('x');
                 }
                 state.dragRotationAxis = axis;
-                state.dragAngleScale = -1;
+                // Megaminx uses reversed rotation (-1), Standard uses normal (1)
+                state.dragAngleScale = isMegaminx ? -1 : 1;
                 state.dragAxis = 'x';
                 state.dragInputAxis = 'y';
             }
