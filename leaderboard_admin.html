@@ -126,19 +126,19 @@
             }
         };
 
-        window.updatePuzzleType = async (id, newValue) => {
+        window.updateField = async (id, field, newValue) => {
             try {
                 const record = records.find(r => r.id === id);
                 if (!record) return;
 
                 // Optimistic update
-                const oldValue = record.puzzleType;
-                record.puzzleType = newValue;
+                const oldValue = record[field];
+                record[field] = newValue;
 
                 const docRef = doc(db, 'artifacts', 'cube-app', 'public', 'data', 'leaderboard', id);
-                await updateDoc(docRef, { puzzleType: newValue });
+                await updateDoc(docRef, { [field]: newValue });
 
-                document.getElementById('status').textContent = `Updated record ${id} to "${newValue}"`;
+                document.getElementById('status').textContent = `Updated record ${id} - ${field} to "${newValue}"`;
                 document.getElementById('status').className = "mb-4 text-green-400";
 
                 // Reset status style after 3 seconds
@@ -153,6 +153,9 @@
                 // In a real app we'd probably want to re-render to show the old value
             }
         };
+
+        // Keep for backward compatibility if needed, but we'll use updateField now
+        window.updatePuzzleType = (id, newValue) => window.updateField(id, 'puzzleType', newValue);
 
         function renderTable() {
             // Sort
@@ -193,12 +196,19 @@
                 const tr = document.createElement('tr');
                 tr.className = "hover:bg-gray-800 transition-colors";
                 tr.innerHTML = `
-                    <td class="p-2 border border-gray-700">${r.name || 'Anonymous'}</td>
+                    <td class="p-2 border border-gray-700">
+                        <input 
+                            type="text" 
+                            value="${r.name || 'Anonymous'}" 
+                            onchange="updateField('${r.id}', 'name', this.value)"
+                            class="bg-gray-700 text-white px-2 py-1 rounded w-full border border-gray-600 focus:border-blue-500 focus:outline-none"
+                        />
+                    </td>
                     <td class="p-2 border border-gray-700">
                         <input 
                             type="text" 
                             value="${r.puzzleType || ''}" 
-                            onchange="updatePuzzleType('${r.id}', this.value)"
+                            onchange="updateField('${r.id}', 'puzzleType', this.value)"
                             class="bg-gray-700 text-yellow-400 font-mono px-2 py-1 rounded w-full border border-gray-600 focus:border-blue-500 focus:outline-none"
                         />
                     </td>
