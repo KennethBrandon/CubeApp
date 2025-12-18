@@ -16,6 +16,7 @@ import { initPreview, updatePreview, disposePreview } from './puzzlePreview.js';
 import { overlayManager } from './overlayManager.js';
 import { ensurePuzzleSelectorModal } from './components/PuzzleSelectorModal.js';
 import { puzzleCache } from '../utils/puzzleCache.js';
+import { assetManager } from '../game/AssetManager.js';
 import { showLoading, hideLoading } from './ui.js';
 
 export const puzzleCategories = {
@@ -77,7 +78,15 @@ export function setupPuzzleSelector() {
 
 function initializePuzzleFromUrl() {
     const params = new URLSearchParams(window.location.search);
-    const puzzleParam = params.get('puzzle');
+    let puzzleParam = params.get('puzzle');
+
+    if (!puzzleParam) {
+        try {
+            puzzleParam = localStorage.getItem('last_puzzle_selection');
+        } catch (e) {
+            console.warn("Could not read from localStorage:", e);
+        }
+    }
 
     if (puzzleParam) {
         // Parse param to determine type
@@ -426,8 +435,8 @@ function createPuzzleButton(label, value) {
 
         if (isDownloadable) {
             const puzzleId = value.split(':')[1];
-            puzzleCache.checkIfCached(puzzleId).then(isCached => {
-                if (isCached) {
+            assetManager.isRemoteAndMissing(puzzleId).then(missing => {
+                if (!missing) {
                     selectPuzzle(value);
                 } else {
                     // Show download prompt or just download
@@ -444,22 +453,23 @@ function createPuzzleButton(label, value) {
     const isDownloadable = typeof value === 'string' && value.startsWith('stl:');
     if (isDownloadable) {
         const puzzleId = value.split(':')[1];
-        puzzleCache.checkIfCached(puzzleId).then(isCached => {
-            if (!isCached) {
-                // Determine size
-                puzzleCache.getDownloadSize(puzzleId).then(size => {
-                    const indicator = document.createElement('div');
-                    indicator.className = "absolute top-2 right-2 bg-blue-600 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-md";
+        assetManager.isRemoteAndMissing(puzzleId).then(missing => {
+            if (missing) {
+                // Determine size (Not implemented in assetManager yet, defaulting to unknown)
+                // assetManager.getDownloadSize(puzzleId).then(...) 
+                const size = null;
 
-                    let sizeText = "↓";
-                    if (size) {
-                        const mb = (size / (1024 * 1024)).toFixed(1);
-                        sizeText += ` ${mb}MB`;
-                    }
-                    indicator.textContent = sizeText;
-                    btn.appendChild(indicator);
-                    btn.classList.add('relative');
-                });
+                const indicator = document.createElement('div');
+                indicator.className = "absolute top-2 right-2 bg-blue-600 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-md";
+
+                let sizeText = "↓";
+                if (size) {
+                    const mb = (size / (1024 * 1024)).toFixed(1);
+                    sizeText += ` ${mb}MB`;
+                }
+                indicator.textContent = sizeText;
+                btn.appendChild(indicator);
+                btn.classList.add('relative');
             }
         });
     }
@@ -486,7 +496,7 @@ async function downloadAndSelect(puzzleId, value) {
     }
 
     try {
-        await puzzleCache.downloadPuzzle(puzzleId, (progress) => {
+        await assetManager.downloadPuzzle(puzzleId, (progress) => {
             // Optional: Update progress UI
         });
 
@@ -752,24 +762,32 @@ export function changePuzzle(val, isCustom = false, customDims = null, isMirrorC
         });
     }
 
+    // Calculate URL/Storage Value
+    let urlVal = val;
+    if (isCustom) {
+        // Serialize custom puzzle
+        // Format: custom-WxHxD or custom-mirror-WxHxD
+        // Sort dimensions descending for URL: Largest x Middle x Smallest
+        const sortedDims = [newDims.x, newDims.y, newDims.z].sort((a, b) => b - a);
+        const dimStr = `${sortedDims[0]}x${sortedDims[1]}x${sortedDims[2]}`;
+        urlVal = `custom-${isMirrorCustom ? 'mirror-' : ''}${dimStr}`;
+    } else {
+        // Normalize standard/mirror URL values
+        // If val is just a number (e.g. 5), convert to 5x5x5
+        if (String(val).match(/^\d+$/)) {
+            urlVal = `${val}x${val}x${val}`;
+        }
+    }
+
+    // Persist selection
+    try {
+        localStorage.setItem('last_puzzle_selection', urlVal);
+    } catch (e) {
+        console.warn("Could not save to localStorage:", e);
+    }
+
     // Update History
     if (!skipHistory) {
-        let urlVal = val;
-        if (isCustom) {
-            // Serialize custom puzzle
-            // Format: custom-WxHxD or custom-mirror-WxHxD
-            // Sort dimensions descending for URL: Largest x Middle x Smallest
-            const sortedDims = [newDims.x, newDims.y, newDims.z].sort((a, b) => b - a);
-            const dimStr = `${sortedDims[0]}x${sortedDims[1]}x${sortedDims[2]}`;
-            urlVal = `custom-${isMirrorCustom ? 'mirror-' : ''}${dimStr}`;
-        } else {
-            // Normalize standard/mirror URL values
-            // If val is just a number (e.g. 5), convert to 5x5x5
-            if (String(val).match(/^\d+$/)) {
-                urlVal = `${val}x${val}x${val}`;
-            }
-        }
-
         const newUrl = `?puzzle=${urlVal}`;
         history.pushState({
             puzzle: val, // Keep original val for internal logic if possible, or reconstruct

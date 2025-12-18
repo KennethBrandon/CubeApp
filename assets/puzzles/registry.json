@@ -1,18 +1,26 @@
 [
     {
         "id": "fisher_cube",
-        "name": "Fisher Cube"
+        "name": "Fisher Cube",
+        "remotePath": "puzzles/fisher_cube",
+        "isRemote": true
     },
     {
         "id": "grinch",
-        "name": "The Grinch"
+        "name": "The Grinch",
+        "remotePath": "puzzles/grinch",
+        "isRemote": true
     },
     {
         "id": "christmas_tree",
-        "name": "Christmas Tree"
+        "name": "Christmas Tree",
+        "remotePath": "puzzles/christmas_tree",
+        "isRemote": true
     },
     {
         "id": "baby_yoda",
-        "name": "Baby Yoda"
+        "name": "Baby Yoda",
+        "remotePath": "puzzles/baby_yoda",
+        "isRemote": true
     }
 ]

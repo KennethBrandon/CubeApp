@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { assetManager } from '../game/AssetManager.js';
 import { StandardCube } from './StandardCube.js';
 import { STLLoader } from 'three/addons/loaders/STLLoader.js';
 import { ThreeMFLoader } from 'three/addons/loaders/3MFLoader.js';
@@ -36,13 +37,12 @@ export class StlPuzzleMod extends StandardCube {
             // Dimensions (already loaded in main config)
             const dims = config.dimensions;
 
-            // Dimensions check
-            if (dims.x !== this.config.dimensions.x ||
-                dims.y !== this.config.dimensions.y ||
-                dims.z !== this.config.dimensions.z) {
-                console.warn("[StlPuzzleMod] Pre-computed dimensions mismatch!");
-                return null;
-            }
+            // Trust the loaded config's dimensions.
+            // If we really wanted to validate, we'd check against this.dimensions (from constructor default),
+            // but for remote puzzles, registry might not have dimensions.
+            // So we update this.dimensions to match the loaded puzzle.
+            this.dimensions = { ...dims };
+            this.config.dimensions = { ...dims }; // Update internal config too to stay consistent
 
             // Load binaries
             // We know the range from dimensions
@@ -66,7 +66,7 @@ export class StlPuzzleMod extends StandardCube {
                     for (let z of zRange) {
                         const filename = `cubie_${x}_${y}_${z}.bin`;
                         promises.push(
-                            puzzleCache.fetch(new Request(basePath + filename))
+                            assetManager.fetch(new Request(basePath + filename))
                                 .then(res => {
                                     if (!res.ok) return null;
                                     foundAny = true;
@@ -191,21 +191,21 @@ export class StlPuzzleMod extends StandardCube {
 
     async loadConfig() {
         let res;
-        const url = `assets/puzzles/${this.puzzleId}/config.json`;
+        const relativePath = `assets/puzzles/${this.puzzleId}/config.json`;
+        const url = await assetManager.getUrl(relativePath);
         try {
-            // Network First
-            res = await fetch(url, { cache: 'no-cache' });
-            if (!res.ok) throw new Error("Network fetch failed");
+            // AssetManager handles resolving to Filesystem or Remote
+            res = await fetch(url);
+            if (!res.ok) throw new Error("Fetch failed");
 
-            // Update Cache
-            const cache = await puzzleCache.open();
-            cache.put(url, res.clone());
+            // On Web we might want to cache? 
+            // Existing logic had puzzleCache.put. 
+            // For now, let's keep it simple. If we are on Web, the browser handles basic caching.
         } catch (e) {
-            console.warn("[StlPuzzleMod] Network config load failed, using cache", e);
-            res = await puzzleCache.fetch(new Request(url));
+            console.warn("[StlPuzzleMod] config load failed", e);
         }
 
-        if (!res.ok) throw new Error(`Config file not found: ${url}`);
+        if (!res || !res.ok) throw new Error(`Config file not found: ${url}`);
 
         this.puzzleConfig = await res.json();
 
@@ -280,7 +280,10 @@ export class StlPuzzleMod extends StandardCube {
                     fileType = '3mf';
                 }
 
-                let stlUrl = `assets/puzzles/${this.puzzleId}/${stlPath}`;
+                let stlUrl = await assetManager.getUrl(`assets/puzzles/${this.puzzleId}/${stlPath}`);
+
+                // Try caching for Model (Blob URL) - handled by AssetManager if native
+                // For Web, we could still use puzzleCache here if we wanted, but AssetManager.getUrl handles the mapping.
 
                 // Try caching for Model (Blob URL)
                 try {
@@ -341,7 +344,7 @@ export class StlPuzzleMod extends StandardCube {
                         // Since FileLoader doesn't support custom fetch easily without mod, 
                         // let's fetch text manually and parse.
                         try {
-                            const res = await puzzleCache.fetch(new Request(this.colorPath));
+                            const res = await assetManager.fetch(new Request(this.colorPath));
                             if (!res.ok) throw new Error("Color file fetch failed");
                             const data = await res.text(); // FileLoader loads text by default usually for JSON
                             try {

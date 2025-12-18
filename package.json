@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "mkdir -p www && cp index.html favicon.png www/ && cp -r js assets www/"
+    "build": "mkdir -p www && cp index.html favicon.png www/ && cp -r js assets www/",
+    "build:android": "./scripts/build_android.sh"
   },
   "repository": {
     "type": "git",
@@ -23,6 +24,7 @@
     "@capacitor/android": "^7.4.4",
     "@capacitor/cli": "^7.4.4",
     "@capacitor/core": "^7.4.4",
+    "@capacitor/filesystem": "^7.1.6",
     "@capacitor/network": "^7.0.2"
   },
   "devDependencies": {
