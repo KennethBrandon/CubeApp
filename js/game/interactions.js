@@ -20,19 +20,32 @@ export function onMouseDown(event) {
     const pos = getPointerPos(event);
 
     if (intersects.length > 0) {
-        state.isDragging = true;
-        state.isBackgroundDrag = false;
-        state.intersectedCubie = intersects[0].object.parent;
-        state.intersectedFaceNormal = intersects[0].face.normal.clone();
-        state.intersectedFaceNormal.transformDirection(intersects[0].object.matrixWorld).normalize();
-        state.dragStartPoint.set(pos.x, pos.y);
-        state.dragAxis = null;
-        state.dragInputAxis = null;
-        state.currentDragAngle = 0;
+        const cubie = intersects[0].object.parent;
 
-        // Disable camera rotation while dragging a slice
-        if (state.controls) state.controls.enableRotate = false;
-    } else {
+        // Special case: Megaminx Centers act as background for rotation
+        const isMegaminxCenter = state.activePuzzle &&
+            state.activePuzzle.constructor.name === 'Megaminx' &&
+            cubie.userData.type === 'center';
+
+        if (!isMegaminxCenter) {
+            state.isDragging = true;
+            state.isBackgroundDrag = false;
+            state.intersectedCubie = cubie;
+            state.intersectedFaceNormal = intersects[0].face.normal.clone();
+            state.intersectedFaceNormal.transformDirection(intersects[0].object.matrixWorld).normalize();
+            state.dragStartPoint.set(pos.x, pos.y);
+            state.dragAxis = null;
+            state.dragInputAxis = null;
+            state.currentDragAngle = 0;
+
+            // Disable camera rotation while dragging a slice
+            if (state.controls) state.controls.enableRotate = false;
+            return;
+        }
+    }
+
+    // Background Drag (or Megaminx Center)
+    {
         state.isDragging = true;
         state.isBackgroundDrag = true;
         state.intersectedCubie = null;
@@ -292,7 +305,7 @@ function determineDragAxis(dx, dy) {
                     axis = state.activePuzzle.getLockedRotationAxis('z');
                 }
                 state.dragRotationAxis = axis;
-                state.dragAngleScale = -1;
+                state.dragAngleScale = 1;
                 state.dragAxis = 'z';
                 state.dragInputAxis = 'y';
             } else {
@@ -301,7 +314,7 @@ function determineDragAxis(dx, dy) {
                     axis = state.activePuzzle.getLockedRotationAxis('x');
                 }
                 state.dragRotationAxis = axis;
-                state.dragAngleScale = 1;
+                state.dragAngleScale = -1;
                 state.dragAxis = 'x';
                 state.dragInputAxis = 'y';
             }

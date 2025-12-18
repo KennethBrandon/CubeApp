@@ -916,29 +916,40 @@ export class Megaminx extends Puzzle {
     }
 
     getLockedRotationAxis(axis) {
-        const target = new THREE.Vector3();
-        if (axis === 'x') target.set(1, 0, 0);
-        else if (axis === 'y') target.set(0, 1, 0);
-        else if (axis === 'z') target.set(0, 0, 1);
+        // Define desired axis in Camera Space
+        // 'y' -> Horizontal Drag -> Rotate around Vert/Top Axis -> Camera Up (0,1,0)
+        // 'x' -> Vertical Drag LEFT -> Rotate around Top-Left Face -> Camera (-1, 0.6, 0.5)
+        // 'z' -> Vertical Drag RIGHT -> Rotate around Top-Right Face -> Camera (1, 0.6, 0.5)
 
-        // Find closest face normal
+        const camVec = new THREE.Vector3();
+        if (axis === 'y') {
+            camVec.set(0, 1, 0);
+        } else if (axis === 'x') {
+            camVec.set(-1, 0.6, 0.5);
+        } else { // z
+            camVec.set(1, 0.6, 0.5);
+        }
+        camVec.normalize();
+
+        // Transform to World Space
+        const worldVec = camVec.clone().applyQuaternion(state.camera.quaternion);
+
+        // Transform to Local Space (inverse of wrapper)
+        const localVec = worldVec.clone().transformDirection(this.parent.matrixWorld.clone().invert());
+
+        // Find closest Face Normal
         let bestN = null;
-        let maxAbsDot = -1;
-        let bestSign = 1;
+        let maxDot = -1;
 
         for (const n of this.faceNormals) {
-            const dot = n.dot(target);
-            if (Math.abs(dot) > maxAbsDot) {
-                maxAbsDot = Math.abs(dot);
+            const dot = n.dot(localVec);
+            if (dot > maxDot) {
+                maxDot = dot;
                 bestN = n;
-                bestSign = Math.sign(dot) || 1;
             }
         }
 
-        if (bestN) {
-            return bestN.clone().multiplyScalar(bestSign);
-        }
-        return target; // Fallback
+        return bestN || new THREE.Vector3(0, 1, 0);
     }
 
     getDragAxis(faceNormal, screenMoveVec, intersectedCubie, camera) {

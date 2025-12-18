@@ -331,6 +331,7 @@ function renderPuzzleOptions() {
             let label = val;
             if (val === 'molecube') label = 'Molecube';
             if (val === 'voidcube') label = 'Void Cube';
+            if (val === 'megaminx') label = 'Megaminx';
 
             const btn = createPuzzleButton(label, val);
             modsContainer.appendChild(btn);
@@ -808,7 +809,7 @@ function updatePuzzleButtonText(dims, isMirror, puzzleType) {
         text = `${dims.y}x${dims.x}x${dims.z}`; // Y is largest in our logic usually
     }
 
-    if (puzzleType !== 'molecube' && puzzleType !== 'voidcube' && puzzleType !== 'acorns' && !String(puzzleType).startsWith('stl:')) {
+    if (puzzleType !== 'molecube' && puzzleType !== 'voidcube' && puzzleType !== 'acorns' && puzzleType !== 'megaminx' && !String(puzzleType).startsWith('stl:')) {
         if (isMirror) text += " Mirror";
         else text += " Cube";
     }
@@ -840,7 +841,7 @@ function updatePageTitle(dims, isMirror, puzzleType) {
         text = `${dims.y}x${dims.x}x${dims.z}`;
     }
 
-    if (puzzleType !== 'molecube' && puzzleType !== 'voidcube' && puzzleType !== 'acorns' && !String(puzzleType).startsWith('stl:')) {
+    if (puzzleType !== 'molecube' && puzzleType !== 'voidcube' && puzzleType !== 'acorns' && puzzleType !== 'megaminx' && !String(puzzleType).startsWith('stl:')) {
         if (isMirror) text += " Mirror Cube";
         else text += " Cube";
     }
