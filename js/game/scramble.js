@@ -1,4 +1,5 @@
 import { state } from '../shared/state.js';
+import { formatScramble } from '../utils/formatting.js';
 import { CUBE_SIZE, SPACING, SCRAMBLE_MOVES, SCRAMBLE_SPEED } from '../shared/constants.js';
 import { queueMove } from './moves.js';
 import { stopTimer, startInspection } from './timer.js';
@@ -28,13 +29,15 @@ export async function startScramble() {
 
     scrambleMoves.forEach(m => {
         // Log scramble move for display
-        const notation = state.activePuzzle.getNotation(m.axis, m.sliceVal, m.dir);
+        // Pass true for isScramble to ensure Pochmann notation
+        const notation = state.activePuzzle.getNotation(m.axis, m.sliceVal, m.dir, true);
         state.scrambleSequence.push(notation);
 
         queueMove(m.axis, m.dir, SCRAMBLE_SPEED, m.sliceVal);
     });
 
-    console.log("Scramble:", state.scrambleSequence.join(" "));
+    const type = state.activePuzzle ? state.activePuzzle.constructor.name : '';
+    console.log("Scramble:\n" + formatScramble(state.scrambleSequence, type));
 
     // After scramble, enable game
     const checkInterval = setInterval(() => {
@@ -104,6 +107,29 @@ export async function startReverseSolve() {
     }
 
     movesToUndo.forEach((notation, index) => {
+
+        let axis = '';
+        let dir = 1;
+        let sliceVal = null;
+        let duration = SCRAMBLE_SPEED;
+        if (useEasing) {
+            duration = totalTime * (weights[index] / sumWeights);
+        }
+
+        // Custom Parser Logic (Polyfilled for Megaminx etc)
+        if (state.activePuzzle && typeof state.activePuzzle.parseNotation === 'function') {
+            const move = state.activePuzzle.parseNotation(notation);
+            if (move) {
+                // Invert direction for UNDO
+                // dir is usually 1 (CCW) or -1 (CW).
+                // If move was CW (-1), we want CCW (1).
+                // If move was ++ (-2), we want -- (2).
+                queueMove(move.axis, -move.dir, duration, move.sliceVal);
+                return;
+            }
+        }
+
+        // Default Standard Cube Logic
         // Parse notation: [prefix][char][suffix]
         let match = notation.match(/^(\d*)([a-zA-Z])(.*)$/);
         if (!match) return;
@@ -112,19 +138,11 @@ export async function startReverseSolve() {
         let char = match[2];
         let suffix = match[3];
 
-        let dir = 1;
         if (suffix === "'") dir = 1; // Undo ' is normal
         else if (suffix === "2") dir = 2;
         else dir = -1; // Undo normal is '
 
-        let axis = '';
-        let sliceVal = null;
-        const S = CUBE_SIZE + SPACING;
-
-        let duration = SCRAMBLE_SPEED;
-        if (useEasing) {
-            duration = totalTime * (weights[index] / sumWeights);
-        }
+        const S = CUBE_SIZE + (state.activePuzzle ? state.activePuzzle.getSpacing() : SPACING);
 
         if (['M', 'E', 'S'].includes(char)) {
             if (char === 'M') { axis = 'x'; sliceVal = 0; }

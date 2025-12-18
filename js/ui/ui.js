@@ -2,6 +2,7 @@ import { state } from '../shared/state.js';
 import { puzzleCategories } from './puzzleSelector.js';
 import { overlayManager } from './overlayManager.js';
 import { makeDraggable } from './tuners/TunerBase.js';
+import { formatScramble } from '../utils/formatting.js';
 
 export function toggleDrawer(isOpen) {
     const drawer = document.getElementById('side-drawer');
@@ -67,7 +68,10 @@ export function addToHistory(notation, isReverse) {
 
 export function showWinModal() {
     document.getElementById('final-time').textContent = document.getElementById('timer').textContent;
-    document.getElementById('scramble-text').textContent = state.scrambleSequence.join("  ");
+    // Scramble Text
+    const pType = state.activePuzzle ? state.activePuzzle.constructor.name : '';
+    document.getElementById('scramble-text').textContent = formatScramble(state.scrambleSequence, pType);
+
     const list = document.getElementById('final-solution');
     if (list) {
         list.innerHTML = `<p class="font-bold mb-2">Your Solution (${state.moveHistory.length} moves):</p>` + state.moveHistory.join(", ");
@@ -329,7 +333,7 @@ export function openDetailModal(entry) {
     const pType = entry.puzzleType || "Unknown";
     document.getElementById('detail-puzzle-type').textContent = pType;
 
-    document.getElementById('detail-scramble').textContent = entry.scramble;
+    document.getElementById('detail-scramble').textContent = formatScramble(entry.scramble, entry.puzzleType);
     document.getElementById('detail-solution').textContent = entry.solution;
 
     const d = new Date(entry.date);

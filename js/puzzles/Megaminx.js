@@ -737,15 +737,39 @@ export class Megaminx extends Puzzle {
         return axes;
     }
 
-    getMoveInfo(moveId, direction) {
-        // moveId is index 0..11
-        // direction: 1 or -1
-        console.log(`[Megaminx] getMoveInfo called for axis ${moveId}, dir ${direction}`);
+    getMoveInfo(axis, dir, sliceVal) {
+        // Handle Whole Cube Rotations
+        if (['x', 'y', 'z'].includes(axis)) {
+            let axisVector = new THREE.Vector3();
+            // Map generic axes to Megaminx logic
+            // y -> RotateU (Vertical Axis, Y)
+            // z -> RotateR (Approx Z)
+            // x -> RotateL (Approx X)
 
-        const axisIdx = parseInt(moveId);
-        const axisVector = this.faceNormals[axisIdx];
+            if (axis === 'y') axisVector.set(0, 1, 0);
+            else if (axis === 'x') axisVector.set(1, 0, 0);
+            else if (axis === 'z') axisVector.set(0, 0, 1);
+
+            // IMPORTANT: Negate the axis to match the behavior in moves.js performMove
+            // which negates axes for whole-cube rotations (x, y, z)
+            axisVector.negate();
+
+            // Use 90 degrees for whole-cube rotations (matches snapping in onMouseUp)
+            return {
+                axisVector,
+                cubies: this.cubieList, // All cubies
+                angle: dir * (Math.PI / 2), // 90 degrees
+                axis: axis
+            };
+        }
+
+        // Axis 0-11
+        const moveId = parseInt(axis);
+        if (isNaN(moveId)) return null;
+
+        const axisVector = this.faceNormals[moveId];
         if (!axisVector) {
-            console.warn(`[Megaminx] Invalid axis vector for index ${axisIdx}`);
+            console.warn(`[Megaminx] Invalid axis vector for index ${moveId}`);
             return null;
         }
 
@@ -767,6 +791,9 @@ export class Megaminx extends Puzzle {
         // 0.447 is distance to adjacent face center.
         // The cut must be "above" the adjacent centers? No, it includes them.
 
+        // Use sliceVal as threshold if provided, otherwise default to Face Layer (0.55)
+        const threshold = (typeof sliceVal === 'number') ? sliceVal : 0.55;
+
         const cubies = this.cubieList.filter(c => {
             const initial = c.userData.initialCenter;
             if (!initial) return false;
@@ -775,57 +802,297 @@ export class Megaminx extends Puzzle {
             const currentPos = initial.clone().applyQuaternion(c.quaternion).add(c.position);
 
             const dot = currentPos.normalize().dot(axisVector);
-            return dot > 0.55; // Threshold ~33 deg (Corner is ~37 deg, Edge ~31 deg? No. Corner is closest.)
+            return dot > threshold;
         });
 
         return {
             axisVector,
             cubies,
-            angle: direction * (Math.PI * 2 / 5), // 72 degrees
+            angle: dir * (Math.PI * 2 / 5), // 72 degrees
             axis: moveId
         };
     }
     getScramble() {
-        console.log("Megaminx.getScramble called");
-        // Generate random sequence of face turns
-        const numMoves = this.scrambleLength;
+        console.log("Megaminx.getScramble called (WCA Pochmann)");
+        // WCA Scramble: 7 lines of 10 moves (R++ D++ ...), followed by a U move for EACH line.
+        // Total: 7 * (10 + 1) = 77 moves.
+
         const moves = [];
-        let lastFace = -1;
+        const lines = 7;
+        const movesPerLine = 10;
 
-        for (let i = 0; i < numMoves; i++) {
-            let face;
-            // Prevent same face twice in a row
-            do {
-                face = Math.floor(Math.random() * 12);
-            } while (face === lastFace);
+        for (let i = 0; i < lines; i++) {
+            for (let j = 0; j < movesPerLine; j++) {
+                // Alternating R and D
+                // R moves hold Left (Face 1) still. So rotate around Opposite (Face 2).
+                // D moves hold Up (Face 4) still. So rotate around Opposite (Face 7).
+                // Direction Logic:
+                // R++ (CW around L) -> L is Face 1. CW is -angle.
+                // We rotate around Face 2 (Opposite). Inverse Axis -> Inverse Angle?
+                // CW around L = CCW around InvL.
+                // So R++ should be CCW (dir=2) around Face 2.
+                // D++ (CW around U) -> U is Face 4. CW is -angle.
+                // We rotate around Face 7 (Opposite).
+                // CW around U = CCW around InvU.
+                // So D++ should be CCW (dir=2) around Face 7.
 
-            lastFace = face;
+                // Axis selection
+                const axis = (j % 2 === 0) ? '2' : '7';
 
-            // Direction: 1 or -1
-            const dir = Math.random() > 0.5 ? 1 : -1;
+                // Random Direction ++ (-2, CW) or -- (2, CCW)
+                const rnd = Math.random() > 0.5 ? -2 : 2;
+                const dir = rnd;
 
+                moves.push({
+                    axis: axis,
+                    dir: dir,
+                    sliceVal: -0.6 // Select Everything EXCEPT the opposite Layer (Center+Edges+Corners)
+                });
+            }
+            // Add U move at the end of EVERY line
+            const uDir = Math.random() > 0.5 ? -1 : 1; // U (-1, CW) or U' (1, CCW)
             moves.push({
-                axis: String(face),
-                dir: dir,
+                axis: '4', // 4=White(U)
+                dir: uDir,
                 sliceVal: null
             });
         }
+
         return moves;
     }
 
-    getNotation(axis, sliceVal, turns) {
+    parseNotation(notation) {
+        if (!notation) return null;
+
+        // Pattern regexes
+        // Pochmann: R++, R--, D++, D--
+        // U moves: U, U'
+        // Rotations: RotateU, RotateR, RotateL + suffixes
+        // Generic: F1, F5', etc.
+
+        // 1. Check for Rotations
+        if (notation.startsWith("RotateU")) {
+            let turns = -1; // Default RotateU is CW (-1)
+            let suffix = notation.replace("RotateU", "");
+            if (suffix === "'") turns = 1;
+            else if (suffix === "2") turns = -2;
+            else if (suffix === "2'") turns = 2;
+            return { axis: 'y', dir: turns, sliceVal: Infinity }; // 'y' is mapped to RotateU in getNotation
+        }
+        if (notation.startsWith("RotateR")) {
+            let turns = 1; // Default RotateR is CW? Logic in getNotation: z -> RotateR. suffix logic.
+            // getNotation: z -> RotateR.
+            // if turns=1 (CCW) -> "'"
+            // if turns=-1 (CW) -> ""
+            // So RotateR is CW (-1). RotateR' is CCW (1).
+            let suffix = notation.replace("RotateR", "");
+            if (suffix === "'") turns = 1;
+            else if (suffix === "2") turns = -2;
+            else if (suffix === "2'") turns = 2;
+            else turns = -1;
+            return { axis: 'z', dir: turns, sliceVal: Infinity };
+        }
+        if (notation.startsWith("RotateL")) {
+            // getNotation: x -> RotateL, turns *= -1
+            // if turns=1 => normTurns = -1 (CW) -> "" (RotateL)
+            // So RotateL corresponds to CW rotation, which for x logic in getNotation was turns=1 ?
+            // Let's re-read getNotation:
+            // if axis='x', prefix="RotateL", normTurns *= -1.
+            // if normTurns (after flip) == -1 (CW) -> "" -> RotateL.
+            // So RotateL means normTurns = -1. 
+            // Original turns was 1 (CCW) around X?
+            // Yes, R is -X. L is +X.
+            // Let's stick to returning axis 'x' and direction.
+            // If parsed RotateL, we want the move that produced it.
+            // normTurns = -1. original turns = 1.
+            let turns = 1;
+            let suffix = notation.replace("RotateL", "");
+            // RotateL' -> normTurns = 1 -> original turns = -1?
+            if (suffix === "'") turns = -1;
+            else if (suffix === "2") turns = 2; // normTurns = -2 -> orig = 2
+            else if (suffix === "2'") turns = -2; // normTurns = 2 -> orig = -2
+
+            return { axis: 'x', dir: turns, sliceVal: Infinity };
+        }
+
+        // 2. Check for Pochmann Scramble (R++, D--, U, U')
+        // R++, R--
+        if (notation.startsWith("R") && (notation.includes("++") || notation.includes("--"))) {
+            const isCCW = notation.includes("--"); // -- is CCW (2)
+            // R uses Axis 2
+            return {
+                axis: '2',
+                dir: isCCW ? 2 : -2, // 2 is CCW, -2 is CW
+                sliceVal: -0.6 // Deep move
+            };
+        }
+        // D++, D--
+        if (notation.startsWith("D") && (notation.includes("++") || notation.includes("--"))) {
+            const isCCW = notation.includes("--");
+            // D uses Axis 7
+            return {
+                axis: '7',
+                dir: isCCW ? 2 : -2,
+                sliceVal: -0.6
+            };
+        }
+
+        // U, U' (Megaminx U is Face 4)
+        if (notation.startsWith("U")) {
+            const isPrime = notation.includes("'");
+            // U is Face 4
+            // U (CW) is -1. U' (CCW) is 1.
+            return { axis: '4', dir: isPrime ? 1 : -1, sliceVal: null };
+        }
+
+        // 3. Generic Face Moves (F0...F11 or Named Faces)
+        // Check for F{n} format first
+        if (notation.startsWith("F")) {
+            const match = notation.match(/^F(\d+)(.*)$/);
+            if (match) {
+                const idx = match[1];
+                const suffix = match[2];
+                let turns = -1; // Default Fx is CW
+                if (suffix === "'") turns = 1;
+                else if (suffix === "2") turns = -2;
+                else if (suffix === "2'") turns = 2;
+
+                return { axis: idx, dir: turns, sliceVal: null };
+            }
+        }
+
+        // Check Named Faces
+        // "4": "U", "7": "D", "6": "F", "5": "B",
+        // "0": "R", "3": "bL", "1": "L", "2": "bR",
+        // "8": "uR", "11": "dL", "9": "uL", "10": "dR"
+        const nameMap = {
+            "U": '4', "D": '7', "F": '6', "B": '5',
+            "R": '0', "bL": '3', "L": '1', "bR": '2',
+            "uR": '8', "dL": '11', "uL": '9', "dR": '10'
+        };
+
+        // We need to parse [Name][Suffix].
+        // Names are variable length (1 or 2 chars).
+        // Iterate valid names and check if notation starts with them.
+        for (const [name, axis] of Object.entries(nameMap)) {
+            if (notation.startsWith(name)) {
+                // Ensure the rest is a valid suffix
+                const suffix = notation.slice(name.length);
+                const validSuffixes = ['', "'", '2', "2'"];
+                if (validSuffixes.includes(suffix)) {
+                    let turns = -1; // Default CW
+                    if (suffix === "'") turns = 1;
+                    else if (suffix === "2") turns = -2;
+                    else if (suffix === "2'") turns = 2;
+
+                    return { axis: axis, dir: turns, sliceVal: null };
+                }
+            }
+        }
+
+        // 4. Fallbacks (R, D simple? Not in scramble but maybe manual)
+        // If user pressed 'r' key (R++) it maps to queueMove('2', ...). 
+        // If user pressed '1' key (Face 0) it maps to queueMove('0', ...).
+        // getNotation produces F0, F1 etc.
+        // So we covered F{n}.
+
+        return null;
+    }
+
+    getNotation(axis, sliceVal, turns, isScramble) {
+        // Normalize turns for pentagonal faces (mod 5)
+        // 3 -> -2, 4 -> -1, -3 -> 2, -4 -> 1
+        let normTurns = turns % 5;
+        if (normTurns > 2) normTurns -= 5;
+        else if (normTurns < -2) normTurns += 5;
+
+        // If the move effectively does nothing (0 turns, 5 turns, etc), return null to skip logging
+        if (normTurns === 0) return null;
+
         const faceIdx = parseInt(axis);
-        if (isNaN(faceIdx)) return axis;
+        // Console log removed for cleaner output
 
-        const colors = [
-            "Red", "Purple", "Pink", "Orange", "White", "Lime",
-            "Green", "Gray", "Blue", "Yellow", "Cream", "LtBlue"
-        ];
+        if (isNaN(faceIdx)) {
+            // Handle Cube Rotations (x, y, z)
+            // y -> RotateU
+            // z -> RotateR
+            // x -> RotateL
+            let prefix = "";
+            let suffix = "";
 
-        const name = colors[faceIdx] || ("Face" + faceIdx);
-        const suffix = turns === -1 ? "'" : (Math.abs(turns) === 2 ? "2" : "");
+            if (axis === 'y') prefix = "RotateU";
+            else if (axis === 'z') prefix = "RotateR";
+            else if (axis === 'x') {
+                prefix = "RotateL";
+                normTurns *= -1;
+            }
+            else return axis; // Unknown axis
 
-        return name + suffix;
+            // Suffix Logic for Rotations
+            // 1 (CCW) -> "'"
+            // -1 (CW) -> ""
+            // 2 (CCW Double) -> "2'"
+            // -2 (CW Double) -> "2"
+            if (normTurns === 1) suffix = "'";
+            else if (normTurns === -1) suffix = "";
+            else if (normTurns === 2) suffix = "2'";
+            else if (normTurns === -2) suffix = "2";
+
+            return prefix + suffix;
+        }
+
+        // Check for Deep Move (Pochmann Style) manually triggered
+        // sliceVal approx -0.6
+        const isDeepMove = sliceVal !== null && Math.abs(sliceVal - (-0.6)) < 0.1;
+
+        // Scramble Notation (Pochmann)
+        // Use Pochmann if explicitly checking for scramble OR if it matches a deep move characteristics
+        if (isScramble || isDeepMove) {
+            let name = "";
+            if (faceIdx === 2) name = "R"; // R uses Axis 2 now (Opposite of L)
+            else if (faceIdx === 7) name = "D";
+            else if (faceIdx === 4) name = "U";
+            else name = "F" + faceIdx;
+
+            // Pochmann Suffixes
+            // WCA Scramble: ++ (-2 CW), -- (2 CCW).
+            // U (CW, -1), U' (CCW, 1).
+            let suffix = "";
+            if (Math.abs(normTurns) === 2) {
+                // Invert logic: -2 is ++ (CW), 2 is -- (CCW)
+                suffix = normTurns === -2 ? "++" : "--";
+            } else {
+                // For U moves in scramble (usually single turns)
+                // 1 -> ', -1 -> ""
+                // Based on previous inversion: 1 -> ', -1 -> ""
+                suffix = normTurns === 1 ? "'" : "";
+            }
+            return name + suffix;
+        }
+
+        // 12-Face Notation
+        const faceNames = {
+            "4": "U", "7": "D", "6": "F", "5": "B",
+            "0": "R", "3": "bL", "1": "L", "2": "bR",
+            "8": "uR", "11": "dL", "9": "uL", "10": "dR"
+        };
+
+        const name = faceNames[String(faceIdx)];
+
+        const finalName = name || ("F" + faceIdx);
+
+        // Suffix Logic (12-Face)
+        // 1 (CCW) -> "'"
+        // -1 (CW) -> ""
+        // 2 (CCW Double) -> "2'"
+        // -2 (CW Double) -> "2"
+        let suffix = "";
+        if (normTurns === 1) suffix = "'";
+        else if (normTurns === -1) suffix = "";
+        else if (normTurns === 2) suffix = "2'";
+        else if (normTurns === -2) suffix = "2";
+
+        return finalName + suffix;
     }
 
     isSolved() {
@@ -903,6 +1170,9 @@ export class Megaminx extends Puzzle {
         const axisVector = this.faceNormals[axisIdx];
         if (!axisVector) return [];
 
+        // Use val as threshold if provided, otherwise default to Face Layer (0.55)
+        const threshold = (typeof val === 'number') ? val : 0.55;
+
         return this.cubieList.filter(c => {
             const initial = c.userData.initialCenter;
             if (!initial) return false;
@@ -911,7 +1181,7 @@ export class Megaminx extends Puzzle {
             const currentPos = initial.clone().applyQuaternion(c.quaternion).add(c.position);
 
             const dot = currentPos.normalize().dot(axisVector);
-            return dot > 0.55;
+            return dot > threshold;
         });
     }
 
@@ -1121,6 +1391,30 @@ export class Megaminx extends Puzzle {
             queueMove(String(index), direction);
             return true;
         }
+
+        // Deep Move Shortcuts (Pochmann Style)
+        // r -> R++ (CW, Deep)
+        // R -> R-- (CCW, Deep)
+        // d -> D++ (CW, Deep)
+        // D -> D-- (CCW, Deep) (Assuming user meant Shift+d when saying Shift+u, for consistency)
+
+        if (key === 'r') {
+            queueMove('2', -2, state.animationSpeed, -0.6); // R++ (CW Rest -> CW Axis 2 -> Negative Angle)
+            return true;
+        }
+        if (key === 'R') {
+            queueMove('2', 2, state.animationSpeed, -0.6); // R--
+            return true;
+        }
+        if (key === 'd') {
+            queueMove('7', -2, state.animationSpeed, -0.6); // D++
+            return true;
+        }
+        if (key === 'D') {
+            queueMove('7', 2, state.animationSpeed, -0.6); // D--
+            return true;
+        }
+
         return false;
     }
 }

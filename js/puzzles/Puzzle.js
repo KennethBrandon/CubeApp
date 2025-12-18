@@ -61,6 +61,16 @@ export class Puzzle {
     }
 
     /**
+     * Parses a notation string into move parameters.
+     * @param {string} notation 
+     * @returns {Object|null} { axis, dir, sliceVal } or null if invalid
+     */
+    parseNotation(notation) {
+        // Optional implementation. If not implemented, scramble.js falls back to default logic.
+        return null;
+    }
+
+    /**
      * Determines the drag axis based on mouse movement.
      * @param {THREE.Vector3} faceNormal 
      * @param {THREE.Vector2} screenMoveVec 
