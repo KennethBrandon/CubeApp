@@ -35,18 +35,22 @@ export function adjustCameraForCubeSize(relativeZoom = null) {
     // Approximate the apparent size as sqrt(2) times the physical size
     const apparentCubeSize = cubePhysicalSize * Math.sqrt(2);
 
-    let requiredDistance;
-    if (width <= height) {
-        // Width is smaller, constrain by width
-        // visibleWidth at distance d: w = 2 * d * tan(fov/2) * aspectRatio
-        // We want: apparentCubeSize = w * targetCoverage
-        requiredDistance = apparentCubeSize / (2 * Math.tan(fovRadians / 2) * aspectRatio * targetCoverage);
-    } else {
-        // Height is smaller, constrain by height
-        // visibleHeight at distance d: h = 2 * d * tan(fov/2)
-        // We want: apparentCubeSize = h * targetCoverage
-        requiredDistance = apparentCubeSize / (2 * Math.tan(fovRadians / 2) * targetCoverage);
-    }
+    // We want to ensure the cube fits comfortably in BOTH width and height.
+    // Logic: "Whatever is smaller: 2/3 of the width OR 55/100 of the height"
+    // This means we calculate the distance required for both constraints and take the MAXIMUM distance (limiting factor).
+
+    // Constraint 1: Cube occupies 85% (0.85) of the visible width
+    // visibleWidth = apparentCubeSize / 0.85
+    // d = visibleWidth / (2 * tan(fov/2) * aspectRatio)
+    const distForWidth = apparentCubeSize / (2 * Math.tan(fovRadians / 2) * aspectRatio * 0.85);
+
+    // Constraint 2: Cube occupies 55% (0.55) of the visible height
+    // visibleHeight = apparentCubeSize / 0.55
+    // d = visibleHeight / (2 * Math.tan(fovRadians / 2))
+    const distForHeight = apparentCubeSize / (2 * Math.tan(fovRadians / 2) * 0.55);
+
+    // Required distance is the one that satisfies BOTH (the larger distance pushes camera further back)
+    const requiredDistance = Math.max(distForWidth, distForHeight);
 
     // Calculate dynamic zoom limits
     // Max zoom: cube takes up 300% of smallest dimension (allows zooming in very tight)
@@ -96,53 +100,37 @@ export function adjustCameraForCubeSize(relativeZoom = null) {
 
     const direction = new THREE.Vector3(x, y, z).normalize();
 
-    // Use passed relativeZoom if available, otherwise use state default
+    // Use passed relativeZoom if available
     let zoomFactor = relativeZoom;
+    let finalDistance;
+
+    // If explicit zoom is NOT provided, use our calculated 'optimal' requiredDistance
     if (zoomFactor === null || zoomFactor === undefined) {
-        zoomFactor = state.cameraSettings?.zoom ?? 0.5; // Default middle if not set
+        finalDistance = requiredDistance;
+
+        // Update state.cameraSettings.zoom to match this new distance
+        // Logic: finalDistance = maxZoomDistance + zoomFactor * (minZoomDistance - maxZoomDistance);
+        // Therefore: zoomFactor = (finalDistance - maxZoomDistance) / (minZoomDistance - maxZoomDistance);
+        if (minZoomDistance !== maxZoomDistance) {
+            zoomFactor = (finalDistance - maxZoomDistance) / (minZoomDistance - maxZoomDistance);
+            zoomFactor = Math.max(0, Math.min(1, zoomFactor));
+        } else {
+            zoomFactor = 0.5;
+        }
+
+        if (!state.cameraSettings) state.cameraSettings = {};
+        state.cameraSettings.zoom = zoomFactor;
+
+        // Sync slider if present
+        const zoomSlider = document.getElementById('camera-zoom-slider');
+        const zoomInput = document.getElementById('camera-zoom-input');
+        if (zoomSlider) zoomSlider.value = zoomFactor;
+        if (zoomInput) zoomInput.value = zoomFactor.toFixed(2);
+
+    } else {
+        // Use the provided zoom factor (e.g. from slider/tuner)
+        finalDistance = maxZoomDistance + zoomFactor * (minZoomDistance - maxZoomDistance);
     }
-
-    // Update the slider to match state if we are being called externally (e.g. initial load)
-    const existingZoomSlider = document.getElementById('zoom-slider');
-    if (existingZoomSlider && document.activeElement !== existingZoomSlider) {
-        // Map 0..1 back to distance ? No, the slider is distance based.
-        // We need to be careful not to fight the UI.
-        // Actually, the app uses 'zoom-slider' for distance.
-        // Our tuner uses a separate 'zoom factor' 0..1.
-        // Let's keep them somewhat separate or sync them?
-        // For now, let's respect the Tuner's zoomFactor for determining distance.
-    }
-
-
-    let finalDistance = requiredDistance;
-    // Interpolate between min and max based on ratio
-    // ratio 0 = minDistance (max zoom, closest)
-    // ratio 1 = maxDistance (min zoom, farthest)
-
-    // NOTE: In the Tuner, 0 should probably be far and 1 near? Or standard slider logic.
-    // original logic: ratio = (current - min) / (max - min)
-    // 0 = min (closest), 1 = max (farthest) ?
-    // Wait, earlier code:
-    // minDistance = maxZoomDistance (Small number, close)
-    // maxDistance = minZoomDistance (Large number, far)
-    // So controls.minDistance < controls.maxDistance.
-
-    // Let's treat Tuner Zoom as 0 (Far) to 1 (Close) ? Or 0 (Close) to 1 (Far)?
-    // The previous logic used 'relativeZoom' which seemed to come from linear interpolation.
-    // Let's stick to: 0 = Closest (minDistance), 1 = Farthest (maxDistance)
-    // Wait, standard zoom usually means "Magnification", so higher = closer.
-    // But 'distance' slider usually means "Distance", so higher = farther.
-    // Let's assume Tuner "Zoom Factor" 0 -> Max Distance (Far), 1 -> Min Distance (Close).
-
-    // In original code: 
-    // `finalDistance = maxZoomDistance + relativeZoom * (minZoomDistance - maxZoomDistance)`
-    // If relativeZoom = 0: maxZoomDistance (Close)
-    // If relativeZoom = 1: minZoomDistance (Far)
-
-    // This implies relativeZoom is "Distance Factor" (0=Close, 1=Far).
-    // Let's use that.
-
-    finalDistance = maxZoomDistance + zoomFactor * (minZoomDistance - maxZoomDistance);
 
     state.camera.position.copy(direction.multiplyScalar(finalDistance));
     state.controls.alignCameraUpInZ = false; // Ensure Y-up
