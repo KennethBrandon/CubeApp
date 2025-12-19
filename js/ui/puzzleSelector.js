@@ -856,6 +856,8 @@ function updatePageTitle(dims, isMirror, puzzleType) {
         text = "Acorns Mod";
     } else if (String(puzzleType).startsWith('stl:')) {
         text = getPuzzleName(puzzleType);
+    } else if (puzzleType === 'megaminx') {
+        text = "Megaminx";
     } else if (dims.x === dims.y && dims.y === dims.z) {
         text = `${dims.x}x${dims.x}x${dims.x}`;
     } else {
