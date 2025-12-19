@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import { state } from '../shared/state.js';
 import { StandardCube } from '../puzzles/StandardCube.js';
 import { MirrorCube } from '../puzzles/MirrorCube.js';
@@ -723,7 +724,19 @@ export function changePuzzle(val, isCustom = false, customDims = null, isMirrorC
 
         // Reset cubeWrapper rotation to ensure new puzzle starts aligned
         if (state.cubeWrapper) {
-            state.cubeWrapper.quaternion.set(0, 0, 0, 1);
+            // Special orientation for Pyraminx (WCA standard: yellow down, green front)
+            if (PuzzleClass === Pyraminx) {
+                // Rotate to position yellow face parallel to table (down) and green face forward-left, blue right
+                // These values calculated to make yellow face perfectly horizontal
+                const euler = new THREE.Euler(0.66, -0.26, 0.96, 'XYZ');
+                state.cubeWrapper.rotation.copy(euler);
+                // Store home rotation for use by animateWrapperReset
+                state.cubeWrapper.userData.homeRotation = euler.clone();
+            } else {
+                state.cubeWrapper.quaternion.set(0, 0, 0, 1);
+                // Clear home rotation for standard puzzles (use identity)
+                state.cubeWrapper.userData.homeRotation = null;
+            }
             state.cubeWrapper.updateMatrixWorld(true);
         }
 
@@ -750,6 +763,13 @@ export function changePuzzle(val, isCustom = false, customDims = null, isMirrorC
             const margin = parseFloat(document.getElementById('sticker-margin')?.value || 0.04);
             const radius = parseFloat(document.getElementById('sticker-radius')?.value || 0.08);
             state.activePuzzle.updateStickers(margin, radius);
+        }
+
+        // Set Pyraminx-specific camera position (WCA orientation: yellow down, green front, blue right)
+        if (PuzzleClass === Pyraminx) {
+            state.cameraSettings.azimuth = 30;    // Rotates camera right to show blue (right) side
+            state.cameraSettings.elevation = 20;  // Lower angle to emphasize yellow bottom
+            state.cameraSettings.puzzleRotation = 0; // No additional puzzle rotation needed
         }
 
         adjustCameraForCubeSize(zoomRatio);

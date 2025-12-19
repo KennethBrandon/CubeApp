@@ -301,8 +301,6 @@ export function setupUIEventListeners() {
     // Initialize button state
     updateAxisLockButton();
 
-
-
     document.getElementById('btn-submit-score').addEventListener('click', async () => {
         const submitButton = document.getElementById('btn-submit-score');
         if (!isOnline()) {
@@ -376,5 +374,3 @@ export function updateSoundButton(unusedBtn) {
         }
     }
 }
-
-

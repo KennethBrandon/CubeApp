@@ -16,11 +16,11 @@ export class Pyraminx extends Puzzle {
         // Otherwise use state.allCubies
         this.cubieList = config.cubieList || state.allCubies;
 
-        // Define 4 Face Colors
+        // Define 4 Face Colors (WCA Standard)
         this.faceColors = [
             0x00FF00, // 0: Green (Front)
-            0xFF0000, // 1: Red (Right)
-            0x0000FF, // 2: Blue (Left)
+            0x0000FF, // 1: Blue (Right)
+            0xFF0000, // 2: Red (Left)
             0xFFFF00  // 3: Yellow (Bottom)
         ];
 
@@ -86,7 +86,7 @@ export class Pyraminx extends Puzzle {
         this.faceNormals = [];
 
         // 1. Define Tetrahedron Normals (4 Faces)
-        // Standard orientation: Yellow Bottom, Green Front, Red Right, Blue Left
+        // Standard orientation: Yellow Bottom, Green Front, Blue Right, Red Left
         const c = 1 / Math.sqrt(3);
         const normals = [
             new THREE.Vector3(c, c, c),
@@ -583,10 +583,10 @@ export class Pyraminx extends Puzzle {
         if (isNaN(faceIdx)) return axisStr;
 
         // Map indices to letters. 
-        // 0=Green(Top) -> U
-        // 1=Red -> R
-        // 2=Blue -> L
-        // 3=Yellow -> B
+        // 0=Green(Front) -> U
+        // 1=Blue(Right) -> R
+        // 2=Red(Left) -> L
+        // 3=Yellow(Bottom) -> B
         const letters = ['U', 'R', 'L', 'B'];
         let letter = letters[faceIdx] || '?';
 

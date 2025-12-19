@@ -6,7 +6,17 @@ export function animateWrapperReset(duration = 500) {
 
     state.isAnimating = true;
     const startQuat = state.cubeWrapper.quaternion.clone();
-    const targetQuat = new THREE.Quaternion(); // Identity
+
+    // Get target rotation from userData (set when puzzle loads) or use identity as fallback
+    let targetQuat;
+    if (state.cubeWrapper.userData.homeRotation) {
+        // Convert Euler to Quaternion
+        const euler = state.cubeWrapper.userData.homeRotation;
+        targetQuat = new THREE.Quaternion().setFromEuler(euler);
+    } else {
+        targetQuat = new THREE.Quaternion(); // Identity fallback
+    }
+
     const startTime = Date.now();
 
     function loop() {
@@ -22,7 +32,12 @@ export function animateWrapperReset(duration = 500) {
         if (progress < 1) {
             requestAnimationFrame(loop);
         } else {
-            state.cubeWrapper.quaternion.set(0, 0, 0, 1);
+            // Set final rotation from userData or identity
+            if (state.cubeWrapper.userData.homeRotation) {
+                state.cubeWrapper.rotation.copy(state.cubeWrapper.userData.homeRotation);
+            } else {
+                state.cubeWrapper.quaternion.set(0, 0, 0, 1);
+            }
             state.cubeWrapper.updateMatrixWorld(true);
             state.isAnimating = false;
         }
