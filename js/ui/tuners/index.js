@@ -6,4 +6,5 @@ export * from './MirrorTuner.js';
 export * from './CameraTuner.js';
 export * from './EnvironmentTuner.js';
 export * from './MegaminxTuner.js';
+export * from './PyraminxTuner.js';
 export * from './TunerBase.js';

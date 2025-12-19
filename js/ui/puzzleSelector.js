@@ -5,6 +5,7 @@ import { Molecube } from '../puzzles/Molecube.js';
 import { VoidCube } from '../puzzles/VoidCube.js';
 import { AcornsMod } from '../puzzles/AcornsMod.js';
 import { Megaminx } from '../puzzles/Megaminx.js';
+import { Pyraminx } from '../puzzles/Pyraminx.js';
 
 import { StlPuzzleMod } from '../puzzles/StlPuzzleMod.js';
 import { hardReset } from '../game/scramble.js';
@@ -66,7 +67,7 @@ export function setupPuzzleSelector() {
             // But only if we are not already there? 
             // Actually, if we popped to a state without 'puzzle', it might be the initial page load state if we didn't replace it.
             // Let's assume default is 3x3x3
-            changePuzzle('3x3x3', false, null, false, false, true);
+            changePuzzle('pyraminx', false, null, false, false, true);
         }
     });
 }
@@ -126,7 +127,7 @@ function initializePuzzleFromUrl() {
         changePuzzle(puzzleParam, false, null, false, true, true); // skipAnimation=true, skipHistory=true
     } else {
         // No param, ensure current state is replaced with default so we can go back to it
-        const currentVal = '3x3x3'; // Default
+        const currentVal = 'pyraminx'; // Force Default for Testing
         history.replaceState({
             puzzle: currentVal,
             isCustom: false,
@@ -570,8 +571,8 @@ export function getPuzzleIconPath(value) {
     // Check Cuboids
     if (puzzleCategories.cuboids.includes(valStr)) return `assets/icons/puzzle-${valStr}.png`;
 
-    // Check Mods (and special WCA puzzles like Megaminx)
-    if (puzzleCategories.mods.includes(valStr) || valStr === 'megaminx') return `assets/icons/puzzle-${valStr}.png`;
+    // Check Mods (and special WCA puzzles like Megaminx/Pyraminx)
+    if (puzzleCategories.mods.includes(valStr) || valStr === 'megaminx' || valStr === 'pyraminx') return `assets/icons/puzzle-${valStr}.png`;
 
     // Check STL Custom
     if (valStr.startsWith('stl:')) {
@@ -634,6 +635,10 @@ export function changePuzzle(val, isCustom = false, customDims = null, isMirrorC
             newSize = 3; // Approx size for camera
             newDims = { x: 3, y: 3, z: 3 };
             PuzzleClass = Megaminx;
+        } else if (val === 'pyraminx') {
+            newSize = 3;
+            newDims = { x: 3, y: 3, z: 3 };
+            PuzzleClass = Pyraminx;
         } else if (val === 'mirror-2x2x2') {
             newSize = 2;
             newDims = { x: 2, y: 2, z: 2 };
@@ -820,6 +825,8 @@ function updatePuzzleButtonText(dims, isMirror, puzzleType) {
         text = "Acorns Mod";
     } else if (puzzleType === 'megaminx') {
         text = "Megaminx";
+    } else if (puzzleType === 'pyraminx') {
+        text = "Pyraminx";
     } else if (String(puzzleType).startsWith('stl:')) {
         text = getPuzzleName(puzzleType);
     } else if (dims.x === dims.y && dims.y === dims.z) {
@@ -830,7 +837,7 @@ function updatePuzzleButtonText(dims, isMirror, puzzleType) {
         text = `${dims.y}x${dims.x}x${dims.z}`; // Y is largest in our logic usually
     }
 
-    if (puzzleType !== 'molecube' && puzzleType !== 'voidcube' && puzzleType !== 'acorns' && puzzleType !== 'megaminx' && !String(puzzleType).startsWith('stl:')) {
+    if (puzzleType !== 'molecube' && puzzleType !== 'voidcube' && puzzleType !== 'acorns' && puzzleType !== 'megaminx' && puzzleType !== 'pyraminx' && !String(puzzleType).startsWith('stl:')) {
         if (isMirror) text += " Mirror";
         else text += " Cube";
     }
@@ -858,13 +865,15 @@ function updatePageTitle(dims, isMirror, puzzleType) {
         text = getPuzzleName(puzzleType);
     } else if (puzzleType === 'megaminx') {
         text = "Megaminx";
+    } else if (puzzleType === 'pyraminx') {
+        text = "Pyraminx";
     } else if (dims.x === dims.y && dims.y === dims.z) {
         text = `${dims.x}x${dims.x}x${dims.x}`;
     } else {
         text = `${dims.y}x${dims.x}x${dims.z}`;
     }
 
-    if (puzzleType !== 'molecube' && puzzleType !== 'voidcube' && puzzleType !== 'acorns' && puzzleType !== 'megaminx' && !String(puzzleType).startsWith('stl:')) {
+    if (puzzleType !== 'molecube' && puzzleType !== 'voidcube' && puzzleType !== 'acorns' && puzzleType !== 'megaminx' && puzzleType !== 'pyraminx' && !String(puzzleType).startsWith('stl:')) {
         if (isMirror) text += " Mirror Cube";
         else text += " Cube";
     }
