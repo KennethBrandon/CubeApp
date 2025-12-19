@@ -12,21 +12,33 @@ export function showLeaderboard() {
 function createLeaderboardModal() {
     const html = `
     <div id="leaderboard-modal"
-        class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-4">
+        class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-2 sm:p-6 opacity-0 transition-opacity duration-300">
         <div
-            class="bg-gray-900 w-full max-w-5xl h-[90vh] md:h-[80vh] rounded-2xl border border-gray-700 shadow-2xl flex flex-col md:flex-row overflow-hidden relative">
+            class="bg-gray-900 w-full max-w-5xl h-[90vh] rounded-2xl border border-gray-700 shadow-2xl flex flex-col md:flex-row overflow-hidden relative">
+
+            <!-- Close Button (Absolute Top Right) -->
+            <button id="btn-close-leaderboard"
+                class="absolute top-4 right-4 z-20 text-gray-400 hover:text-white bg-gray-800/50 hover:bg-red-600/80 rounded-full p-2 transition">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                    </path>
+                </svg>
+            </button>
 
             <!-- Sidebar (Categories) -->
-            <div class="w-full md:w-64 bg-gray-800/50 border-b md:border-b-0 md:border-r border-gray-700 flex flex-row md:flex-col shrink-0 overflow-x-auto md:overflow-x-hidden md:overflow-y-auto hide-scrollbar">
-                <div class="p-4 border-r md:border-r-0 md:border-b border-gray-700 bg-gray-800/80 backdrop-blur sticky left-0 z-10 hidden md:block">
+            <div
+                class="w-full md:w-64 bg-gray-800/50 border-b md:border-b-0 md:border-r border-gray-700 flex flex-row md:flex-col shrink-0 overflow-x-auto md:overflow-x-hidden md:overflow-y-auto hide-scrollbar">
+                <div
+                    class="p-4 border-r md:border-r-0 md:border-b border-gray-700 bg-gray-800/80 backdrop-blur sticky left-0 z-10 hidden md:block">
                     <h2
                         class="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">
                         Leaderboards
                     </h2>
                 </div>
-                
+
                 <!-- Mobile Title (Compact) -->
-                 <div class="md:hidden flex items-center px-4 border-r border-gray-700 bg-gray-800/80 backdrop-blur whitespace-nowrap sticky left-0 z-10">
+                <div
+                    class="md:hidden flex items-center px-4 border-r border-gray-700 bg-gray-800/80 backdrop-blur whitespace-nowrap sticky left-0 z-10">
                     <span class="font-bold text-blue-400">🏆</span>
                 </div>
 
@@ -76,125 +88,138 @@ function createLeaderboardModal() {
                 </div>
             </div>
 
-            <!-- Content Area -->
-            <div class="flex-1 flex flex-col bg-gray-900 relative overflow-hidden">
-                <!-- Offline Warning -->
-                <div id="leaderboard-offline-warning" class="hidden bg-red-900/80 text-red-200 px-4 py-2 text-center font-bold border-b border-red-700">
-                    You are currently offline. Leaderboard may be outdated.
+            <!-- Main Content -->
+            <div class="flex-1 flex flex-col min-w-0 min-h-0 bg-gray-900/50">
+                <!-- Header -->
+                <div class="p-4 border-b border-gray-700 bg-gray-900/80 backdrop-blur z-10">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 id="leaderboard-title" class="text-white font-bold text-lg">Top Solvers</h3>
+                        <!-- Offline Warning -->
+                        <div id="leaderboard-offline-warning"
+                            class="hidden text-xs bg-red-900/50 text-red-300 border border-red-800 px-2 py-1 rounded flex items-center gap-2">
+                            <span>📡 Offline Mode</span>
+                        </div>
+                    </div>
+
+                    <!-- Puzzle Chips List -->
+                    <div class="relative">
+                        <div id="leaderboard-puzzle-list"
+                            class="flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+                            <!-- Chips injected via JS -->
+                        </div>
+                        <!-- Fade gradients for scroll indication -->
+                        <div
+                            class="absolute inset-y-0 left-0 w-4 bg-gradient-to-r from-gray-900 to-transparent pointer-events-none">
+                        </div>
+                        <div
+                            class="absolute inset-y-0 right-0 w-4 bg-gradient-to-l from-gray-900 to-transparent pointer-events-none">
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Puzzle Chips Header -->
-                <div id="leaderboard-puzzle-list"
-                    class="p-4 border-b border-gray-800 flex flex-nowrap overflow-x-auto gap-2 shrink-0 scrollbar-hide">
-                    <!-- Chips injected by JS -->
-                </div>
-
-                <!-- Table Container -->
+                <!-- Carousel / Content Area -->
                 <div id="leaderboard-carousel"
-                    class="flex-1 flex overflow-x-auto snap-x snap-mandatory scrollbar-hide h-full w-full">
-                    <!-- Standard -->
+                    class="flex-1 min-h-0 overflow-x-hidden relative flex snap-x snap-mandatory scroll-smooth">
+
+                    <!-- Standard Table -->
                     <div id="lb-cat-standard"
-                        class="carousel-slide min-w-full w-full h-full overflow-y-auto snap-center">
+                        class="w-full h-full flex-shrink-0 snap-center overflow-y-auto p-0 scrollbar-thin scrollbar-thumb-gray-700">
                         <table class="w-full text-left border-collapse">
-                            <thead class="bg-gray-800/50 sticky top-0 backdrop-blur-sm">
+                            <thead class="bg-gray-800/50 text-xs uppercase text-gray-500 sticky top-0 backdrop-blur-md">
                                 <tr>
-                                    <th class="p-3 text-xs font-bold text-gray-500 uppercase tracking-wider w-16">Rank
-                                    </th>
-                                    <th class="p-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Name</th>
-                                    <th class="p-3 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">
-                                        Time</th>
+                                    <th class="p-3 w-16">Rank</th>
+                                    <th class="p-3">Player</th>
+                                    <th class="p-3 text-right">Time</th>
                                 </tr>
                             </thead>
-                            <tbody id="leaderboard-body-standard" class="divide-y divide-gray-800"></tbody>
+                            <tbody id="leaderboard-body-standard" class="text-sm"></tbody>
                         </table>
                     </div>
 
-                    <!-- Big -->
-                    <div id="lb-cat-big" class="carousel-slide min-w-full w-full h-full overflow-y-auto snap-center">
+                    <!-- Big Table -->
+                    <div id="lb-cat-big"
+                        class="w-full h-full flex-shrink-0 snap-center overflow-y-auto p-0 scrollbar-thin scrollbar-thumb-gray-700">
                         <table class="w-full text-left border-collapse">
-                            <thead class="bg-gray-800/50 sticky top-0 backdrop-blur-sm">
+                            <thead class="bg-gray-800/50 text-xs uppercase text-gray-500 sticky top-0 backdrop-blur-md">
                                 <tr>
-                                    <th class="p-3 text-xs font-bold text-gray-500 uppercase tracking-wider w-16">Rank
-                                    </th>
-                                    <th class="p-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Name</th>
-                                    <th class="p-3 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">
-                                        Time</th>
+                                    <th class="p-3 w-16">Rank</th>
+                                    <th class="p-3">Player</th>
+                                    <th class="p-3 text-right">Time</th>
                                 </tr>
                             </thead>
-                            <tbody id="leaderboard-body-big" class="divide-y divide-gray-800"></tbody>
+                            <tbody id="leaderboard-body-big" class="text-sm"></tbody>
                         </table>
                     </div>
 
-                    <!-- Cuboids -->
+                    <!-- Cuboids Table -->
                     <div id="lb-cat-cuboids"
-                        class="carousel-slide min-w-full w-full h-full overflow-y-auto snap-center">
+                        class="w-full h-full flex-shrink-0 snap-center overflow-y-auto p-0 scrollbar-thin scrollbar-thumb-gray-700">
                         <table class="w-full text-left border-collapse">
-                            <thead class="bg-gray-800/50 sticky top-0 backdrop-blur-sm">
+                            <thead class="bg-gray-800/50 text-xs uppercase text-gray-500 sticky top-0 backdrop-blur-md">
                                 <tr>
-                                    <th class="p-3 text-xs font-bold text-gray-500 uppercase tracking-wider w-16">Rank
-                                    </th>
-                                    <th class="p-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Name</th>
-                                    <th class="p-3 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">
-                                        Time</th>
+                                    <th class="p-3 w-16">Rank</th>
+                                    <th class="p-3">Player</th>
+                                    <th class="p-3 text-right">Time</th>
                                 </tr>
                             </thead>
-                            <tbody id="leaderboard-body-cuboids" class="divide-y divide-gray-800"></tbody>
+                            <tbody id="leaderboard-body-cuboids" class="text-sm"></tbody>
                         </table>
                     </div>
 
-                    <!-- Mirror -->
-                    <div id="lb-cat-mirror" class="carousel-slide min-w-full w-full h-full overflow-y-auto snap-center">
+                    <!-- Mirror Table -->
+                    <div id="lb-cat-mirror"
+                        class="w-full h-full flex-shrink-0 snap-center overflow-y-auto p-0 scrollbar-thin scrollbar-thumb-gray-700">
                         <table class="w-full text-left border-collapse">
-                            <thead class="bg-gray-800/50 sticky top-0 backdrop-blur-sm">
+                            <thead class="bg-gray-800/50 text-xs uppercase text-gray-500 sticky top-0 backdrop-blur-md">
                                 <tr>
-                                    <th class="p-3 text-xs font-bold text-gray-500 uppercase tracking-wider w-16">Rank
-                                    </th>
-                                    <th class="p-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Name</th>
-                                    <th class="p-3 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">
-                                        Time</th>
+                                    <th class="p-3 w-16">Rank</th>
+                                    <th class="p-3">Player</th>
+                                    <th class="p-3 text-right">Time</th>
                                 </tr>
                             </thead>
-                            <tbody id="leaderboard-body-mirror" class="divide-y divide-gray-800"></tbody>
+                            <tbody id="leaderboard-body-mirror" class="text-sm"></tbody>
                         </table>
                     </div>
 
-                    <!-- Mods -->
-                    <div id="lb-cat-mods" class="carousel-slide min-w-full w-full h-full overflow-y-auto snap-center">
+                    <!-- Mods Table -->
+                    <div id="lb-cat-mods"
+                        class="w-full h-full flex-shrink-0 snap-center overflow-y-auto p-0 scrollbar-thin scrollbar-thumb-gray-700">
                         <table class="w-full text-left border-collapse">
-                            <thead class="bg-gray-800/50 sticky top-0 backdrop-blur-sm">
+                            <thead class="bg-gray-800/50 text-xs uppercase text-gray-500 sticky top-0 backdrop-blur-md">
                                 <tr>
-                                    <th class="p-3 text-xs font-bold text-gray-500 uppercase tracking-wider w-16">Rank
-                                    </th>
-                                    <th class="p-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Name</th>
-                                    <th class="p-3 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">
-                                        Time</th>
+                                    <th class="p-3 w-16">Rank</th>
+                                    <th class="p-3">Player</th>
+                                    <th class="p-3 text-right">Time</th>
                                 </tr>
                             </thead>
-                            <tbody id="leaderboard-body-mods" class="divide-y divide-gray-800"></tbody>
+                            <tbody id="leaderboard-body-mods" class="text-sm"></tbody>
                         </table>
                     </div>
 
-                    <!-- Custom -->
-                    <div id="lb-cat-custom" class="carousel-slide min-w-full w-full h-full overflow-y-auto snap-center">
+                    <!-- Custom Table -->
+                    <div id="lb-cat-custom"
+                        class="w-full h-full flex-shrink-0 snap-center overflow-y-auto p-0 scrollbar-thin scrollbar-thumb-gray-700">
                         <table class="w-full text-left border-collapse">
-                            <thead class="bg-gray-800/50 sticky top-0 backdrop-blur-sm">
+                            <thead class="bg-gray-800/50 text-xs uppercase text-gray-500 sticky top-0 backdrop-blur-md">
                                 <tr>
-                                    <th class="p-3 text-xs font-bold text-gray-500 uppercase tracking-wider w-16">Rank
-                                    </th>
-                                    <th class="p-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Name</th>
-                                    <th class="p-3 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">
-                                        Time</th>
+                                    <th class="p-3 w-16">Rank</th>
+                                    <th class="p-3">Player</th>
+                                    <th class="p-3 text-right">Time</th>
                                 </tr>
                             </thead>
-                            <tbody id="leaderboard-body-custom" class="divide-y divide-gray-800"></tbody>
+                            <tbody id="leaderboard-body-custom" class="text-sm"></tbody>
                         </table>
                     </div>
-                </div>
 
-                <!-- Mobile Close Button -->
-                <div class="md:hidden p-4 border-t border-gray-700 bg-gray-800/50 shrink-0">
-                    <button onclick="document.getElementById('btn-close-leaderboard').click()"
-                        class="w-full text-center px-4 py-3 rounded-xl bg-gray-700 hover:bg-gray-600 text-white font-bold transition">Close</button>
+                    <!-- Loading Overlay (Absolute) -->
+                    <div id="leaderboard-loading"
+                        class="absolute inset-0 bg-gray-900/80 flex flex-col items-center justify-center z-20">
+                        <div
+                            class="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4">
+                        </div>
+                        <p class="text-blue-400 font-bold animate-pulse">Loading Scores...</p>
+                    </div>
+
                 </div>
             </div>
         </div>

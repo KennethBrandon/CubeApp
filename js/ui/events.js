@@ -332,7 +332,7 @@ export function setupUIEventListeners() {
             if (puzzleType) {
                 overlayManager.close(); // Close solved modal
                 setTimeout(() => {
-                    openLeaderboardModal();
+                    showLeaderboard();
                 }, 100);
             }
         } finally {

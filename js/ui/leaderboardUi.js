@@ -1,8 +1,12 @@
-import { puzzleCategories, getPuzzleIconPath } from './puzzleSelector.js';
+import { getPuzzleIconPath } from './puzzleSelector.js';
+import { puzzleCategories } from '../shared/puzzleData.js';
 import { fetchLeaderboard } from '../leaderboard/firebase.js';
 import { state } from '../shared/state.js';
 import { overlayManager } from './overlayManager.js';
 import { isOnline } from '../utils/network.js';
+
+let lastCategory = null;
+let targetCategory = null;
 
 export function setupLeaderboardUI() {
     // Category switching
@@ -17,16 +21,46 @@ export function setupLeaderboardUI() {
     // Carousel Scroll Listener
     const carousel = document.getElementById('leaderboard-carousel');
     if (carousel) {
-        let lastCategory = null;
+        // Reset state on setup
+        lastCategory = null;
+        targetCategory = null;
+
+        // Clear target on user interaction
+        carousel.addEventListener('touchstart', () => {
+            console.log('[LB] Touch start - clearing target');
+            targetCategory = null;
+        }, { passive: true });
+
+        carousel.addEventListener('wheel', () => {
+            console.log('[LB] Wheel - clearing target');
+            targetCategory = null;
+        }, { passive: true });
+
         carousel.addEventListener('scroll', () => {
             const scrollLeft = carousel.scrollLeft;
             const width = carousel.offsetWidth;
             const index = Math.round(scrollLeft / width);
 
+            // console.log(`[LB Scroll] Left: ${scrollLeft}, Width: ${width}, Index: ${index}, Target: ${targetCategory}`);
+
             const categories = ['standard', 'big', 'cuboids', 'mirror', 'mods', 'custom'];
             if (index >= 0 && index < categories.length) {
                 const newCategory = categories[index];
+
+                // If we are programmatically scrolling to a target, ignore intermediate states
+                if (targetCategory && targetCategory !== newCategory) {
+                    console.log(`[LB Scroll] Ignoring scroll to ${newCategory} (Target: ${targetCategory})`);
+                    return;
+                }
+
+                // If we reached the target or it's a normal scroll
+                if (targetCategory === newCategory) {
+                    console.log(`[LB Scroll] Reached target ${targetCategory}`);
+                    targetCategory = null;
+                }
+
                 if (newCategory !== lastCategory) {
+                    console.log(`[LB Scroll] Switching from ${lastCategory} to ${newCategory}`);
                     lastCategory = newCategory;
                     updateSidebarActive(newCategory);
                     renderPuzzleChips(newCategory, true);
@@ -101,6 +135,12 @@ export function openLeaderboardModal() {
     // Determine initial category and puzzle
     let initialCategory = 'standard';
     let initialPuzzle = state.cubeSize || 3;
+
+    if (state.selectedLeaderboardPuzzle) {
+        console.log(`[LB Open] Has selection: ${state.selectedLeaderboardPuzzle}`);
+    } else {
+        console.log(`[LB Open] Auto-detecting from active puzzle`);
+    }
 
     // Try to detect category from active puzzle
     if (state.selectedLeaderboardPuzzle) {
@@ -220,7 +260,7 @@ export function openLeaderboardModal() {
         } else {
             // Standard or Big
             const size = dims.x;
-            initialPuzzle = size;
+            initialPuzzle = `${size}x${size}x${size}`;
             if (size <= 7) initialCategory = 'standard';
             else initialCategory = 'big';
         }
@@ -234,21 +274,31 @@ export function openLeaderboardModal() {
     // Set the selected puzzle immediately so renderPuzzleChips can see it
     state.selectedLeaderboardPuzzle = initialPuzzle;
 
-    showLeaderboardCategory(initialCategory, false, false);
+    // Delay showing category to allow modal to become visible and layout to compute width
+    setTimeout(() => {
+        showLeaderboardCategory(initialCategory, false, false);
+    }, 50);
 
     // Fetch data for the selected puzzle
     fetchLeaderboard(initialPuzzle);
 }
 
 function showLeaderboardCategory(category, autoSelect = true, smooth = true) {
-    // Scroll to category
-    const carousel = document.getElementById('leaderboard-carousel');
+    // console.log(`[LB Show] Request category: ${category}, AutoSelect: ${autoSelect}`);
+    // Set target to prevent scroll listener from overriding us during transition
+    targetCategory = category;
+    lastCategory = category; // Sync immediately so we don't re-trigger    // If still not found, it stays 'custom'
+
+    // Find the specific tbody for this category
+    let tbody = document.getElementById(`leaderboard-body-${category}`);
     const target = document.getElementById(`lb-cat-${category}`);
+    const carousel = document.getElementById('leaderboard-carousel');
 
     if (carousel && target) {
         const categories = ['standard', 'big', 'cuboids', 'mirror', 'mods', 'custom'];
         const index = categories.indexOf(category);
         if (index !== -1) {
+            // console.log(`[LB Show] Scrolling to ${category} (Index ${index}, Width ${carousel.offsetWidth})`);
             carousel.scrollTo({
                 left: index * carousel.offsetWidth,
                 behavior: smooth ? 'smooth' : 'auto'
@@ -257,11 +307,12 @@ function showLeaderboardCategory(category, autoSelect = true, smooth = true) {
     }
 
     updateSidebarActive(category);
-    renderCategoryContent(category);
+    // renderCategoryContent(category); // Is this needed?
     renderPuzzleChips(category, autoSelect, smooth);
 }
 
 function renderPuzzleChips(category, autoSelect = false, smooth = true) {
+    // console.log(`[LB Chips] Rendering for ${category}`);
     const container = document.getElementById('leaderboard-puzzle-list');
     if (!container) return;
 

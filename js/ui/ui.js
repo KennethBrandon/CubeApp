@@ -1,5 +1,5 @@
 import { state } from '../shared/state.js';
-import { puzzleCategories } from './puzzleSelector.js';
+import { puzzleCategories } from '../shared/puzzleData.js';
 import { overlayManager } from './overlayManager.js';
 import { makeDraggable } from './tuners/TunerBase.js';
 import { formatScramble } from '../utils/formatting.js';
@@ -184,6 +184,7 @@ export function showWinModal() {
 }
 
 export function renderLeaderboardUI(leaderboardData, puzzleSize = 3) {
+    console.log(`[LB Render] Rendering UI for puzzle: ${puzzleSize} (${leaderboardData.length} entries)`);
     // Determine category to find correct tbody
     let category = 'custom'; // Default to custom if not found in lists
     const p = String(puzzleSize);
@@ -260,6 +261,7 @@ export function renderLeaderboardUI(leaderboardData, puzzleSize = 3) {
     }
 
     // If still not found, it stays 'custom'
+    // console.log(`[LB Render] Determined category for ${puzzleSize}: ${category}`);
 
     // Find the specific tbody for this category
     let tbody = document.getElementById(`leaderboard-body-${category}`);
@@ -301,6 +303,7 @@ export function renderLeaderboardUI(leaderboardData, puzzleSize = 3) {
     }
 
     if (loading) loading.style.display = 'none';
+
     if (tbody) {
         tbody.innerHTML = '';
 
@@ -311,7 +314,7 @@ export function renderLeaderboardUI(leaderboardData, puzzleSize = 3) {
 
         leaderboardData.forEach((entry, index) => {
             const tr = document.createElement('tr');
-            tr.className = 'leaderboard-row border-b border-gray-800 last:border-0 transition';
+            tr.className = 'leaderboard-row border-b border-gray-800 last:border-0 transition hover:bg-white/5';
 
             let rankColor = 'text-gray-400';
             if (index === 0) rankColor = 'text-yellow-400 font-bold';
