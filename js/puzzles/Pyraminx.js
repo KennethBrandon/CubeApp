@@ -63,6 +63,11 @@ export class Pyraminx extends Puzzle {
         this.stickerRadius = 0.05;
         this.cubieGap = 0.01;
         this.filletRadius = 0.02;
+        this.stickerRoughness = 0.30;
+        this.stickerMetalness = 0.18;
+        this.stickerNormalScale = 0.75;
+        this.stickerUseSparkle = true;
+        this.sparkleMap = null;
 
         this.showDebugPlanes = false; // Disabled by default
         this.showDebugColors = false; // User requested default off
@@ -544,26 +549,72 @@ export class Pyraminx extends Puzzle {
 
         if (unique.length < 3) return;
 
-        // Shrink (inset)
-        // Simple scale relative to center for convex shapes
-        const shape = new THREE.Shape();
-        const start = unique[0].clone().sub(center).multiplyScalar(this.stickerScale).add(center);
-        shape.moveTo(start.x, start.y);
-        for (let i = 1; i < unique.length; i++) {
-            const p = unique[i].clone().sub(center).multiplyScalar(this.stickerScale).add(center);
-            shape.lineTo(p.x, p.y);
-        }
-        shape.closePath();
+        // Shrink (inset) and center at origin
+        // Subtract center, scale, then the shape is centered at (0,0)
+        const scaledPoints = unique.map(p => p.clone().sub(center).multiplyScalar(this.stickerScale));
 
-        // Rounded corners? (Optional, skipping for MVP)
+        // Create Shape with Rounded Corners
+        const shape = new THREE.Shape();
+        const len = scaledPoints.length;
+        const r = this.stickerRadius;
+
+        if (r > 0.001) {
+            // Rounded polygon algorithm (same as Megaminx)
+            // For each corner, calculate curve start/end points based on radius
+            for (let i = 0; i < len; i++) {
+                const curr = scaledPoints[i];
+                const prev = scaledPoints[(i - 1 + len) % len];
+                const next = scaledPoints[(i + 1) % len];
+
+                const vPrev = prev.clone().sub(curr).normalize();
+                const vNext = next.clone().sub(curr).normalize();
+
+                // Calculate distance to start/end of curve based on radius and angle
+                const angle = vPrev.angleTo(vNext);
+                const dist = r / Math.tan(angle / 2);
+
+                // Clamp distance to avoid overlapping (max is half edge length)
+                const edgeLenPrev = curr.distanceTo(prev);
+                const edgeLenNext = curr.distanceTo(next);
+                const finalDist = Math.min(dist, edgeLenPrev * 0.45, edgeLenNext * 0.45);
+
+                const pStart = curr.clone().add(vPrev.multiplyScalar(finalDist));
+                const pEnd = curr.clone().add(vNext.multiplyScalar(finalDist));
+
+                if (i === 0) {
+                    shape.moveTo(pStart.x, pStart.y);
+                } else {
+                    shape.lineTo(pStart.x, pStart.y);
+                }
+                shape.quadraticCurveTo(curr.x, curr.y, pEnd.x, pEnd.y);
+            }
+            shape.closePath();
+        } else {
+            // No rounding - simple polygon
+            const start = scaledPoints[0];
+            shape.moveTo(start.x, start.y);
+            for (let i = 1; i < len; i++) {
+                const p = scaledPoints[i];
+                shape.lineTo(p.x, p.y);
+            }
+            shape.closePath();
+        }
 
         const geo = new THREE.ShapeGeometry(shape);
         const mat = new THREE.MeshStandardMaterial({
             color: this.faceColors[faceIdx],
-            roughness: this.stickerRoughness, // These might be undefined but standard material handles it
+            roughness: this.stickerRoughness,
             metalness: this.stickerMetalness,
             side: THREE.DoubleSide
         });
+
+        if (this.stickerUseSparkle) {
+            if (!this.sparkleMap) {
+                this.sparkleMap = createSparkleMap();
+            }
+            mat.normalMap = this.sparkleMap;
+            mat.normalScale = new THREE.Vector2(this.stickerNormalScale, this.stickerNormalScale);
+        }
 
         const sticker = new THREE.Mesh(geo, mat);
 
@@ -578,20 +629,9 @@ export class Pyraminx extends Puzzle {
             .addScaledVector(zAxis, this.surfaceDist + this.stickerOffset);
 
         sticker.position.copy(center3d);
+        sticker.userData = { isSticker: true, faceIndex: faceIdx };
 
-        // Re-centering shape
-        const shapeOffsets = unique.map(p => p.clone().sub(center).multiplyScalar(this.stickerScale));
-        const shapeCentered = new THREE.Shape();
-        shapeCentered.moveTo(shapeOffsets[0].x, shapeOffsets[0].y);
-        for (let i = 1; i < shapeOffsets.length; i++) shapeCentered.lineTo(shapeOffsets[i].x, shapeOffsets[i].y);
-        shapeCentered.closePath();
-
-        const geo2 = new THREE.ShapeGeometry(shapeCentered);
-        const sticker2 = new THREE.Mesh(geo2, mat);
-        sticker2.rotation.setFromRotationMatrix(matrix);
-        sticker2.position.copy(center3d);
-
-        group.add(sticker2);
+        group.add(sticker);
     }
 
 
@@ -602,3 +642,52 @@ export class Pyraminx extends Puzzle {
         return axes;
     }
 }
+
+function createSparkleMap(maxDim = 3) {
+    const size = 512;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+
+    const noiseScale = Math.max(1, maxDim / 4);
+    const noiseSize = Math.floor(size / noiseScale);
+
+    const noiseCanvas = document.createElement('canvas');
+    noiseCanvas.width = noiseSize;
+    noiseCanvas.height = noiseSize;
+    const noiseCtx = noiseCanvas.getContext('2d');
+
+    noiseCtx.fillStyle = 'rgb(128, 128, 255)';
+    noiseCtx.fillRect(0, 0, noiseSize, noiseSize);
+
+    const imgData = noiseCtx.getImageData(0, 0, noiseSize, noiseSize);
+    const data = imgData.data;
+
+    for (let i = 0; i < data.length; i += 4) {
+        data[i] = 128 + (Math.random() - 0.5) * 64;
+        data[i + 1] = 128 + (Math.random() - 0.5) * 64;
+        data[i + 2] = 255;
+    }
+
+    noiseCtx.putImageData(imgData, 0, 0);
+
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(noiseCanvas, 0, 0, size, size);
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(1, 1);
+    tex.generateMipmaps = true;
+    tex.minFilter = THREE.LinearMipmapLinearFilter;
+    tex.magFilter = THREE.LinearFilter;
+
+    if (state.renderer) {
+        tex.anisotropy = state.renderer.capabilities.getMaxAnisotropy();
+    }
+
+    return tex;
+}
+

@@ -41,6 +41,8 @@ function createPyraminxTuner() {
         <div class="mt-4 pt-4 border-t border-white/10 space-y-4">
             ${createSlider('Sticker Roughness', 'stickerRoughness', 0.0, 1.0, 0.01)}
             ${createSlider('Sticker Metalness', 'stickerMetalness', 0.0, 1.0, 0.01)}
+            ${createSlider('Sticker Normal Scale', 'stickerNormalScale', 0.0, 1.0, 0.01)}
+            ${createCheckbox('Use Sparkle', 'stickerUseSparkle')}
             ${createSlider('Cubie Gap', 'cubieGap', 0.0, 1.0, 0.01)}
             ${createSlider('Scramble Length', 'scrambleLength', 1, 50, 1)}
         </div>
@@ -67,13 +69,21 @@ function createSlider(label, id, min, max, step) {
     </div>`;
 }
 
+function createCheckbox(label, id) {
+    return `
+    <div class="flex items-center justify-between">
+        <label class="text-gray-300 text-xs">${label}</label>
+        <input type="checkbox" id="pyraminx-${id}" class="w-4 h-4 text-green-500 bg-gray-600 rounded cursor-pointer">
+    </div>`;
+}
+
 function syncValues() {
     if (!state.activePuzzle || state.activePuzzle.constructor.name !== 'Pyraminx') return;
     const p = state.activePuzzle;
 
     const params = [
         'radius', 'surfaceDist', 'cutDistTip', 'cutDistMiddle', 'stickerScale', 'stickerOffset',
-        'stickerRadius', 'cubieGap', 'stickerRoughness', 'stickerMetalness',
+        'stickerRadius', 'cubieGap', 'stickerRoughness', 'stickerMetalness', 'stickerNormalScale',
         'scrambleLength'
     ];
 
@@ -94,6 +104,8 @@ function syncValues() {
     if (debugColorsCheckbox) {
         debugColorsCheckbox.checked = p.showDebugColors || false;
     }
+    const sparkleCheck = document.getElementById('pyraminx-stickerUseSparkle');
+    if (sparkleCheck) sparkleCheck.checked = p.stickerUseSparkle;
 }
 
 function attachPyraminxListeners() {
@@ -131,6 +143,21 @@ function attachPyraminxListeners() {
     document.getElementById('chk-pyraminx-debug-planes').addEventListener('change', updatePuzzle);
     document.getElementById('chk-pyraminx-debug-colors').addEventListener('change', updatePuzzle);
 
+    const checkboxes = document.querySelectorAll('#pyraminx-tuner-ui input[type="checkbox"]');
+    checkboxes.forEach(chk => {
+        // Skip debug checkboxes since they have their own listeners
+        if (chk.id === 'chk-pyraminx-debug-planes' || chk.id === 'chk-pyraminx-debug-colors') return;
+
+        chk.addEventListener('change', (e) => {
+            if (!state.activePuzzle || state.activePuzzle.constructor.name !== 'Pyraminx') return;
+            const prop = e.target.id.replace('pyraminx-', '');
+            state.activePuzzle[prop] = e.target.checked;
+            if (state.activePuzzle.rebuildGeometry) {
+                state.activePuzzle.rebuildGeometry();
+            }
+        });
+    });
+
     document.getElementById('btn-reset-pyraminx-defaults').addEventListener('click', () => {
         const defaults = {
             radius: 1.5,
@@ -143,6 +170,8 @@ function attachPyraminxListeners() {
             cubieGap: 0.02,
             stickerRoughness: 0.3,
             stickerMetalness: 0.1,
+            stickerNormalScale: 0.75,
+            stickerUseSparkle: true,
             scrambleLength: 25,
             showDebugPlanes: false,
             showDebugColors: false
