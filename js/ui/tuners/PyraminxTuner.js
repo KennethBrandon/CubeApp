@@ -27,6 +27,8 @@ function createPyraminxTuner() {
             ${createSlider('Sticker Scale', 'stickerScale', 0.1, 1.0, 0.01)}
             ${createSlider('Sticker Offset', 'stickerOffset', 0.001, 0.1, 0.001)}
             ${createSlider('Sticker Radius', 'stickerRadius', 0.0, 0.2, 0.01)}
+            ${createSlider('Fillet Radius', 'filletRadius', 0.0, 0.25, 0.005)}
+            ${createSlider('Fillet Steps', 'filletSteps', 1, 10, 1)}
             
             <div class="flex items-center mt-2">
                 <input type="checkbox" id="chk-pyraminx-debug-planes" class="mr-2 w-4 h-4 text-green-500 bg-gray-700 border-gray-600 rounded focus:ring-green-500">
@@ -43,7 +45,7 @@ function createPyraminxTuner() {
             ${createSlider('Sticker Metalness', 'stickerMetalness', 0.0, 1.0, 0.01)}
             ${createSlider('Sticker Normal Scale', 'stickerNormalScale', 0.0, 1.0, 0.01)}
             ${createCheckbox('Use Sparkle', 'stickerUseSparkle')}
-            ${createSlider('Cubie Gap', 'cubieGap', 0.0, 1.0, 0.01)}
+            ${createSlider('Cubie Gap', 'cubieGap', 0.0, 0.05, 0.001)}
             ${createSlider('Scramble Length', 'scrambleLength', 1, 50, 1)}
         </div>
 
@@ -83,7 +85,7 @@ function syncValues() {
 
     const params = [
         'radius', 'surfaceDist', 'cutDistTip', 'cutDistMiddle', 'stickerScale', 'stickerOffset',
-        'stickerRadius', 'cubieGap', 'stickerRoughness', 'stickerMetalness', 'stickerNormalScale',
+        'stickerRadius', 'filletRadius', 'filletSteps', 'cubieGap', 'stickerRoughness', 'stickerMetalness', 'stickerNormalScale',
         'scrambleLength'
     ];
 
@@ -162,14 +164,16 @@ function attachPyraminxListeners() {
         const defaults = {
             radius: 1.5,
             surfaceDist: 1.2,
-            cutDistTip: 2.2,
-            cutDistMiddle: 0.0,
-            stickerScale: 0.88,
-            stickerOffset: 0.005,
+            cutDistTip: 2.0,
+            cutDistMiddle: 0.4,
+            stickerScale: 0.81,
+            stickerOffset: 0.001,
             stickerRadius: 0.05,
-            cubieGap: 0.02,
+            filletRadius: 0.055,
+            filletSteps: 10,
+            cubieGap: 0.003,
             stickerRoughness: 0.3,
-            stickerMetalness: 0.1,
+            stickerMetalness: 0.18,
             stickerNormalScale: 0.75,
             stickerUseSparkle: true,
             scrambleLength: 25,

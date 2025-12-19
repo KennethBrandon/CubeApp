@@ -58,11 +58,12 @@ export class Pyraminx extends Puzzle {
         this.cutDistTip = 2.0;   // Separates Tip from Middle
         this.cutDistMiddle = 0.4; // Separates Middle from Base
 
-        this.stickerScale = 0.87;
+        this.stickerScale = 0.81;
         this.stickerOffset = 0.001;
         this.stickerRadius = 0.05;
-        this.cubieGap = 0.01;
-        this.filletRadius = 0.02;
+        this.cubieGap = 0.003;
+        this.filletRadius = 0.055;
+        this.filletSteps = 10; // Number of intermediate planes for smooth filleting
         this.stickerRoughness = 0.30;
         this.stickerMetalness = 0.18;
         this.stickerNormalScale = 0.75;
@@ -150,24 +151,28 @@ export class Pyraminx extends Puzzle {
             }
         };
 
-        const finalizePiece = (mesh, type, faces, cutFaceIdx) => {
+        const finalizePiece = (mesh, type, faces, cutFaceIdx, stickerMesh = null) => {
             if (!mesh) return;
             mesh.castShadow = true;
             mesh.receiveShadow = true;
             const group = new THREE.Group();
             group.add(mesh);
 
-            // Calculate centroid
+            // CRITICAL: Calculate centroid from proxy mesh (if provided) for consistent positioning
+            // The filleted mesh has a slightly different centroid due to rounded edges,
+            // which causes positioning issues. Use proxy mesh centroid for all calculations.
+            const meshForCentroid = stickerMesh || mesh;
             const center = new THREE.Vector3();
-            const pos = mesh.geometry.attributes.position;
-            for (let i = 0; i < pos.count; i++) {
-                center.add(new THREE.Vector3(pos.getX(i), pos.getY(i), pos.getZ(i)));
+            const posForCentroid = meshForCentroid.geometry.attributes.position;
+            for (let i = 0; i < posForCentroid.count; i++) {
+                center.add(new THREE.Vector3(posForCentroid.getX(i), posForCentroid.getY(i), posForCentroid.getZ(i)));
             }
-            center.divideScalar(pos.count);
+            center.divideScalar(posForCentroid.count);
 
-            // Stickers
+            // Stickers - use stickerMesh (proxy) if provided, otherwise use visual mesh
+            const meshForStickers = stickerMesh || mesh;
             faces.forEach(idx => {
-                this.createSticker(mesh, group, idx);
+                this.createSticker(meshForStickers, group, idx);
             });
 
             // Center geometry
@@ -218,32 +223,94 @@ export class Pyraminx extends Puzzle {
             this.cubieList.push(group);
         };
 
+        // Helper to Add Fillet/Bevel Constraints
+        const tryAddRounding = (constraints, n1, k1, n2, k2) => {
+            if (this.filletRadius <= 0.001) return;
+
+            // Check angle between normals
+            const dot = n1.dot(n2);
+            if (dot < -0.9) return; // Ignore opposite planes
+
+            const r = this.filletRadius;
+            const steps = this.filletSteps;
+
+            for (let i = 1; i <= steps; i++) {
+                const t = i / (steps + 1);
+
+                // Interpolate normal (unnormalized first)
+                const nRaw = n1.clone().multiplyScalar(1 - t).add(n2.clone().multiplyScalar(t));
+                const len = nRaw.length();
+                if (len < 0.001) continue;
+
+                const nFinal = nRaw.clone().normalize();
+
+                // Calculate constant k
+                // k_t = [ ( (1-t)k1 + t*k2 - r ) / len ] + r
+                const kInterp = (1 - t) * k1 + t * k2;
+                const kFinal = ((kInterp - r) / len) + r;
+
+                constraints.push({ normal: nFinal, constant: kFinal, type: 'fillet' });
+            }
+        };
+
         // --- Generate Pieces ---
         const S = this.surfaceDist;
 
         // 1. TIPS (4)
         for (let i = 0; i < 4; i++) {
-            const constraints = [];
+            const baseConstraints = [];
+            const otherFaces = [0, 1, 2, 3].filter(x => x !== i);
+
             this.faceNormals.forEach((n, idx) => {
                 // Surface: N <= S
-                if (idx !== i) constraints.push({ normal: n, constant: S });
+                if (idx !== i) baseConstraints.push({ normal: n, constant: S, type: 'surface' });
             });
             // Tip Cut: N_i <= -Tip
-            constraints.push({ normal: this.faceNormals[i], constant: -this.cutDistTip });
+            baseConstraints.push({ normal: this.faceNormals[i], constant: -this.cutDistTip, type: 'cut' });
 
-            const mesh = generateMesh(intersection(constraints));
-            if (mesh) finalizePiece(mesh, 'tip', [0, 1, 2, 3].filter(x => x !== i), i);
+            // Apply fillets
+            const filletConstraints = [...baseConstraints];
+            if (this.filletRadius > 0.001) {
+                // 1. Surface-to-surface fillets (outer edges/ridges)
+                for (let a = 0; a < otherFaces.length; a++) {
+                    for (let b = a + 1; b < otherFaces.length; b++) {
+                        tryAddRounding(filletConstraints,
+                            this.faceNormals[otherFaces[a]], S,
+                            this.faceNormals[otherFaces[b]], S
+                        );
+                    }
+                }
+
+                // 2. Surface-to-cut fillets (inner edges)
+                for (let j = 0; j < otherFaces.length; j++) {
+                    tryAddRounding(filletConstraints,
+                        this.faceNormals[otherFaces[j]], S,
+                        this.faceNormals[i], -this.cutDistTip
+                    );
+                }
+            }
+
+            const mesh = generateMesh(intersection(filletConstraints));
+            let proxyMesh = null;
+            if (this.filletRadius > 0.001) {
+                proxyMesh = generateMesh(intersection(baseConstraints));
+            }
+
+            if (mesh) {
+                finalizePiece(mesh, 'tip', otherFaces, i, proxyMesh);
+            }
         }
 
         // 2. AXIAL CENTERS (4)
         for (let i = 0; i < 4; i++) {
-            const constraints = [];
+            const baseConstraints = [];
+            const otherFaces = [0, 1, 2, 3].filter(x => x !== i);
 
             // Bottom (Tip boundary): N_i >= -Tip => -N_i <= Tip
-            constraints.push({ normal: this.faceNormals[i].clone().negate(), constant: this.cutDistTip });
+            baseConstraints.push({ normal: this.faceNormals[i].clone().negate(), constant: this.cutDistTip, type: 'cut_inner' });
 
             // Top (Middle boundary): N_i <= -Mid
-            constraints.push({ normal: this.faceNormals[i], constant: -this.cutDistMiddle });
+            baseConstraints.push({ normal: this.faceNormals[i], constant: -this.cutDistMiddle, type: 'cut' });
 
             // Neighbors (Base boundary): 
             // The axial center is the core piece under the tip.
@@ -251,7 +318,7 @@ export class Pyraminx extends Puzzle {
             for (let j = 0; j < 4; j++) {
                 if (i === j) continue;
                 // Surface: N_j <= S
-                constraints.push({ normal: this.faceNormals[j], constant: S });
+                baseConstraints.push({ normal: this.faceNormals[j], constant: S, type: 'surface' });
             }
 
             // "Axial Center" (Inner Tip) must not spill into Edges.
@@ -259,34 +326,156 @@ export class Pyraminx extends Puzzle {
             // So Axial Center must be "Base" relative to j (N_j >= -Mid => -N_j <= Mid).
             for (let j = 0; j < 4; j++) {
                 if (i === j) continue;
-                constraints.push({ normal: this.faceNormals[j].clone().negate(), constant: this.cutDistMiddle });
+                baseConstraints.push({ normal: this.faceNormals[j].clone().negate(), constant: this.cutDistMiddle, type: 'cut_bound' });
             }
 
-            const mesh = generateMesh(intersection(constraints));
-            // FIXED: Axial Centers are under tip i, so they have stickers on faces j, k, l (not i)
-            if (mesh) finalizePiece(mesh, 'center', [0, 1, 2, 3].filter(x => x !== i), i);
+            // Apply fillets
+            const filletConstraints = [...baseConstraints];
+            if (this.filletRadius > 0.001) {
+                // Collect cut plane normals and constants for filleting
+                const cutInner = { n: this.faceNormals[i].clone().negate(), k: this.cutDistTip };
+                const cutOuter = { n: this.faceNormals[i], k: -this.cutDistMiddle };
+                const cutBounds = otherFaces.map(idx => ({
+                    n: this.faceNormals[idx].clone().negate(),
+                    k: this.cutDistMiddle
+                }));
+
+                // 1. Surface-to-surface fillets (outer ridges)
+                for (let a = 0; a < otherFaces.length; a++) {
+                    for (let b = a + 1; b < otherFaces.length; b++) {
+                        tryAddRounding(filletConstraints,
+                            this.faceNormals[otherFaces[a]], S,
+                            this.faceNormals[otherFaces[b]], S
+                        );
+                    }
+                }
+
+                // 2. Surface-to-cut_bound fillets (side edges)
+                for (let a = 0; a < otherFaces.length; a++) {
+                    for (let b = 0; b < cutBounds.length; b++) {
+                        if (a !== b) { // Don't fillet surface to its own cut bound
+                            tryAddRounding(filletConstraints,
+                                this.faceNormals[otherFaces[a]], S,
+                                cutBounds[b].n, cutBounds[b].k
+                            );
+                        }
+                    }
+                }
+
+                // 3. Surface-to-cut_outer fillets (top edges)
+                for (let a = 0; a < otherFaces.length; a++) {
+                    tryAddRounding(filletConstraints,
+                        this.faceNormals[otherFaces[a]], S,
+                        cutOuter.n, cutOuter.k
+                    );
+                }
+
+                // 4. Cut_inner to cut_bound fillets (internal bottom edges)
+                for (let b = 0; b < cutBounds.length; b++) {
+                    tryAddRounding(filletConstraints,
+                        cutInner.n, cutInner.k,
+                        cutBounds[b].n, cutBounds[b].k
+                    );
+                }
+
+                // 5. Cut_outer to cut_bound fillets (internal side edges)
+                for (let b = 0; b < cutBounds.length; b++) {
+                    tryAddRounding(filletConstraints,
+                        cutOuter.n, cutOuter.k,
+                        cutBounds[b].n, cutBounds[b].k
+                    );
+                }
+
+                // 6. Cut_outer to cut_inner fillet (internal vertical edge)
+                tryAddRounding(filletConstraints,
+                    cutOuter.n, cutOuter.k,
+                    cutInner.n, cutInner.k
+                );
+            }
+
+            const mesh = generateMesh(intersection(filletConstraints));
+            let proxyMesh = null;
+            if (this.filletRadius > 0.001) {
+                proxyMesh = generateMesh(intersection(baseConstraints));
+            }
+
+            if (mesh) {
+                finalizePiece(mesh, 'center', otherFaces, i, proxyMesh);
+            }
         }
 
         // 3. EDGES (6)
         for (let i = 0; i < 4; i++) {
             for (let j = i + 1; j < 4; j++) {
                 const k_l = [0, 1, 2, 3].filter(x => x !== i && x !== j);
-                const constraints = [];
+                const baseConstraints = [];
 
                 // Deep i & j: N <= -Mid
-                constraints.push({ normal: this.faceNormals[i], constant: -this.cutDistMiddle });
-                constraints.push({ normal: this.faceNormals[j], constant: -this.cutDistMiddle });
+                baseConstraints.push({ normal: this.faceNormals[i], constant: -this.cutDistMiddle, type: 'cut' });
+                baseConstraints.push({ normal: this.faceNormals[j], constant: -this.cutDistMiddle, type: 'cut' });
 
                 // Not Deep k & l ("Basement of k & l"): N >= -Mid => -N <= Mid
-                constraints.push({ normal: this.faceNormals[k_l[0]].clone().negate(), constant: this.cutDistMiddle });
-                constraints.push({ normal: this.faceNormals[k_l[1]].clone().negate(), constant: this.cutDistMiddle });
+                baseConstraints.push({ normal: this.faceNormals[k_l[0]].clone().negate(), constant: this.cutDistMiddle, type: 'cut_bound' });
+                baseConstraints.push({ normal: this.faceNormals[k_l[1]].clone().negate(), constant: this.cutDistMiddle, type: 'cut_bound' });
 
                 // Surfaces
-                constraints.push({ normal: this.faceNormals[k_l[0]], constant: S });
-                constraints.push({ normal: this.faceNormals[k_l[1]], constant: S });
+                baseConstraints.push({ normal: this.faceNormals[k_l[0]], constant: S, type: 'surface' });
+                baseConstraints.push({ normal: this.faceNormals[k_l[1]], constant: S, type: 'surface' });
 
-                const mesh = generateMesh(intersection(constraints));
-                if (mesh) finalizePiece(mesh, 'edge', k_l, null);
+                // Apply fillets
+                const filletConstraints = [...baseConstraints];
+                if (this.filletRadius > 0.001) {
+                    const cutsDeep = [
+                        { n: this.faceNormals[i], k: -this.cutDistMiddle },
+                        { n: this.faceNormals[j], k: -this.cutDistMiddle }
+                    ];
+                    const cutBounds = [
+                        { n: this.faceNormals[k_l[0]].clone().negate(), k: this.cutDistMiddle },
+                        { n: this.faceNormals[k_l[1]].clone().negate(), k: this.cutDistMiddle }
+                    ];
+
+                    // 1. Surface-to-surface fillet (outer ridge)
+                    tryAddRounding(filletConstraints,
+                        this.faceNormals[k_l[0]], S,
+                        this.faceNormals[k_l[1]], S
+                    );
+
+                    // 2. Surface-to-cut fillets (side edges)
+                    // Surface k_l[0] to cut i and j
+                    tryAddRounding(filletConstraints, this.faceNormals[k_l[0]], S, cutsDeep[0].n, cutsDeep[0].k);
+                    tryAddRounding(filletConstraints, this.faceNormals[k_l[0]], S, cutsDeep[1].n, cutsDeep[1].k);
+                    // Surface k_l[1] to cut i and j
+                    tryAddRounding(filletConstraints, this.faceNormals[k_l[1]], S, cutsDeep[0].n, cutsDeep[0].k);
+                    tryAddRounding(filletConstraints, this.faceNormals[k_l[1]], S, cutsDeep[1].n, cutsDeep[1].k);
+
+                    // 3. Cut-to-cut fillet (internal edge where two deep cuts meet)
+                    tryAddRounding(filletConstraints, cutsDeep[0].n, cutsDeep[0].k, cutsDeep[1].n, cutsDeep[1].k);
+
+                    // 4. Cut-to-cut_bound fillets (edges where edge meets centers)
+                    // Deep cut i to both boundary cuts
+                    tryAddRounding(filletConstraints, cutsDeep[0].n, cutsDeep[0].k, cutBounds[0].n, cutBounds[0].k);
+                    tryAddRounding(filletConstraints, cutsDeep[0].n, cutsDeep[0].k, cutBounds[1].n, cutBounds[1].k);
+                    // Deep cut j to both boundary cuts
+                    tryAddRounding(filletConstraints, cutsDeep[1].n, cutsDeep[1].k, cutBounds[0].n, cutBounds[0].k);
+                    tryAddRounding(filletConstraints, cutsDeep[1].n, cutsDeep[1].k, cutBounds[1].n, cutBounds[1].k);
+
+                    // 5. Surface-to-cut_bound fillets (outer-bottom edges)
+                    tryAddRounding(filletConstraints, this.faceNormals[k_l[0]], S, cutBounds[0].n, cutBounds[0].k);
+                    tryAddRounding(filletConstraints, this.faceNormals[k_l[1]], S, cutBounds[1].n, cutBounds[1].k);
+
+                    // 6. Cut_bound-to-cut_bound fillet (bottom internal edge)
+                    tryAddRounding(filletConstraints, cutBounds[0].n, cutBounds[0].k, cutBounds[1].n, cutBounds[1].k);
+                }
+
+                const mesh = generateMesh(intersection(filletConstraints));
+                let proxyMesh = null;
+                if (this.filletRadius > 0.001) {
+                    proxyMesh = generateMesh(intersection(baseConstraints));
+                }
+
+                if (mesh) {
+                    finalizePiece(mesh, 'edge', k_l, null, proxyMesh);
+                }
             }
         }
 
@@ -328,37 +517,31 @@ export class Pyraminx extends Puzzle {
 
     // This getMoveInfo is called by the queueMove system to get the actual cubies and axis for a move.
     getMoveInfo(axisStr, dir, sliceVal) {
-        // Handle mouse interaction (object based) - Wait, internal engine sends strings usually?
-        // If axisStr is object (cubie), it's the old signature?
-        // Puzzle.js doesn't define signature, but moves.js calls it with (axisStr, dir, sliceVal).
-        // Interactions calls it with (cubie, axis, dir) ?? No, interactions calls getDragAxis.
-
-        // Wait, where is `getMoveInfo(cubie, axis, dir)` called from?
-        // It might be called by `Puzzle.js` base `performMove` if not overridden?
-        // `moves.js`: `state.activePuzzle.getMoveInfo(axisStr, direction, sliceVal)`
-
         const faceIdx = parseInt(axisStr);
+        console.log(`[getMoveInfo] Called with axis: ${axisStr}, sliceVal: ${sliceVal}, total pieces: ${this.cubieList.length}`);
+
         if (!isNaN(faceIdx) && faceIdx >= 0 && faceIdx < 4) {
             const normal = this.faceNormals[faceIdx];
 
             // Use provided sliceVal or default to Deep (0.0)
             const threshold = (typeof sliceVal === 'number') ? sliceVal : -this.cutDistMiddle;
 
-            // Find pieces "above" the cut (further out in negative normal direction)
-            // My cuts are: n.p + cutDist = 0  => n.p = -cutDist.
-            // Tip piece center has n.p ~ -3.
-            // Edge/Center piece center has n.p ~ -1.
-            // Base piece has n.p > 0.
-            // So we want n.p <= threshold.
+            console.log(`[getMoveInfo] Threshold: ${threshold.toFixed(2)}, checking ${this.cubieList.length} pieces`);
 
+            // Find pieces "above" the cut (further out in negative normal direction)
             const cubies = this.cubieList.filter(c => {
-                // Must use current position, not initialCenter, because pieces move!
-                const dot = c.position.dot(normal);
+                // CRITICAL: Calculate current logical position
+                // Take initial center, rotate by quaternion, add position offset
+                const initial = c.userData.initialCenter;
+                if (!initial) return false;
+                const currentPos = initial.clone().applyQuaternion(c.quaternion).add(c.position);
+                const dot = currentPos.dot(normal);
                 const isSelected = dot <= threshold + 0.01;
-                // Debug log for checking margins
-                if (faceIdx === 1) console.log(`[Move Debug] Axis: ${axisStr}, Threshold: ${threshold}, Dot: ${dot.toFixed(3)}, Selected: ${isSelected}`);
+                console.log(`  Piece type: ${c.userData.type}, dot: ${dot.toFixed(3)}, selected: ${isSelected}`);
                 return isSelected;
             });
+
+            console.log(`[getMoveInfo] Selected ${cubies.length} pieces`);
 
             return {
                 axisVector: normal,
@@ -367,6 +550,32 @@ export class Pyraminx extends Puzzle {
             };
         }
         return null; // Fallback
+    }
+
+    getSliceCubies(axisStr, sliceVal) {
+        // Called by attachSliceToPivot during drag operations
+        const faceIdx = parseInt(axisStr);
+        console.log(`[getSliceCubies] Called with axis: ${axisStr}, sliceVal: ${sliceVal}`);
+
+        if (!isNaN(faceIdx) && faceIdx >= 0 && faceIdx < 4) {
+            const normal = this.faceNormals[faceIdx];
+            const threshold = (typeof sliceVal === 'number') ? sliceVal : -this.cutDistMiddle;
+
+            const cubies = this.cubieList.filter(c => {
+                // CRITICAL: Calculate current logical position
+                const initial = c.userData.initialCenter;
+                if (!initial) return false;
+                const currentPos = initial.clone().applyQuaternion(c.quaternion).add(c.position);
+                const dot = currentPos.dot(normal);
+                const isSelected = dot <= threshold + 0.01;
+                console.log(`  [getSliceCubies] Piece type: ${c.userData.type}, dot: ${dot.toFixed(3)}, selected: ${isSelected}`);
+                return isSelected;
+            });
+
+            console.log(`[getSliceCubies] Returning ${cubies.length} pieces`);
+            return cubies;
+        }
+        return [];
     }
 
     getNotation(axisStr, sliceVal, turns) {
@@ -406,6 +615,16 @@ export class Pyraminx extends Puzzle {
         return false;
     }
 
+    isFaceRectangular(axis) {
+        // Pyraminx faces are triangular, not rectangular
+        return false;
+    }
+
+    getSnapAngle() {
+        // Pyraminx rotates in 120° increments (2π/3 radians)
+        return Math.PI * 2 / 3;
+    }
+
     getScramble() {
         // Generate random moves
         const moves = [];
@@ -434,9 +653,129 @@ export class Pyraminx extends Puzzle {
         return moves;
     }
 
-    getDragAxis(faceNormal, screenMoveVec) {
-        // Placeholder to prevent crash on drag
-        return { axis: 'x', rotationAxis: new THREE.Vector3(1, 0, 0), angleScale: 1 };
+    getDragAxis(faceNormal, screenMoveVec, intersectedCubie, camera) {
+        if (!intersectedCubie) return null;
+
+        // 1. Transform faceNormal to local space
+        const localFaceNormal = faceNormal.clone().transformDirection(state.cubeWrapper.matrixWorld.clone().invert()).normalize();
+
+        // 2. Identify the clicked Face Index
+        let bestFaceIdx = -1;
+        let maxDot = 0;
+        this.faceNormals.forEach((n, i) => {
+            const dot = n.dot(localFaceNormal);
+            if (dot > maxDot) {
+                maxDot = dot;
+                bestFaceIdx = i;
+            }
+        });
+
+        if (maxDot < 0.7) return null; // Not clicking a face clearly enough
+
+        // 3. Find neighbor faces (candidates for rotation)
+        // For a tetrahedron, each face has 3 neighbors (all other faces)
+        const candidates = [];
+        this.faceNormals.forEach((n, i) => {
+            if (i !== bestFaceIdx) {
+                candidates.push(i);
+            }
+        });
+
+        console.log(`[getDragAxis] Clicked piece type: ${intersectedCubie.userData.type}, testing ${candidates.length} candidates`);
+
+        // 4. Test candidates to find which rotation axis matches the drag
+        let bestMatch = null;
+        let bestScore = 0;
+
+        candidates.forEach(axisIdx => {
+            const axisVec = this.faceNormals[axisIdx];
+
+            // CRITICAL: Check if the clicked piece would be affected by rotating around this axis
+            // Calculate current logical position
+            const initial = intersectedCubie.userData.initialCenter;
+            if (!initial) return;
+            const clickedPiecePos = initial.clone().applyQuaternion(intersectedCubie.quaternion).add(intersectedCubie.position);
+            const clickedPieceDot = clickedPiecePos.dot(axisVec);
+            console.log(`  Testing axis ${axisIdx}: clicked piece dot = ${clickedPieceDot.toFixed(3)}`);
+            if (clickedPieceDot > -0.1) {
+                console.log(`    Rejected: dot too high (not on opposite side)`);
+                // Piece is on the same side as the rotation axis, skip this candidate
+                return;
+            }
+
+            // Calculate Tangent in World Space
+            const axisVecWorld = axisVec.clone().transformDirection(state.cubeWrapper.matrixWorld);
+            const piecePosWorld = intersectedCubie.position.clone().applyMatrix4(state.cubeWrapper.matrixWorld);
+            const wrapperPosWorld = new THREE.Vector3().setFromMatrixPosition(state.cubeWrapper.matrixWorld);
+
+            // Tangent direction of rotation (Right hand rule: axis x position)
+            const tangent = new THREE.Vector3().crossVectors(axisVecWorld, piecePosWorld.sub(wrapperPosWorld)).normalize();
+
+            // Project to screen
+            const p1 = piecePosWorld.clone().add(wrapperPosWorld); // Restore world pos
+            const p2 = p1.clone().add(tangent);
+
+            const v1 = p1.clone().project(camera);
+            const v2 = p2.clone().project(camera);
+
+            const screenTangent = new THREE.Vector2(v2.x - v1.x, v2.y - v1.y).normalize();
+            screenTangent.y = -screenTangent.y; // Match screen coord system (Y inverted)
+
+            const score = Math.abs(screenTangent.dot(screenMoveVec));
+            if (score > bestScore) {
+                bestScore = score;
+                bestMatch = { axis: String(axisIdx), axisVec: axisVec };
+            }
+        });
+
+        if (bestMatch && bestScore > 0.4) {
+            const axisIdx = parseInt(bestMatch.axis);
+            const axisVec = bestMatch.axisVec;
+
+            // Determine slice value based on the clicked piece's TYPE
+            // If clicking a tip, only move tips
+            // If clicking a center or edge, move the deeper layer (centers + edges, but NOT tips)
+            let sliceVal;
+            const pieceType = intersectedCubie.userData.type;
+            if (pieceType === 'tip') {
+                // Tip move: only select tips (dot <= -3.0)
+                // Tips have dot around -4.8, centers have dot around -2.4
+                // So threshold of -3.0 separates them
+                sliceVal = -3.0;
+            } else {
+                // Deep move: select centers + edges (dot <= -cutDistMiddle)
+                // This won't include tips because tips have dot < -3.0
+                sliceVal = -this.cutDistMiddle - 0.05;
+            }
+
+            console.log(`[getDragAxis] Clicked piece type: ${pieceType}, using sliceVal: ${sliceVal.toFixed(2)}`);
+
+            // World Axis for Pivot Rotation
+            const axisVecWorld = axisVec.clone().transformDirection(state.cubeWrapper.matrixWorld).normalize();
+
+            // Calculate Screen Tangent to determine X vs Y input dominance
+            const piecePosWorld = intersectedCubie.position.clone().applyMatrix4(state.cubeWrapper.matrixWorld);
+            const wrapperPosWorld = new THREE.Vector3().setFromMatrixPosition(state.cubeWrapper.matrixWorld);
+            const tangent = new THREE.Vector3().crossVectors(axisVecWorld, piecePosWorld.sub(wrapperPosWorld)).normalize();
+
+            const p1 = piecePosWorld.clone().add(wrapperPosWorld);
+            const p2 = p1.clone().add(tangent);
+            const v1 = p1.clone().project(camera);
+            const v2 = p2.clone().project(camera);
+            const screenTangent = new THREE.Vector2(v2.x - v1.x, -(v2.y - v1.y)).normalize();
+
+            const inputAxis = Math.abs(screenTangent.x) > Math.abs(screenTangent.y) ? 'x' : 'y';
+            const angleScale = Math.sign(screenTangent[inputAxis]) || 1;
+
+            return {
+                dragAxis: bestMatch.axis,
+                dragAngleScale: angleScale,
+                dragSliceValue: sliceVal,
+                dragRotationAxis: axisVec, // Use local axis for pivot rotation
+                dragInputAxis: inputAxis
+            };
+        }
+        return null;
     }
 
     addDebugPlanes() {
