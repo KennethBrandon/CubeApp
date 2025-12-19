@@ -34,8 +34,8 @@ function createLeaderboardModal() {
                     <button data-category="standard"
                         class="leaderboard-category-btn group flex-1 md:w-full text-left px-3 py-2 md:px-4 md:py-3 rounded-xl text-gray-400 hover:bg-gray-800 hover:text-white transition flex items-center gap-2 md:gap-3 border border-transparent hover:border-gray-700 shrink-0">
                         <div class="flex flex-col">
-                            <span class="font-bold text-sm">Standard</span>
-                            <span class="text-[10px] opacity-60 hidden md:block">2x2 - 7x7</span>
+                            <span class="font-bold text-sm">WCA Puzzles</span>
+                            <span class="text-[10px] opacity-60 hidden md:block">Official Events</span>
                         </div>
                     </button>
                     <button data-category="big"
