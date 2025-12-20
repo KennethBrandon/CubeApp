@@ -282,28 +282,64 @@ export function snapPivot(targetAngle, turns, axis, sliceVal) {
         const now = Date.now();
         let progress = duration > 0 ? (now - startTime) / duration : 1;
         if (progress > 1) progress = 1;
-        const ease = 1 - Math.pow(1 - progress, 3);
-        const current = startAngle + (targetAngle - startAngle) * ease;
 
+        const ease = 1 - Math.pow(1 - progress, 3); // Cubic out
+        const current = startAngle + (targetAngle - startAngle) * ease;
         state.pivot.setRotationFromAxisAngle(rotAxis, current);
 
         if (progress < 1) {
             requestAnimationFrame(loop);
         } else {
-            finishMove(turns, axis, sliceVal);
-            if (turns !== 0) {
-                let normalizedTurns = turns;
+            // Normalize turns before finishing
+            let normalizedInputTurns = normalizeTurns(turns);
+
+            finishMove(normalizedInputTurns, axis, sliceVal);
+
+            if (normalizedInputTurns !== 0) {
+                let logTurns = normalizedInputTurns;
                 // Normalize turns to positive axis direction if drag axis is negative
                 if (state.dragRotationAxis) {
-                    if (axis === 'x' && state.dragRotationAxis.x < -0.5) normalizedTurns *= -1;
-                    if (axis === 'y' && state.dragRotationAxis.y < -0.5) normalizedTurns *= -1;
-                    if (axis === 'z' && state.dragRotationAxis.z < -0.5) normalizedTurns *= -1;
+                    if (axis === 'x' && state.dragRotationAxis.x < -0.5) logTurns *= -1;
+                    if (axis === 'y' && state.dragRotationAxis.y < -0.5) logTurns *= -1;
+                    if (axis === 'z' && state.dragRotationAxis.z < -0.5) logTurns *= -1;
                 }
-                logMove(axis, sliceVal, normalizedTurns);
+
+                // Patch for inverted Positive Slice Drags (R, F, U) and S
+                // R (X > 0) -> Invert
+                // U (Y > 0) -> Invert
+                // F (Z > 0) -> Invert
+                // S (Z = 0) -> Invert (Follows F)
+                // M (X = 0) -> Normal (Follows L)
+                // E (Y = 0) -> Normal (Follows D)
+
+                if (axis === 'x' && sliceVal > 0.1) logTurns *= -1; // R only
+                else if (axis === 'y' && sliceVal > 0.1) logTurns *= -1; // U only
+                else if (axis === 'z' && sliceVal > -0.1) logTurns *= -1; // F and S
+
+                logMove(axis, sliceVal, logTurns);
             }
         }
     }
     loop();
+}
+
+function normalizeTurns(turns) {
+    // -4..4 range usually
+    // 0 -> 0
+    // 1 -> 1
+    // 2 -> 2
+    // 3 -> -1
+    // 4 -> 0
+    // -1 -> -1
+    // -2 -> 2 (or -2)
+    // -3 -> 1
+    // -4 -> 0
+
+    let t = turns % 4;
+    if (t === 3) return -1;
+    if (t === -3) return 1;
+    if (t === 0) return 0;
+    return t;
 }
 
 export function attachSliceToPivot() {
