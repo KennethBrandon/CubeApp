@@ -64,7 +64,7 @@ export class Pyraminx extends Puzzle {
         this.cubieGap = 0.003;
         this.heightOffset = 0.0; // Lift up slightly to avoid clipping
         this.filletRadius = 0.055;
-        this.filletSteps = 10; // Number of intermediate planes for smooth filleting
+        this.filletSteps = 3; // Reduced from 10 to 3 for significantly better performance
         this.stickerRoughness = 0.30;
         this.stickerMetalness = 0.18;
         this.stickerNormalScale = 0.75;
@@ -103,28 +103,45 @@ export class Pyraminx extends Puzzle {
         // Intersection Helper
         const intersection = (constraints) => {
             const points = [];
-            const planes = constraints.map(c => new THREE.Plane(c.normal, -c.constant));
+            const n = constraints.length;
 
-            for (let i = 0; i < planes.length; i++) {
-                for (let j = i + 1; j < planes.length; j++) {
-                    for (let k = j + 1; k < planes.length; k++) {
-                        const n1 = planes[i].normal, n2 = planes[j].normal, n3 = planes[k].normal;
-                        const det = n1.dot(n2.clone().cross(n3));
-                        if (Math.abs(det) > 1e-6) {
-                            const v = new THREE.Vector3()
-                                .addScaledVector(n2.clone().cross(n3), -planes[i].constant)
-                                .addScaledVector(n3.clone().cross(n1), -planes[j].constant)
-                                .addScaledVector(n1.clone().cross(n2), -planes[k].constant)
-                                .divideScalar(det);
+            for (let i = 0; i < n; i++) {
+                const c1 = constraints[i];
+                const n1 = c1.normal;
+                const k1 = c1.constant;
 
-                            let valid = true;
-                            for (let m = 0; m < constraints.length; m++) {
-                                if (constraints[m].normal.dot(v) > constraints[m].constant + 1e-4) {
-                                    valid = false; break;
-                                }
+                for (let j = i + 1; j < n; j++) {
+                    const c2 = constraints[j];
+                    const n2 = c2.normal;
+                    const k2 = c2.constant;
+
+                    const cross12 = n1.clone().cross(n2);
+                    if (cross12.lengthSq() < 1e-8) continue;
+
+                    for (let k = j + 1; k < n; k++) {
+                        const c3 = constraints[k];
+                        const n3 = c3.normal;
+                        const k3 = c3.constant;
+
+                        const det = cross12.dot(n3);
+                        if (Math.abs(det) < 1e-7) continue;
+
+                        // P = (k1(n2 x n3) + k2(n3 x n1) + k3(n1 x n2)) / det
+                        const v = new THREE.Vector3()
+                            .addScaledVector(n2.clone().cross(n3), k1)
+                            .addScaledVector(n3.clone().cross(n1), k2)
+                            .addScaledVector(cross12, k3)
+                            .divideScalar(det);
+
+                        let valid = true;
+                        for (let m = 0; m < n; m++) {
+                            if (m === i || m === j || m === k) continue;
+                            if (constraints[m].normal.dot(v) > constraints[m].constant + 1e-4) {
+                                valid = false;
+                                break;
                             }
-                            if (valid) points.push(v);
                         }
+                        if (valid) points.push(v);
                     }
                 }
             }

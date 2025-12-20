@@ -187,7 +187,7 @@ function attachPyraminxListeners() {
             stickerOffset: 0.001,
             stickerRadius: 0.05,
             filletRadius: 0.055,
-            filletSteps: 10,
+            filletSteps: 3,
             cubieGap: 0.003,
             stickerRoughness: 0.3,
             stickerMetalness: 0.18,
