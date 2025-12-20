@@ -489,32 +489,134 @@ export class Pyraminx extends Puzzle {
     handleKeyDown(event) {
         if (this.isAnimating) return;
 
-        const num = parseInt(event.key);
+        const key = event.key;
+        const shift = event.shiftKey;
+
+        // 1. Handle Number Keys (Legacy/Debug)
+        const num = parseInt(key);
         if (!isNaN(num) && num >= 1 && num <= 8) {
             const faceIdx = (num - 1) % 4;
             const isDeep = num > 4;
-
-            // Use logic similar to Megaminx: Pass index as string axis
             const axisStr = faceIdx.toString();
-            // Deep moves use 'Middle' cut, Tip moves use 'Tip' cut.
-            // Note: My normals point OUT.
-            // Tip is at negative infinity? No.
-            // Center of Tetrahedron is 0,0,0.
-            // Tip is at Distance R. Face is at distance r.
-            // Logic: dot(p, n) < -cutDist.
-            // So larger cutDist means "deeper" cut (closer to center, or past it).
-            // cutTip = 2.2. cutMiddle = 0.0.
-            // To select TIP, we use limit -2.2.
-            // To select TIP+MID, we use limit 0.0.
-            // Add a small bias (-0.05) to ensure we don't accidentally select Base pieces 
-            // that are near 0.0 due to floating point jitter or centroid averaging.
-            // Base pieces have dot > 0. Deep pieces have dot < 0.
-            // A threshold of -0.05 safely separates them.
+            // Tips use 1,2,3,4. Layers use 5,6,7,8.
             const sliceVal = isDeep ? -this.cutDistMiddle - 0.05 : -this.cutDistTip;
-
-            // Direction: 1. (Can add Shift for inverse later if needed)
-            queueMove(axisStr, 1, state.animationSpeed, sliceVal);
+            const dir = shift ? -1 : 1; // Default 1 (Prime)
+            queueMove(axisStr, dir, state.animationSpeed, sliceVal);
+            return true;
         }
+
+        // 2. Handle WCA Keys (U, L, R, B)
+        // Map Keys to Axes.
+        // U -> Yellow (3), L -> Blue (1), R -> Red (2), B -> Green (0)
+        // wait... Blue is Right vs Left?
+        // Code: 1: Blue (Right), 2: Red (Left)
+        // So L Key -> Red Face (2)? NO.
+        // In Pyraminx, L move turns the Left Corner.
+        // Left Corner is bounded by Left Face (Red), Front (Green), Bottom (Yellow).
+        // The FACE opposite to L Corner is Right Face (Blue).
+        // The Axis of rotation for L Corner is the Normal of the Right Face (Blue).
+        // So L Move rotates around Axis 1 (Blue).
+        // R Move rotates around Axis 2 (Red).
+        // U Move rotates around Axis 3 (Yellow).
+        // B Move rotates around Axis 0 (Green).
+
+        // Wait, let's re-verify face opposites.
+        // Faces:
+        // 0: Green (Front). Opposite vertex is BACK. (B move)
+        // 1: Blue (Right). Opposite vertex is LEFT. (L move)
+        // 2: Red (Left). Opposite vertex is RIGHT. (R move)
+        // 3: Yellow (Bottom). Opposite vertex is UP. (U move)
+
+        // So:
+        // U Key -> Axis 3 (Yellow)
+        // L Key -> Axis 1 (Blue)
+        // R Key -> Axis 2 (Red)
+        // B Key -> Axis 0 (Green)
+
+        const char = key.toLowerCase();
+        const axisMap = {
+            'u': 3,
+            'l': 1,
+            'r': 2,
+            'b': 0
+        };
+
+        if (axisMap.hasOwnProperty(char)) {
+            const axisIdx = axisMap[char];
+
+            // Slice Logic:
+            // Lowercase = Tip (u, l, r, b)
+            // Uppercase = Layer (U, L, R, B)
+            const isTip = (key === char);
+            // With correct geometry logic (using c.position), -this.cutDistTip (-2.0) works.
+            // Tip centroid ~-2.2, Axial Centroid ~-1.2.
+            const sliceVal = isTip ? -this.cutDistTip : -this.cutDistMiddle - 0.05;
+
+            // Direction Logic:
+            // Standard (letter) = CW = -1
+            // Prime (shift) = CCW = 1
+            let dir = -1;
+            if (shift) dir = 1;
+
+            queueMove(axisIdx.toString(), dir, state.animationSpeed, sliceVal);
+            return true;
+        }
+
+        return false;
+    }
+
+    snapCubies(cubies) {
+        // Define valid tetrahedral rotations (12 total elements in T group / A4)
+        // 1. Identity (1)
+        // 2. 180 deg about X, Y, Z axes (3)
+        // 3. +/- 120 deg about the 4 face normals (8)
+
+        if (!this._validQuats) {
+            this._validQuats = [];
+            const axes180 = [
+                new THREE.Vector3(1, 0, 0),
+                new THREE.Vector3(0, 1, 0),
+                new THREE.Vector3(0, 0, 1)
+            ];
+            // 120 deg axes are the face normals
+            const axes120 = this.faceNormals; // Already normalized
+
+            // Identity
+            this._validQuats.push(new THREE.Quaternion());
+
+            // 180 deg rotations
+            axes180.forEach(axis => {
+                this._validQuats.push(new THREE.Quaternion().setFromAxisAngle(axis, Math.PI));
+            });
+
+            // 120 and 240 deg rotations
+            axes120.forEach(axis => {
+                this._validQuats.push(new THREE.Quaternion().setFromAxisAngle(axis, 2 * Math.PI / 3));
+                this._validQuats.push(new THREE.Quaternion().setFromAxisAngle(axis, 4 * Math.PI / 3));
+            });
+        }
+
+        cubies.forEach(c => {
+            c.quaternion.normalize();
+            let bestQ = null;
+            let maxDot = -1;
+
+            this._validQuats.forEach(q => {
+                // Quaternion dot product measures similarity. q and -q represent same rotation.
+                const dot = Math.abs(c.quaternion.dot(q));
+                if (dot > maxDot) {
+                    maxDot = dot;
+                    bestQ = q;
+                }
+            });
+
+            if (bestQ) {
+                c.quaternion.copy(bestQ);
+            }
+
+            // Removed position reset: It causes pieces to disappear or lose gaps.
+            // Trust pivot rotation for position updates.
+        });
     }
 
     // This getMoveInfo is called by the queueMove system to get the actual cubies and axis for a move.
@@ -532,18 +634,15 @@ export class Pyraminx extends Puzzle {
 
             // Find pieces "above" the cut (further out in negative normal direction)
             const cubies = this.cubieList.filter(c => {
-                // CRITICAL: Calculate current logical position
-                // Take initial center, rotate by quaternion, add position offset
-                const initial = c.userData.initialCenter;
-                if (!initial) return false;
-                const currentPos = initial.clone().applyQuaternion(c.quaternion).add(c.position);
+                // Correct logic: c.position is the centroid in world space (puzzle space).
+                const currentPos = c.position;
                 const dot = currentPos.dot(normal);
                 const isSelected = dot <= threshold + 0.01;
-                console.log(`  Piece type: ${c.userData.type}, dot: ${dot.toFixed(3)}, selected: ${isSelected}`);
+                // console.log(`  Piece type: ${c.userData.type}, dot: ${dot.toFixed(3)}, selected: ${isSelected}`);
                 return isSelected;
             });
 
-            console.log(`[getMoveInfo] Selected ${cubies.length} pieces`);
+            // console.log(`[getMoveInfo] Selected ${cubies.length} pieces`);
 
             return {
                 axisVector: normal,
@@ -564,13 +663,10 @@ export class Pyraminx extends Puzzle {
             const threshold = (typeof sliceVal === 'number') ? sliceVal : -this.cutDistMiddle;
 
             const cubies = this.cubieList.filter(c => {
-                // CRITICAL: Calculate current logical position
-                const initial = c.userData.initialCenter;
-                if (!initial) return false;
-                const currentPos = initial.clone().applyQuaternion(c.quaternion).add(c.position);
+                const currentPos = c.position;
                 const dot = currentPos.dot(normal);
                 const isSelected = dot <= threshold + 0.01;
-                console.log(`  [getSliceCubies] Piece type: ${c.userData.type}, dot: ${dot.toFixed(3)}, selected: ${isSelected}`);
+                // console.log(`  [getSliceCubies] Piece type: ${c.userData.type}, dot: ${dot.toFixed(3)}, selected: ${isSelected}`);
                 return isSelected;
             });
 
@@ -580,78 +676,153 @@ export class Pyraminx extends Puzzle {
         return [];
     }
 
-    getNotation(axisStr, sliceVal, turns) {
+    getNotation(axisStr, sliceVal, turns, isScramble) {
         const faceIdx = parseInt(axisStr);
         if (isNaN(faceIdx)) return axisStr;
 
-        // Map indices to letters. 
-        // 0=Green(Front) -> U
-        // 1=Blue(Right) -> R
-        // 2=Red(Left) -> L
-        // 3=Yellow(Bottom) -> B
-        const letters = ['U', 'R', 'L', 'B'];
+        // WCA Mapping:
+        // Axis 0 (Green/Front) -> B (Rotates Back Corner)
+        // Axis 1 (Blue/Right) -> L (Rotates Left Corner)
+        // Axis 2 (Red/Left)   -> R (Rotates Right Corner)
+        // Axis 3 (Yellow/Down)-> U (Rotates Up Corner)
+        const letters = ['B', 'L', 'R', 'U'];
         let letter = letters[faceIdx] || '?';
 
-        // Check if Tip (sliceVal approx -cutDistTip)
-        if (Math.abs(sliceVal - (-this.cutDistTip)) < 0.1) {
+        // Check if Tip
+        // Scramble generator uses specific sliceVals (-cutDistTip for tips)
+        // Tip threshold is around -2.0. Deep is around 0.0 or -0.4.
+        // If sliceVal is closer to Tip cut (-2.0) than Deep cut (-0.4), it's a tip.
+        const tipCut = -this.cutDistTip; // -2.0
+        const deepCut = -this.cutDistMiddle - 0.05; // ~-0.45
+
+        // Use a threshold halfway between tip and deep
+        const boundary = (tipCut + deepCut) / 2;
+
+        // If sliceVal is LESS than boundary (more negative), it selects FEWER pieces -> Tip?
+        // Wait, dot product logic:
+        // dot <= limit.
+        // Tip Limit: -2.0. Selects pieces with dot <= -2.0 (Only tip).
+        // Deep Limit: -0.4. Selects pieces with dot <= -0.4 (Tip + Middle).
+        // So if sliceVal is -2.0 (Tip), it is < -1.2.
+        // If sliceVal is -0.4 (Deep), it is > -1.2.
+
+        // HOWEVER, to enable WCA notation for the reset/replay, we need to handle the sliceVal passed in.
+        // Standard scramble: Tips use -this.cutDistTip. Layers use -this.cutDistMiddle.
+
+        if (sliceVal < boundary) {
             letter = letter.toLowerCase();
         }
 
         let suffix = '';
-        if (turns === -1) suffix = "'";
+        // Turns: 1 = CCW ('), -1 = CW (no suffix) because of our coordinate system?
+        // Let's verify direction. 
+        // Standard (Right Hand Rule) around axis.
+        // If Axis points OUT:
+        // CW around Axis is negative angle?
+        // THREE.js rotation is CCW around positive axis.
+        // So dir=1 is CCW.
+        // WCA ' (Prime) is CCW? No. 
+        // WCA: U is Clockwise. U' is Counter-Clockwise.
+        // If our Axis 3 points DOWN (Yellow normal), looking from Top, it points AWAY.
+        // So CCW around Down Axis = CW looking from Top?
+        // This is tricky. Let's rely on visual test or existing logic.
+        // Existing logic for Cube: dir 1 = 90deg (Suffix '). dir -1 = -90deg (No suffix).
+        // So dir 1 maps to '.
+
+        if (turns === 1) suffix = "'"; // CCW
+        else if (turns === -1) suffix = ""; // CW
+        // Note: If moves are double (rare in Pyraminx), handle 2/-2?
+
         return letter + suffix;
     }
 
-    snapCubies(cubies) {
-        // For non-cubic puzzles, exact grid snapping is complex.
-        // We rely on the animation engine ending at exact rotation.
-        // We could implement drift correction here if needed later.
-    }
+    parseNotation(notation) {
+        // Matches: [u, l, r, b, U, L, R, B] followed by optional [']
+        const match = notation.match(/^([ulrbULRB])('?)$/);
+        if (!match) return null;
 
-    isSolved() {
-        // Placeholder: Check if all faces have uniform color?
-        // For now, return false or implement basic check.
-        // Basic check: Iterate faces, check normals vs color?
-        // Or check if every piece is in solved position/rotation.
-        // Return false to allow playing without "Solved!" popup spam.
-        return false;
-    }
+        const char = match[1];
+        const prime = match[2] === "'";
+        const lower = char.toLowerCase();
+        const isTip = char === lower;
 
-    isFaceRectangular(axis) {
-        // Pyraminx faces are triangular, not rectangular
-        return false;
-    }
+        // Map Letter back to Axis Index
+        // B->0, L->1, R->2, U->3
+        const map = { 'b': 0, 'l': 1, 'r': 2, 'u': 3 };
+        const axisIdx = map[lower];
 
-    getSnapAngle() {
-        // Pyraminx rotates in 120° increments (2π/3 radians)
-        return Math.PI * 2 / 3;
+        if (axisIdx === undefined) return null;
+
+        // Direction:
+        // In getNotation: 1 -> ', -1 -> ""
+        // So: ' -> 1, "" -> -1
+        const dir = prime ? 1 : -1;
+
+        // Slice Value
+        const sliceVal = isTip ? -this.cutDistTip - 0.1 : -this.cutDistMiddle - 0.05;
+
+        return {
+            axis: axisIdx.toString(),
+            dir: dir,
+            sliceVal: sliceVal
+        };
     }
 
     getScramble() {
-        // Generate random moves
         const moves = [];
-        const axes = ['0', '1', '2', '3']; // Face indices
-        const dirs = [1, -1];
 
-        // WCA Scramble length is usually 11 for Pyraminx (plus tips).
-        // Let's do 20 random moves for now.
-        for (let i = 0; i < 20; i++) {
-            const axis = axes[Math.floor(Math.random() * axes.length)];
-            const dir = dirs[Math.floor(Math.random() * dirs.length)];
-            const isDeep = Math.random() < 0.5; // Random depth? WCA is usually tips + top level.
+        // WCA Rules:
+        // Random state generator (complex to implement fully) or random moves.
+        // Typical length ~11 moves (not including tips).
+        // Tips are independent and added at the end.
 
-            // WCA notation: U, R, L, B (Big) and u, r, l, b (Tips).
-            // Let's mix them.
+        const layerMoves = ['U', 'L', 'R', 'B'];
+        const tipMoves = ['u', 'l', 'r', 'b'];
 
-            // Notation Logic:
-            // 0=U/u, 1=R/r, 2=L/l, 3=B/b
+        const sequence = [];
+        let lastFace = -1;
+
+        // Generate Layer Moves
+        for (let i = 0; i < 11; i++) {
+            let faceIdx;
+            do {
+                faceIdx = Math.floor(Math.random() * 4);
+            } while (faceIdx === lastFace); // Avoid repeating same face
+
+            lastFace = faceIdx;
+
+            // Random direction
+            const isPrime = Math.random() < 0.5;
+            // Map faceIdx to Axis for our system (B=0, L=1, R=2, U=3)
+            // But let's build the Move Object directly.
 
             moves.push({
-                axis: axis,
-                direction: dir,
-                sliceVal: isDeep ? -this.cutDistMiddle : -this.cutDistTip
+                axis: faceIdx.toString(), // 0,1,2,3 map directly to B,L,R,U
+                dir: isPrime ? 1 : -1, // 1 for ', -1 for normal
+                sliceVal: -this.cutDistMiddle - 0.05
             });
         }
+
+        // Generate Tip Moves (independent)
+        tipMoves.forEach((t, idx) => {
+            // idx 0->u->3 ?? No.
+            // tipMoves defined as u,l,r,b...
+            // Indices: u->3, l->1, r->2, b->0
+            const map = [3, 1, 2, 0];
+            const axis = map[idx];
+
+            const state = Math.floor(Math.random() * 3); // 0, 1, 2
+            // 0: No move
+            // 1: Normal
+            // 2: Prime
+
+            if (state === 1) {
+                moves.push({ axis: axis.toString(), dir: -1, sliceVal: -this.cutDistTip - 0.1 });
+            } else if (state === 2) {
+                moves.push({ axis: axis.toString(), dir: 1, sliceVal: -this.cutDistTip - 0.1 });
+            }
+        });
+
         return moves;
     }
 
@@ -758,13 +929,11 @@ export class Pyraminx extends Puzzle {
             let sliceVal;
             const pieceType = intersectedCubie.userData.type;
             if (pieceType === 'tip') {
-                // Tip move: only select tips (dot <= -3.0)
-                // Tips have dot around -4.8, centers have dot around -2.4
-                // So threshold of -3.0 separates them
-                sliceVal = -3.0;
+                // Tip move: use stricter threshold consistent with keyboard logic (-2.1)
+                // Tip cut is -2.0. -2.1 ensures selection.
+                sliceVal = -this.cutDistTip - 0.1;
             } else {
                 // Deep move: select centers + edges (dot <= -cutDistMiddle)
-                // This won't include tips because tips have dot < -3.0
                 sliceVal = -this.cutDistMiddle - 0.05;
             }
 
@@ -1069,6 +1238,14 @@ export class Pyraminx extends Puzzle {
     }
 
 
+
+    isFaceRectangular(axis) {
+        return false; // Pyraminx faces are triangular
+    }
+
+    getSnapAngle() {
+        return (Math.PI * 2) / 3; // 120 degrees
+    }
 
     getRotationAxes() {
         const axes = {};
