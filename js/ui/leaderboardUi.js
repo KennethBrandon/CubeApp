@@ -479,6 +479,9 @@ function renderPuzzleChips(category, autoSelect = false, smooth = true) {
                     if (val === 'megaminx') {
                         label = 'Megaminx';
                         value = 'megaminx';
+                    } else if (val === 'pyraminx') {
+                        label = 'Pyraminx';
+                        value = 'pyraminx';
                     } else {
                         label = `${val}x${val}x${val}`;
                         value = `${val}x${val}x${val}`;

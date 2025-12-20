@@ -133,6 +133,9 @@ export function showWinModal() {
         } else if (type === 'Megaminx') {
             puzzleName = "Megaminx";
             puzzleTypeId = 'megaminx';
+        } else if (type === 'Pyraminx') {
+            puzzleName = "Pyraminx";
+            puzzleTypeId = 'pyraminx';
         } else if (type === 'StlPuzzleMod' || state.activePuzzle.puzzleId) {
             // STL Custom Puzzle
             const id = state.activePuzzle.puzzleId;
@@ -197,8 +200,8 @@ export function renderLeaderboardUI(leaderboardData, puzzleSize = 3) {
 
     // Check Standard
     if (!isFound) {
-        // Check special standard puzzles first (like megaminx)
-        if (p === 'megaminx') {
+        // Check special standard puzzles first (like megaminx, pyraminx)
+        if (p === 'megaminx' || p === 'pyraminx') {
             category = 'standard';
             isFound = true;
         }
@@ -285,7 +288,8 @@ export function renderLeaderboardUI(leaderboardData, puzzleSize = 3) {
             'molecube': 'Molecube',
             'voidcube': 'Void Cube',
             'acorns': 'Acorns Mod',
-            'megaminx': 'Megaminx'
+            'megaminx': 'Megaminx',
+            'pyraminx': 'Pyraminx'
         };
 
         if (modNames[puzzleSize]) {
