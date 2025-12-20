@@ -956,6 +956,8 @@ export class Pyraminx extends Puzzle {
         }
 
         const sticker = new THREE.Mesh(geo, mat);
+        sticker.castShadow = true;
+        sticker.receiveShadow = true;
 
         // Orient
         const matrix = new THREE.Matrix4().makeBasis(xAxis, yAxis, zAxis);
