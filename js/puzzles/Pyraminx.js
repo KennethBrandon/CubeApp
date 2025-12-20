@@ -771,7 +771,7 @@ export class Pyraminx extends Puzzle {
         let lastFace = -1;
 
         // Generate Layer Moves
-        for (let i = 0; i < 11; i++) {
+        for (let i = 0; i < this.scrambleLength; i++) {
             let faceIdx;
             do {
                 faceIdx = Math.floor(Math.random() * 4);
