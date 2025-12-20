@@ -553,10 +553,10 @@ export class Pyraminx extends Puzzle {
             const sliceVal = isTip ? -this.cutDistTip : -this.cutDistMiddle - 0.05;
 
             // Direction Logic:
-            // Standard (letter) = CW = -1
-            // Prime (shift) = CCW = 1
-            let dir = -1;
-            if (shift) dir = 1;
+            // Standard (letter) = CW = 1 (Axis points AWAY from viewer, so +angle is CW)
+            // Prime (shift) = CCW = -1
+            let dir = 1;
+            if (shift) dir = -1;
 
             queueMove(axisIdx.toString(), dir, state.animationSpeed, sliceVal);
             return true;
@@ -622,7 +622,7 @@ export class Pyraminx extends Puzzle {
     // This getMoveInfo is called by the queueMove system to get the actual cubies and axis for a move.
     getMoveInfo(axisStr, dir, sliceVal) {
         const faceIdx = parseInt(axisStr);
-        console.log(`[getMoveInfo] Called with axis: ${axisStr}, sliceVal: ${sliceVal}, total pieces: ${this.cubieList.length}`);
+        // console.log(`[getMoveInfo] Called with axis: ${axisStr}, sliceVal: ${sliceVal}, total pieces: ${this.cubieList.length}`);
 
         if (!isNaN(faceIdx) && faceIdx >= 0 && faceIdx < 4) {
             const normal = this.faceNormals[faceIdx];
@@ -630,7 +630,7 @@ export class Pyraminx extends Puzzle {
             // Use provided sliceVal or default to Deep (0.0)
             const threshold = (typeof sliceVal === 'number') ? sliceVal : -this.cutDistMiddle;
 
-            console.log(`[getMoveInfo] Threshold: ${threshold.toFixed(2)}, checking ${this.cubieList.length} pieces`);
+            // console.log(`[getMoveInfo] Threshold: ${threshold.toFixed(2)}, checking ${this.cubieList.length} pieces`);
 
             // Find pieces "above" the cut (further out in negative normal direction)
             const cubies = this.cubieList.filter(c => {
@@ -656,7 +656,7 @@ export class Pyraminx extends Puzzle {
     getSliceCubies(axisStr, sliceVal) {
         // Called by attachSliceToPivot during drag operations
         const faceIdx = parseInt(axisStr);
-        console.log(`[getSliceCubies] Called with axis: ${axisStr}, sliceVal: ${sliceVal}`);
+        // console.log(`[getSliceCubies] Called with axis: ${axisStr}, sliceVal: ${sliceVal}`);
 
         if (!isNaN(faceIdx) && faceIdx >= 0 && faceIdx < 4) {
             const normal = this.faceNormals[faceIdx];
@@ -670,7 +670,7 @@ export class Pyraminx extends Puzzle {
                 return isSelected;
             });
 
-            console.log(`[getSliceCubies] Returning ${cubies.length} pieces`);
+            // console.log(`[getSliceCubies] Returning ${cubies.length} pieces`);
             return cubies;
         }
         return [];
@@ -698,40 +698,28 @@ export class Pyraminx extends Puzzle {
         // Use a threshold halfway between tip and deep
         const boundary = (tipCut + deepCut) / 2;
 
-        // If sliceVal is LESS than boundary (more negative), it selects FEWER pieces -> Tip?
-        // Wait, dot product logic:
-        // dot <= limit.
-        // Tip Limit: -2.0. Selects pieces with dot <= -2.0 (Only tip).
-        // Deep Limit: -0.4. Selects pieces with dot <= -0.4 (Tip + Middle).
-        // So if sliceVal is -2.0 (Tip), it is < -1.2.
-        // If sliceVal is -0.4 (Deep), it is > -1.2.
-
-        // HOWEVER, to enable WCA notation for the reset/replay, we need to handle the sliceVal passed in.
-        // Standard scramble: Tips use -this.cutDistTip. Layers use -this.cutDistMiddle.
-
         if (sliceVal < boundary) {
             letter = letter.toLowerCase();
         }
 
         let suffix = '';
-        // Turns: 1 = CCW ('), -1 = CW (no suffix) because of our coordinate system?
-        // Let's verify direction. 
-        // Standard (Right Hand Rule) around axis.
-        // If Axis points OUT:
-        // CW around Axis is negative angle?
-        // THREE.js rotation is CCW around positive axis.
-        // So dir=1 is CCW.
-        // WCA ' (Prime) is CCW? No. 
-        // WCA: U is Clockwise. U' is Counter-Clockwise.
-        // If our Axis 3 points DOWN (Yellow normal), looking from Top, it points AWAY.
-        // So CCW around Down Axis = CW looking from Top?
-        // This is tricky. Let's rely on visual test or existing logic.
-        // Existing logic for Cube: dir 1 = 90deg (Suffix '). dir -1 = -90deg (No suffix).
-        // So dir 1 maps to '.
+        // Turns: 
+        // Pyraminx Axis points AWAY from corner.
+        // 1 = CW (Standard)
+        // -1 = CCW (Prime)
 
-        if (turns === 1) suffix = "'"; // CCW
-        else if (turns === -1) suffix = ""; // CW
-        // Note: If moves are double (rare in Pyraminx), handle 2/-2?
+        // Normalize turns (modulo 3)
+        // 3 turns = 0 (No move)
+        // 2 turns = -1 (Prime)
+        // -2 turns = 1 (Standard)
+        let t = turns % 3;
+        if (t === 2) t = -1;
+        if (t === -2) t = 1;
+
+        if (t === 0) return null; // No net move
+
+        if (t === -1) suffix = "'"; // CCW/Prime
+        else if (t === 1) suffix = ""; // CW/Standard
 
         return letter + suffix;
     }
@@ -754,9 +742,9 @@ export class Pyraminx extends Puzzle {
         if (axisIdx === undefined) return null;
 
         // Direction:
-        // In getNotation: 1 -> ', -1 -> ""
-        // So: ' -> 1, "" -> -1
-        const dir = prime ? 1 : -1;
+        // Prime (') -> -1 (CCW)
+        // Standard -> 1 (CW)
+        const dir = prime ? -1 : 1;
 
         // Slice Value
         const sliceVal = isTip ? -this.cutDistTip - 0.1 : -this.cutDistMiddle - 0.05;
@@ -793,38 +781,38 @@ export class Pyraminx extends Puzzle {
 
             // Random direction
             const isPrime = Math.random() < 0.5;
-            // Map faceIdx to Axis for our system (B=0, L=1, R=2, U=3)
-            // But let's build the Move Object directly.
+
+            // Direction: Prime -> -1, Standard -> 1
+            const dir = isPrime ? -1 : 1;
 
             moves.push({
                 axis: faceIdx.toString(), // 0,1,2,3 map directly to B,L,R,U
-                dir: isPrime ? 1 : -1, // 1 for ', -1 for normal
+                dir: dir,
                 sliceVal: -this.cutDistMiddle - 0.05
             });
         }
 
         // Generate Tip Moves (independent)
-        tipMoves.forEach((t, idx) => {
-            // idx 0->u->3 ?? No.
-            // tipMoves defined as u,l,r,b...
-            // Indices: u->3, l->1, r->2, b->0
-            const map = [3, 1, 2, 0];
-            const axis = map[idx];
+        // tipMoves = ['u', 'l', 'r', 'b']
+        // Mapping: u->3, l->1, r->2, b->0
+        const tipMap = [3, 1, 2, 0];
 
+        tipMap.forEach(axis => {
             const state = Math.floor(Math.random() * 3); // 0, 1, 2
             // 0: No move
-            // 1: Normal
-            // 2: Prime
+            // 1: Normal (1) -> CW
+            // 2: Prime (-1) -> CCW
 
             if (state === 1) {
-                moves.push({ axis: axis.toString(), dir: -1, sliceVal: -this.cutDistTip - 0.1 });
-            } else if (state === 2) {
                 moves.push({ axis: axis.toString(), dir: 1, sliceVal: -this.cutDistTip - 0.1 });
+            } else if (state === 2) {
+                moves.push({ axis: axis.toString(), dir: -1, sliceVal: -this.cutDistTip - 0.1 });
             }
         });
 
         return moves;
     }
+
 
     getDragAxis(faceNormal, screenMoveVec, intersectedCubie, camera) {
         if (!intersectedCubie) return null;
@@ -1245,6 +1233,23 @@ export class Pyraminx extends Puzzle {
 
     getSnapAngle() {
         return (Math.PI * 2) / 3; // 120 degrees
+    }
+
+    isSolved() {
+        // For Pyraminx, all pieces (tips, centers, edges) must be in their original orientation (Identity)
+        // relative to the puzzle container. This works because:
+        // 1. Tips/Centers have 3 colors, so orientation is unique.
+        // 2. Edges have 2 colors, so flipped state is distinct.
+        // 3. There are no single-color centers that can rotate freely.
+        const identity = new THREE.Quaternion();
+        const epsilon = 0.1; // Tolerance in radians (~5.7 degrees)
+
+        for (const group of this.cubieList) {
+            if (group.quaternion.angleTo(identity) > epsilon) {
+                return false;
+            }
+        }
+        return true;
     }
 
     getRotationAxes() {
