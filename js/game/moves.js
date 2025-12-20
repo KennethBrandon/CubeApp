@@ -134,67 +134,67 @@ export function performMove(axisStr, direction, duration, sliceVal = null) {
                 }
             }
         }
-
-        // Generic slice selection
-        if (!isCustom && sliceVal !== null && sliceVal !== Infinity) {
-            cubies = getCubiesInSlice(axisStr === 'x' || axisStr === 'R' || axisStr === 'L' || axisStr === 'M' ? 'x' :
-                (axisStr === 'y' || axisStr === 'U' || axisStr === 'D' || axisStr === 'E' ? 'y' : 'z'), sliceVal);
-
-            // Adjust rotation axis based on Face Polarity
-            // R, U, F are "Positive Faces" but their rotation is defined as Clockwise, 
-            // which corresponds to NEGATIVE rotation around their respective positive axes (Right Hand Rule).
-            // L, D, B are "Negative Faces" and their Clockwise rotation corresponds to POSITIVE rotation around their axes (or rather, around the main axis).
-            // S follows F (Positive Face logic), so it needs negation.
-
-            if (['R', 'U', 'F', 'S', 'X', 'Y', 'Z'].includes(axisStr)) {
-                axisVector.negate();
-            } else if (['L', 'D', 'B', 'M', 'E'].includes(axisStr)) {
-                // Do nothing, standard axis direction is correct for L, D, B, M, E
-            } else {
-                // Fallback for generic 'x', 'y', 'z' moves (e.g. from arrow keys or other sources)
-                // If sliceVal > 0, we assume it behaves like R/U/F
-                if (sliceVal > 0) {
-                    axisVector.negate();
-                }
-            }
-        } else if (cubies.length === 0) {
-            // Whole cube rotation (M, E, S or similar)
-            cubies = state.allCubies;
-
-            // Adjust direction for whole cube rotations (x, y, z)
-            // x follows R (negate)
-            // y follows U (negate)
-            // z follows F (negate)
-            if (sliceVal === Infinity || ['x', 'y', 'z', 'X', 'Y', 'Z'].includes(axisStr)) {
-                axisVector.negate();
-            }
-        }
-
-        state.pivot.rotation.set(0, 0, 0);
-        state.pivot.position.set(0, 0, 0);
-        state.cubeWrapper.add(state.pivot);
-        cubies.forEach(c => state.pivot.attach(c));
-
-        const targetAngle = customAngle !== null ? customAngle : direction * (Math.PI / 2);
-        const startTime = Date.now();
-
-        function loop() {
-            const now = Date.now();
-            let progress = (now - startTime) / duration;
-            if (progress > 1) progress = 1;
-
-            const ease = 1 - Math.pow(1 - progress, 3); // Cubic out
-            state.pivot.setRotationFromAxisAngle(axisVector, targetAngle * ease);
-
-            if (progress < 1) {
-                requestAnimationFrame(loop);
-            } else {
-                finishMove(direction, axisVector, sliceVal);
-                processQueue();
-            }
-        }
-        loop();
     }
+
+    // Generic slice selection
+    if (!isCustom && sliceVal !== null && sliceVal !== Infinity) {
+        cubies = getCubiesInSlice(axisStr === 'x' || axisStr === 'R' || axisStr === 'L' || axisStr === 'M' ? 'x' :
+            (axisStr === 'y' || axisStr === 'U' || axisStr === 'D' || axisStr === 'E' ? 'y' : 'z'), sliceVal);
+
+        // Adjust rotation axis based on Face Polarity
+        // R, U, F are "Positive Faces" but their rotation is defined as Clockwise, 
+        // which corresponds to NEGATIVE rotation around their respective positive axes (Right Hand Rule).
+        // L, D, B are "Negative Faces" and their Clockwise rotation corresponds to POSITIVE rotation around their axes (or rather, around the main axis).
+        // S follows F (Positive Face logic), so it needs negation.
+
+        if (['R', 'U', 'F', 'S', 'X', 'Y', 'Z'].includes(axisStr)) {
+            axisVector.negate();
+        } else if (['L', 'D', 'B', 'M', 'E'].includes(axisStr)) {
+            // Do nothing, standard axis direction is correct for L, D, B, M, E
+        } else {
+            // Fallback for generic 'x', 'y', 'z' moves (e.g. from arrow keys or other sources)
+            // If sliceVal > 0, we assume it behaves like R/U/F
+            if (sliceVal > 0) {
+                axisVector.negate();
+            }
+        }
+    } else if (cubies.length === 0) {
+        // Whole cube rotation (M, E, S or similar)
+        cubies = state.allCubies;
+
+        // Adjust direction for whole cube rotations (x, y, z)
+        // x follows R (negate)
+        // y follows U (negate)
+        // z follows F (negate)
+        if (sliceVal === Infinity || ['x', 'y', 'z', 'X', 'Y', 'Z'].includes(axisStr)) {
+            axisVector.negate();
+        }
+    }
+
+    state.pivot.rotation.set(0, 0, 0);
+    state.pivot.position.set(0, 0, 0);
+    state.cubeWrapper.add(state.pivot);
+    cubies.forEach(c => state.pivot.attach(c));
+
+    const targetAngle = customAngle !== null ? customAngle : direction * (Math.PI / 2);
+    const startTime = Date.now();
+
+    function loop() {
+        const now = Date.now();
+        let progress = (now - startTime) / duration;
+        if (progress > 1) progress = 1;
+
+        const ease = 1 - Math.pow(1 - progress, 3); // Cubic out
+        state.pivot.setRotationFromAxisAngle(axisVector, targetAngle * ease);
+
+        if (progress < 1) {
+            requestAnimationFrame(loop);
+        } else {
+            finishMove(direction, axisVector, sliceVal);
+            processQueue();
+        }
+    }
+    loop();
 }
 
 export function finishMove(turns, axisVectorOrAxis, sliceVal) {
