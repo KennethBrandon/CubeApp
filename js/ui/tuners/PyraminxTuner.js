@@ -50,6 +50,7 @@ function createPyraminxTuner() {
             ${createSlider('Sticker Normal Scale', 'stickerNormalScale', 0.0, 1.0, 0.01)}
             ${createCheckbox('Use Sparkle', 'stickerUseSparkle')}
             ${createSlider('Cubie Gap', 'cubieGap', 0.0, 0.05, 0.001)}
+            ${createSlider('Height Offset', 'heightOffset', -0.5, 0.5, 0.01)}
             ${createSlider('Scramble Length', 'scrambleLength', 1, 50, 1)}
         </div>
 
@@ -90,7 +91,7 @@ function syncValues() {
     const params = [
         'radius', 'surfaceDist', 'cutDistTip', 'cutDistMiddle', 'stickerScale', 'stickerOffset',
         'stickerRadius', 'filletRadius', 'filletSteps', 'cubieGap', 'stickerRoughness', 'stickerMetalness', 'stickerNormalScale',
-        'scrambleLength'
+        'scrambleLength', 'heightOffset'
     ];
 
     params.forEach(prop => {
@@ -193,6 +194,7 @@ function attachPyraminxListeners() {
             stickerNormalScale: 0.75,
             stickerUseSparkle: true,
             scrambleLength: 25,
+            heightOffset: 0.0,
             showDebugPlanes: false,
             showDebugColors: false,
             showDebugArrows: false

@@ -62,6 +62,7 @@ export class Pyraminx extends Puzzle {
         this.stickerOffset = 0.001;
         this.stickerRadius = 0.05;
         this.cubieGap = 0.003;
+        this.heightOffset = 0.0; // Lift up slightly to avoid clipping
         this.filletRadius = 0.055;
         this.filletSteps = 10; // Number of intermediate planes for smooth filleting
         this.stickerRoughness = 0.30;
@@ -1223,9 +1224,10 @@ export class Pyraminx extends Puzzle {
         sticker.userData = { isSticker: true, faceIndex: faceIdx };
 
         group.add(sticker);
+        if (this.parent) {
+            this.parent.position.y = this.heightOffset || 0;
+        }
     }
-
-
 
     isFaceRectangular(axis) {
         return false; // Pyraminx faces are triangular
@@ -1241,21 +1243,86 @@ export class Pyraminx extends Puzzle {
         // 1. Tips/Centers have 3 colors, so orientation is unique.
         // 2. Edges have 2 colors, so flipped state is distinct.
         // 3. There are no single-color centers that can rotate freely.
-        const identity = new THREE.Quaternion();
+        if (this.cubieList.length === 0) return true;
+
+        const referenceQuat = this.cubieList[0].quaternion;
         const epsilon = 0.1; // Tolerance in radians (~5.7 degrees)
 
-        for (const group of this.cubieList) {
-            if (group.quaternion.angleTo(identity) > epsilon) {
+        for (let i = 1; i < this.cubieList.length; i++) {
+            const group = this.cubieList[i];
+            if (group.quaternion.angleTo(referenceQuat) > epsilon) {
                 return false;
             }
         }
         return true;
     }
 
+    getSliceCubies(axis, sliceVal) {
+        // Handle whole puzzle rotation
+        if (sliceVal === Infinity) {
+            return this.cubieList;
+        }
+
+        const cubies = [];
+        const norm = this.faceNormals[parseInt(axis)];
+        // Tolerance for floating point comparisons
+        const epsilon = 0.1;
+
+        // Determine the direction of the normal for comparison
+        // If sliceVal is negative, we're looking for cubies on the "other" side of the plane
+        const effectiveNormal = sliceVal < 0 ? norm.clone().negate() : norm;
+        const effectiveSliceVal = Math.abs(sliceVal);
+
+        for (const cubie of this.cubieList) {
+            // Get the cubie's position in local coordinates (relative to wrapper/pivot)
+            // Using world position is risky if wrapper is rotated.
+            const pos = cubie.position;
+
+            // Project the cubie's position onto the normal vector
+            const projection = pos.dot(effectiveNormal);
+
+            // Check if the cubie is on the correct side of the slicing plane
+            // For a positive sliceVal, we want cubies where projection >= sliceVal - epsilon
+            // For a negative sliceVal, we want cubies where projection <= sliceVal + epsilon (which is projection >= -abs(sliceVal) - epsilon)
+            // So, for effectiveSliceVal, we want projection >= effectiveSliceVal - epsilon
+            if (projection >= effectiveSliceVal - epsilon) {
+                cubies.push(cubie);
+            }
+        }
+        return cubies;
+    }
+
     getRotationAxes() {
         const axes = {};
         this.faceNormals.forEach((n, i) => axes[i] = n);
         return axes;
+    }
+
+    getLockedRotationAxis(axis) {
+        // Axis Lock Logic:
+        // 'y' (Horizontal Drag) -> U axis (Face 3)
+        // 'z' (Right Vertical Drag) -> R axis (Face 2)
+        // 'x' (Left Vertical Drag) -> L axis (Face 1)
+
+        // Note: The interactions.js sends 'x', 'y', 'z' based on screen zone.
+        // We map these to our specific Pyraminx axes.
+
+        if (axis === 'y') {
+            return this.faceNormals[3].clone().negate(); // U (Inverted per user request)
+        } else if (axis === 'z') {
+            return this.faceNormals[0].clone(); // B (Requested change: Right side -> B Axis)
+        } else if (axis === 'x') {
+            return this.faceNormals[1].clone(); // L
+        }
+        return new THREE.Vector3(0, 1, 0);
+    }
+
+    dispose() {
+        // Reset container position
+        if (this.parent) {
+            this.parent.position.y = 0;
+        }
+        super.dispose();
     }
 }
 
