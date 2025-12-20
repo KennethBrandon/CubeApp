@@ -154,6 +154,8 @@ export function openLeaderboardModal() {
             if (!puzzleCategories.mirror.includes(p)) {
                 initialCategory = 'custom';
             }
+        } else if (p === 'megaminx' || p === 'pyraminx') {
+            initialCategory = 'standard';
         } else if (p.includes('x')) {
             // Could be cuboid or standard/big (if NxNxN) or custom
             const parts = p.split('x');
@@ -175,15 +177,19 @@ export function openLeaderboardModal() {
                     }
                 }
             }
-        } else if (p === 'megaminx') {
-            initialCategory = 'standard';
+
         } else if (p === 'molecube' || p === 'voidcube' || p === 'acorns' || (state.customPuzzles && state.customPuzzles.some(entry => entry.id === p))) {
             initialCategory = 'mods';
         } else {
             // Number (Standard or Big)
             const size = parseInt(p);
-            if (size <= 7) initialCategory = 'standard';
-            else initialCategory = 'big';
+            if (!isNaN(size)) {
+                if (size <= 7) initialCategory = 'standard';
+                else initialCategory = 'big';
+            } else {
+                // Fallback to custom if it's some unknown string
+                initialCategory = 'custom';
+            }
         }
     } else {
         // Default to active puzzle
@@ -225,6 +231,11 @@ export function openLeaderboardModal() {
             // It's a Megaminx
             initialCategory = 'standard';
             initialPuzzle = 'megaminx';
+
+        } else if (active && active.constructor.name === 'Pyraminx') {
+            // It's a Pyraminx
+            initialCategory = 'standard';
+            initialPuzzle = 'pyraminx';
 
         } else if (dims.x !== dims.y || dims.y !== dims.z) {
             // Cuboid
@@ -348,7 +359,11 @@ function renderPuzzleChips(category, autoSelect = false, smooth = true) {
 
         // Add Standard & Big
         [...puzzleCategories.standard, ...puzzleCategories.big].forEach(x => {
-            knownSorted.add(`${x}x${x}x${x}`);
+            if (typeof x === 'number') {
+                knownSorted.add(`${x}x${x}x${x}`);
+            } else {
+                knownSorted.add(x); // e.g. "megaminx", "pyraminx"
+            }
         });
 
         // Add Cuboids
