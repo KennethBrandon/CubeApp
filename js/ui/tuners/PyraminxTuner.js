@@ -38,6 +38,10 @@ function createPyraminxTuner() {
                 <input type="checkbox" id="chk-pyraminx-debug-colors" class="mr-2 w-4 h-4 text-green-500 bg-gray-700 border-gray-600 rounded focus:ring-green-500">
                 <label for="chk-pyraminx-debug-colors" class="text-gray-300 text-xs">Show Debug Colors</label>
             </div>
+            <div class="flex items-center mt-2">
+                <input type="checkbox" id="chk-pyraminx-debug-arrows" class="mr-2 w-4 h-4 text-green-500 bg-gray-700 border-gray-600 rounded focus:ring-green-500">
+                <label for="chk-pyraminx-debug-arrows" class="text-gray-300 text-xs">Show Debug Arrows</label>
+            </div>
         </div>
 
         <div class="mt-4 pt-4 border-t border-white/10 space-y-4">
@@ -106,6 +110,10 @@ function syncValues() {
     if (debugColorsCheckbox) {
         debugColorsCheckbox.checked = p.showDebugColors || false;
     }
+    const debugArrowsCheckbox = document.getElementById('chk-pyraminx-debug-arrows');
+    if (debugArrowsCheckbox) {
+        debugArrowsCheckbox.checked = p.showDebugArrows || false;
+    }
     const sparkleCheck = document.getElementById('pyraminx-stickerUseSparkle');
     if (sparkleCheck) sparkleCheck.checked = p.stickerUseSparkle;
 }
@@ -130,10 +138,17 @@ function attachPyraminxListeners() {
             puzzle.showDebugPlanes = e.target.checked;
         } else if (e.target.type === 'checkbox' && e.target.id === 'chk-pyraminx-debug-colors') {
             puzzle.showDebugColors = e.target.checked;
+        } else if (e.target.type === 'checkbox' && e.target.id === 'chk-pyraminx-debug-arrows') {
+            puzzle.showDebugArrows = e.target.checked;
         }
 
         if (puzzle.rebuildGeometry) {
-            puzzle.rebuildGeometry();
+            // For planes/colors rebuild is needed, for arrows it updates on next click.
+            // But let's rebuild to be safe/consistent if needed.
+            // Actually arrows are dynamic.
+            if (e.target.id !== 'chk-pyraminx-debug-arrows') {
+                puzzle.rebuildGeometry();
+            }
         }
     };
 
@@ -144,6 +159,7 @@ function attachPyraminxListeners() {
 
     document.getElementById('chk-pyraminx-debug-planes').addEventListener('change', updatePuzzle);
     document.getElementById('chk-pyraminx-debug-colors').addEventListener('change', updatePuzzle);
+    document.getElementById('chk-pyraminx-debug-arrows').addEventListener('change', updatePuzzle);
 
     const checkboxes = document.querySelectorAll('#pyraminx-tuner-ui input[type="checkbox"]');
     checkboxes.forEach(chk => {
@@ -178,7 +194,8 @@ function attachPyraminxListeners() {
             stickerUseSparkle: true,
             scrambleLength: 25,
             showDebugPlanes: false,
-            showDebugColors: false
+            showDebugColors: false,
+            showDebugArrows: false
         };
 
         if (state.activePuzzle && state.activePuzzle.constructor.name === 'Pyraminx') {

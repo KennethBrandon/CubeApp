@@ -72,7 +72,9 @@ export class Pyraminx extends Puzzle {
 
         this.showDebugPlanes = false; // Disabled by default
         this.showDebugColors = false; // User requested default off
+        this.showDebugArrows = false; // Enabled by default
         this.debugPlanes = [];
+        this.debugArrows = [];
     }
 
     rebuildGeometry() {
@@ -687,6 +689,8 @@ export class Pyraminx extends Puzzle {
         let bestMatch = null;
         let bestScore = 0;
 
+        const currentFaceNormal = this.faceNormals[bestFaceIdx];
+
         candidates.forEach(axisIdx => {
             const axisVec = this.faceNormals[axisIdx];
 
@@ -697,23 +701,38 @@ export class Pyraminx extends Puzzle {
             const clickedPiecePos = initial.clone().applyQuaternion(intersectedCubie.quaternion).add(intersectedCubie.position);
             const clickedPieceDot = clickedPiecePos.dot(axisVec);
             console.log(`  Testing axis ${axisIdx}: clicked piece dot = ${clickedPieceDot.toFixed(3)}`);
-            if (clickedPieceDot > -0.1) {
-                console.log(`    Rejected: dot too high (not on opposite side)`);
-                // Piece is on the same side as the rotation axis, skip this candidate
+
+            // CRITICAL: Check if the clicked piece is part of the moving slice for this axis.
+            // A piece moves if dot(pos, axis) <= -cutDist.
+            // Deep limit is -this.cutDistMiddle.
+            // We adding a small tolerance. If dot > -cutDistMiddle, it's in the Base (static).
+            // We should only consider axes where the piece MOVES.
+            const threshold = -this.cutDistMiddle + 0.1;
+            if (clickedPieceDot > threshold) {
+                // Piece is in the static base for this axis, so dragging it shouldn't rotate this axis.
+                // console.log(`    Rejected: dot ${clickedPieceDot.toFixed(3)} > threshold ${threshold.toFixed(3)} (Piece is static Base)`);
                 return;
             }
 
-            // Calculate Tangent in World Space
-            const axisVecWorld = axisVec.clone().transformDirection(state.cubeWrapper.matrixWorld);
-            const piecePosWorld = intersectedCubie.position.clone().applyMatrix4(state.cubeWrapper.matrixWorld);
-            const wrapperPosWorld = new THREE.Vector3().setFromMatrixPosition(state.cubeWrapper.matrixWorld);
+            // CRITICAL: Calculate Cut Direction on the Face Surface
+            // The user wants the drag to follow the visible sticker lines.
+            // These lines are formed by the intersection of the Cut Plane (perp to axisVec) and the Face Plane (perp to currentFaceNormal).
+            // Direction = cross(axisVec, currentFaceNormal).
 
-            // Tangent direction of rotation (Right hand rule: axis x position)
-            const tangent = new THREE.Vector3().crossVectors(axisVecWorld, piecePosWorld.sub(wrapperPosWorld)).normalize();
+            const axisVecWorld = axisVec.clone().transformDirection(state.cubeWrapper.matrixWorld).normalize();
+            const faceNormalWorld = currentFaceNormal.clone().transformDirection(state.cubeWrapper.matrixWorld).normalize();
 
-            // Project to screen
-            const p1 = piecePosWorld.clone().add(wrapperPosWorld); // Restore world pos
-            const p2 = p1.clone().add(tangent);
+            let cutDirWorld = new THREE.Vector3().crossVectors(axisVecWorld, faceNormalWorld).normalize();
+
+            // Alignment Note:
+            // The motion of the face center (at FaceNormal * dist) is cross(Axis, FaceNormal) * dist.
+            // Since dist > 0, cutDirWorld = cross(Axis, FaceNormal) is ALREADY aligned with the physical motion.
+            // We previously checked against the piece centroid tangent, but for Tips the centroid is on the axis,
+            // resulting in a zero/noisy tangent that caused random flipping. We skip that check now.
+
+            // Project 'cutDirWorld' to screen for comparison
+            const p1 = intersectedCubie.position.clone().applyMatrix4(state.cubeWrapper.matrixWorld).add(new THREE.Vector3().setFromMatrixPosition(state.cubeWrapper.matrixWorld)); // Center of piece
+            const p2 = p1.clone().add(cutDirWorld); // Point along cut line
 
             const v1 = p1.clone().project(camera);
             const v2 = p2.clone().project(camera);
@@ -724,13 +743,14 @@ export class Pyraminx extends Puzzle {
             const score = Math.abs(screenTangent.dot(screenMoveVec));
             if (score > bestScore) {
                 bestScore = score;
-                bestMatch = { axis: String(axisIdx), axisVec: axisVec };
+                bestMatch = { axis: String(axisIdx), axisVec: axisVec, cutDirWorld: cutDirWorld, screenTangent: screenTangent };
             }
         });
 
         if (bestMatch && bestScore > 0.4) {
             const axisIdx = parseInt(bestMatch.axis);
             const axisVec = bestMatch.axisVec;
+            const screenTangent = bestMatch.screenTangent;
 
             // Determine slice value based on the clicked piece's TYPE
             // If clicking a tip, only move tips
@@ -751,21 +771,25 @@ export class Pyraminx extends Puzzle {
             console.log(`[getDragAxis] Clicked piece type: ${pieceType}, using sliceVal: ${sliceVal.toFixed(2)}`);
 
             // World Axis for Pivot Rotation
-            const axisVecWorld = axisVec.clone().transformDirection(state.cubeWrapper.matrixWorld).normalize();
+            // const axisVecWorld = axisVec.clone().transformDirection(state.cubeWrapper.matrixWorld).normalize(); // No longer needed here
 
             // Calculate Screen Tangent to determine X vs Y input dominance
-            const piecePosWorld = intersectedCubie.position.clone().applyMatrix4(state.cubeWrapper.matrixWorld);
-            const wrapperPosWorld = new THREE.Vector3().setFromMatrixPosition(state.cubeWrapper.matrixWorld);
-            const tangent = new THREE.Vector3().crossVectors(axisVecWorld, piecePosWorld.sub(wrapperPosWorld)).normalize();
+            // const piecePosWorld = intersectedCubie.position.clone().applyMatrix4(state.cubeWrapper.matrixWorld); // No longer needed here
+            // const wrapperPosWorld = new THREE.Vector3().setFromMatrixPosition(state.cubeWrapper.matrixWorld); // No longer needed here
+            // const tangent = new THREE.Vector3().crossVectors(axisVecWorld, piecePosWorld.sub(wrapperPosWorld)).normalize(); // No longer needed here
 
-            const p1 = piecePosWorld.clone().add(wrapperPosWorld);
-            const p2 = p1.clone().add(tangent);
-            const v1 = p1.clone().project(camera);
-            const v2 = p2.clone().project(camera);
-            const screenTangent = new THREE.Vector2(v2.x - v1.x, -(v2.y - v1.y)).normalize();
+            // const p1 = piecePosWorld.clone().add(wrapperPosWorld); // No longer needed here
+            // const p2 = p1.clone().add(tangent); // No longer needed here
+            // const v1 = p1.clone().project(camera); // No longer needed here
+            // const v2 = p2.clone().project(camera); // No longer needed here
+            // const screenTangent = new THREE.Vector2(v2.x - v1.x, -(v2.y - v1.y)).normalize(); // No longer needed here
 
             const inputAxis = Math.abs(screenTangent.x) > Math.abs(screenTangent.y) ? 'x' : 'y';
             const angleScale = Math.sign(screenTangent[inputAxis]) || 1;
+
+            if (this.showDebugArrows) {
+                this.updateDebugArrows(intersectedCubie, candidates, camera, bestFaceIdx);
+            }
 
             return {
                 dragAxis: bestMatch.axis,
@@ -775,7 +799,76 @@ export class Pyraminx extends Puzzle {
                 dragInputAxis: inputAxis
             };
         }
+
+        // Show debug arrows even if no match found, if enabled
+        if (this.showDebugArrows) {
+            this.updateDebugArrows(intersectedCubie, candidates, camera, bestFaceIdx);
+        }
+
         return null;
+    }
+
+    updateDebugArrows(intersectedCubie, candidates, camera, currentFaceIdx) {
+        // Clear existing
+        if (this.debugArrows) {
+            this.debugArrows.forEach(a => {
+                if (a.parent) a.parent.remove(a);
+            });
+        }
+        this.debugArrows = [];
+
+        if (!intersectedCubie || currentFaceIdx === undefined || currentFaceIdx < 0) return;
+
+        // Draw arrows for each candidate axis
+        const currentFaceNormal = this.faceNormals[currentFaceIdx];
+
+        candidates.forEach(axisIdx => {
+            const axisVec = this.faceNormals[axisIdx];
+
+            // Check if valid (copy logic from getDragAxis)
+            const initial = intersectedCubie.userData.initialCenter;
+            if (!initial) return;
+            const clickedPiecePos = initial.clone().applyQuaternion(intersectedCubie.quaternion).add(intersectedCubie.position);
+            const clickedPieceDot = clickedPiecePos.dot(axisVec);
+
+            const threshold = -this.cutDistMiddle + 0.1;
+            if (clickedPieceDot > threshold) return;
+            // Calculate Cut Direction in World Space
+            const axisVecWorld = axisVec.clone().transformDirection(state.cubeWrapper.matrixWorld).normalize();
+            const faceNormalWorld = currentFaceNormal.clone().transformDirection(state.cubeWrapper.matrixWorld).normalize();
+
+            let cutDirWorld = new THREE.Vector3().crossVectors(axisVecWorld, faceNormalWorld).normalize();
+
+            // Alignment Note: Same as getDragAxis.
+            // cutDirWorld is already aligned with positive rotation direction of the face center.
+
+            // Transform 'cutDirWorld' to Local Space for the visual arrow
+            const tangentLocal = cutDirWorld.clone().transformDirection(state.cubeWrapper.matrixWorld.clone().invert());
+
+            // VISUAL FIX: Place arrow on the sticker surface, not piece centroid, to avoid parallax errors
+            let originLocal = intersectedCubie.position.clone();
+
+            const sticker = intersectedCubie.children.find(c => c.userData.isSticker && c.userData.faceIndex === currentFaceIdx);
+            if (sticker) {
+                // Sticker pos is local to the piece group. Convert to 'this.parent' space.
+                // piece group has position and quaternion.
+                const stickerPos = sticker.position.clone().applyQuaternion(intersectedCubie.quaternion);
+                originLocal.add(stickerPos);
+            }
+
+            const len = 1.0; // Slightly shorter to fit on sticker
+            const color = 0xff0000;
+            const headLen = 0.3;
+            const headWidth = 0.15;
+
+            const arrow = new THREE.ArrowHelper(tangentLocal, originLocal, len, color, headLen, headWidth);
+            this.parent.add(arrow);
+            this.debugArrows.push(arrow);
+
+            const arrow2 = new THREE.ArrowHelper(tangentLocal.clone().negate(), originLocal, len, color, headLen, headWidth);
+            this.parent.add(arrow2);
+            this.debugArrows.push(arrow2);
+        });
     }
 
     addDebugPlanes() {
