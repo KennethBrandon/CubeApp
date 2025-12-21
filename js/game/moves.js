@@ -332,20 +332,31 @@ export function snapPivot(targetAngle, turns, axis, sliceVal) {
 }
 
 function normalizeTurns(turns) {
-    // -4..4 range usually
-    // 0 -> 0
-    // 1 -> 1
-    // 2 -> 2
-    // 3 -> -1
-    // 4 -> 0
-    // -1 -> -1
-    // -2 -> 2 (or -2)
-    // -3 -> 1
-    // -4 -> 0
+    const cycle = (state.activePuzzle && typeof state.activePuzzle.getCycleLength === 'function')
+        ? state.activePuzzle.getCycleLength()
+        : 4;
 
-    let t = turns % 4;
-    if (t === 3) return -1;
-    if (t === -3) return 1;
+    let t = Math.round(turns) % cycle;
+
+    if (cycle === 4) {
+        // Standard: 
+        // 0 -> 0
+        // 1 -> 1
+        // 2 -> 2
+        // 3 -> -1
+        if (t === 3) return -1;
+        if (t === -3) return 1;
+        // -1 -> -1
+        // -2 -> 2 (or -2)
+    } else if (cycle === 3) {
+        // Skewb:
+        // 0 -> 0 (360)
+        // 1 -> 1
+        // 2 -> -1
+        if (t === 2) return -1;
+        if (t === -2) return 1;
+    }
+
     if (t === 0) return 0;
     return t;
 }

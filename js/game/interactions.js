@@ -33,6 +33,7 @@ export function onMouseDown(event) {
             state.intersectedCubie = cubie;
             state.intersectedFaceNormal = intersects[0].face.normal.clone();
             state.intersectedFaceNormal.transformDirection(intersects[0].object.matrixWorld).normalize();
+            state.intersectedPoint = intersects[0].point.clone(); // Capture 3D point
             state.dragStartPoint.set(pos.x, pos.y);
             state.dragAxis = null;
             state.dragInputAxis = null;
@@ -336,7 +337,8 @@ function determineDragAxis(dx, dy) {
         state.intersectedFaceNormal,
         screenMoveVec,
         state.intersectedCubie,
-        state.camera
+        state.camera,
+        state.intersectedPoint // Pass 3D point
     );
 
     if (dragData) {

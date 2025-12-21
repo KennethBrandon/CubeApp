@@ -157,6 +157,8 @@ export async function submitScore(name, timeMs, timeString, scramble, solution) 
         puzzleType = 'megaminx';
     } else if (state.activePuzzle && state.activePuzzle.constructor.name === 'Pyraminx') {
         puzzleType = 'pyraminx';
+    } else if (state.activePuzzle && state.activePuzzle.constructor.name === 'Skewb') {
+        puzzleType = 'skewb';
     } else {
         // Standard dimensional logic
         let puzzleSize;

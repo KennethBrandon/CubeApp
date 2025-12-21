@@ -72,11 +72,15 @@ export class Skewb extends Puzzle {
         this.stickerUseSparkle = false;
 
         this.showDebugPlanes = false;
-        this.showDebugArrows = true; // User requested default ON
+        this.showDebugArrows = false;
         this.debugArrows = [];
 
         // Create geometry immediately
         this.rebuildGeometry();
+    }
+
+    getSnapAngle() {
+        return 2 * Math.PI / 3;
     }
 
     rebuildGeometry() {
@@ -492,6 +496,7 @@ export class Skewb extends Puzzle {
         }
 
         const sticker = new THREE.Mesh(stickerGeo, stickerMat);
+        sticker.userData = { isSticker: true };
         sticker.receiveShadow = true;
 
         // Rotate back
@@ -529,56 +534,134 @@ export class Skewb extends Puzzle {
         return cubies;
     }
 
+    // --- Interaction Methods ---
+
+    handleKeyDown(event) {
+        const key = event.key;
+        const lowerKey = key.toLowerCase();
+        const shift = event.shiftKey;
+        const dir = shift ? -1 : 1;
+
+        // Map keys to axes
+        // T -> uR (UBR)
+        // Y -> uL (UFL)
+        // R, L, U, B, F -> Standard corners
+
+        const layout = {
+            't': 'uR',
+            'y': 'uL',
+            'r': 'R',
+            'l': 'L',
+            'u': 'U',
+            'b': 'B',
+            'f': 'F',
+            'd': 'D'
+        };
+
+        if (layout.hasOwnProperty(lowerKey)) {
+            const axisStr = layout[lowerKey];
+            queueMove(axisStr, dir);
+            return true;
+        }
+
+        return false;
+    }
+
     getMoveInfo(axisStr, dir, sliceVal) {
         // console.log(`[Skewb.getMoveInfo] axisStr: ${axisStr}, dir: ${dir}, sliceVal: ${sliceVal}`);
+
         const notationMap = {
             'R': 0,
             'L': 1,
             'U': 2,
             'B': 3,
-            'F': 3, // F corner (1,1,1) is opposite B (-1,-1,-1). Same axis line.
-            // Move direction might need inversion compared to B.
+            'F': 3, // F is opposite B
+            'uR': 1, // uR (UBR) is opposite L
+            'uL': 0, // uL (UFL) is opposite R
+            'D': 2   // D (FDR) is opposite U
+        };
+
+        // Define which side of the axis (positive or negative) corresponds to the notation
+        // 1 = Positive Side (along axis)
+        // -1 = Negative Side (opposite axis)
+        const sideMap = {
+            'R': 1,
+            'L': 1,
+            'U': 1,
+            'B': 1,
+            'F': -1,
+            'uR': -1,
+            'uL': -1,
+            'D': -1
         };
 
         let axisIdx = parseInt(axisStr);
         let moveDir = dir;
+        let targetSide = 1; // Default to positive side
 
         if (isNaN(axisIdx)) {
             if (notationMap.hasOwnProperty(axisStr)) {
                 axisIdx = notationMap[axisStr];
 
-                // Handle F as inverse of B
-                if (axisStr === 'F') {
-                    // F moves select opposite corner, so we invert direction to match visual CW?
+                // Determine target side
+                targetSide = sideMap[axisStr] || 1;
+
+                // Logic for Inversion:
+                // If we are moving a "Negative Side" (Opposite) corner, we usually need to invert the rotation 
+                // to match the visual "Clockwise" expectation for that corner.
+                // Standard Logic: 
+                // Axis Defined 0..3.
+                // R (Axis 0, Pos): CW -> Angle * 1
+                // L (Axis 1, Pos): CW -> Angle * 1
+                // U (Axis 2, Pos): CW -> Angle * 1
+                // B (Axis 3, Pos): CW -> Angle * 1
+
+                // F (Axis 3, Neg): CW (Visual) -> CCW around Axis 3 -> Angle * -1
+                // uR (Axis 1, Neg): CW (Visual) -> CCW around Axis 1 -> Angle * -1
+                // uL (Axis 0, Neg): CW (Visual) -> CCW around Axis 0 -> Angle * -1
+
+                if (targetSide === -1) {
                     moveDir *= -1;
                 }
+
             } else {
                 console.warn(`[Skewb] Unknown axisStr: ${axisStr}`);
                 return null;
             }
+        } else {
+            // Numeric axis passed (e.g. from drag)
+            // Determine side from sliceVal if present
+            if (sliceVal !== null && sliceVal < -0.01) {
+                targetSide = -1;
+            }
         }
 
         const normal = this.axes[axisIdx];
-        if (!normal) {
-            console.warn(`[Skewb] No normal for axisIdx: ${axisIdx}`);
-            return null;
-        }
+        if (!normal) return null;
 
-        // Determine side
-        let sign = 1;
-        if (sliceVal !== null && sliceVal < -0.01) sign = -1;
-
-        // For F move (using B axis), we select the "F" side (-1 relative to B axis)
-        if (axisStr === 'F') sign = -1;
-
+        // Select Cubies
         const cubies = this.cubieList.filter(c => {
             const dot = c.position.dot(normal);
-            return sign > 0 ? dot > 0.01 : dot < -0.01;
+            return targetSide > 0 ? dot > 0.01 : dot < -0.01;
         });
 
-        // console.log(`[Skewb.getMoveInfo] Selected ${cubies.length} cubies for rotation.`);
+        // WCA Direction Compliance:
+        // WCA defines moves as Clockwise around the corner.
+        // Our Axes are defined pointing towards specific corners (R, L, U, B).
+        // If we select the Positive side (R, L, U, B), a positive rotation around the axis is CCW (Right Hand Rule).
+        // Wait, THREE.js rotation is CCW around axis for positive angle.
+        // So angle > 0 -> CCW.
+        // WCA "R" means Clockwise R.
+        // Facing R corner, Clockwise = Negative Rotation around axis pointing at you.
+        // So for "Normal" corners (R, L, U, B), "CW" -> Angle < 0.
 
-        // Direction Inversion for WCA compliance
+        // Let's test standard first. 
+        // If I pass dir=1 (CW), I usually want negative angle in THREE.js.
+        // `moves.js` often multiplies by (Math.PI/2) * dir.
+        // If dir=1 -> Angle = 90. 90 in Three.js is CCW.
+        // So visually that looks inverted.
+        // Let's invert ALL angles to match "Standard" CW = Negative Angle.
+
         const angle = moveDir * -1 * (2 * Math.PI / 3);
 
         return {
@@ -588,7 +671,149 @@ export class Skewb extends Puzzle {
         };
     }
 
-    getDragAxis(faceNormal, screenMoveVec, intersectedCubie, camera) {
+    getNotation(axis, sliceVal, turns) {
+        const axisIdx = parseInt(axis);
+        if (isNaN(axisIdx)) return null;
+
+        // turns: -1 (CW?), 1 (CCW?)
+        // In logMove/finishMove, turns is derived from angle.
+        // angle < 0 -> turns < 0? 
+        // If we inverted logic in getMoveInfo (dir 1 -> angle -1),
+        // Then an executed move of dir 1 results in turns = -1 (approx).
+        // Let's see what finishMove passes.
+        // It passes turns based on drag angle.
+        // If drag was CW (visual), angle is negative (standard 3D).
+        // turns is negative.
+
+        // So turns = -1 -> CW Visual.
+        // turns = 1 -> CCW Visual.
+
+        const isNegativeSide = (sliceVal < -0.01);
+
+        let prefix = '';
+
+        /* 
+           Mapping:
+           Axis 0: Pos -> R, Neg -> uL
+           Axis 1: Pos -> L, Neg -> uR
+           Axis 2: Pos -> U, Neg -> D (unused usually, maybe just D?)
+           Axis 3: Pos -> B, Neg -> F
+        */
+
+        if (axisIdx === 0) prefix = isNegativeSide ? 'uL' : 'R';
+        else if (axisIdx === 1) prefix = isNegativeSide ? 'uR' : 'L';
+        else if (axisIdx === 2) prefix = isNegativeSide ? 'D' : 'U'; // D is unofficial but logical
+        else if (axisIdx === 3) prefix = isNegativeSide ? 'F' : 'B';
+
+        // Inversion Logic for Notation
+        // If we are on Negative Side (uL, uR, F, D), the "Axis" points AWAY from the corner.
+        // A "CW" move around the corner (Visual CW) is CCW around the Axis (since axis points away?).
+        // Wait.
+        // Axis points to R. uL is opposite R.
+        // Vector R points AWAY from uL.
+        // Facing uL, the R-axis points into the screen (away from you).
+        // Positive Rotation around R-axis (CCW relative to R-axis) -> CCW from your view (facing uL).
+        // So Positive Angle -> CCW Visual.
+        // Negative Angle -> CW Visual.
+
+        // So for "Negative Side" corners (uL):
+        // Turns = -1 (Neg Angle) -> CW Visual.
+        // Turns = 1 (Pos Angle) -> CCW Visual.
+
+        // For "Positive Side" corners (R):
+        // Facing R, Axis points AT you.
+        // Positive Rotation (CCW relative to Axis) -> CCW Visual.
+        // Negative Rotation -> CW Visual.
+
+        // It seems consistent?
+        // If Turns < 0 -> CW.
+        // If Turns > 0 -> CCW (Prime).
+
+        let notationTurns = turns;
+
+        // Adjust for internal consistency if needed. 
+        // In previous logic I inverted F?
+        // Let's stick to: "CW Visual = Notation Base". "CCW Visual = Notation Prime".
+        // If turns < 0, that's CW. -> Base.
+        // If turns > 0, that's CCW. -> Prime.
+
+        // However, let's double check my Drag Logic.
+        // Drag produces an angle. 
+        // If I drag R CW, angle goes negative. turns = -1.
+        // Notation should be 'R'.
+
+        // If I drag F (Neg Side).
+        // If I drag F CW.
+        // Axis points Away.
+        // Visual CW = Rotation around Axis?
+        // Facing F, Axis points Away. Use Right Hand Thumb points away. Fingers curl CW.
+        // So Positive Rotation (CCW relative to axis?) No. Positive is CCW.
+        // If Thumb points Away (Positive Z?? No, Axis direction).
+        // If Axis points Away, Positive Rotation is CW (Visual).
+        // So Backside: Positive Angle = CW Visual.
+        // Frontside: Negative Angle = CW Visual.
+
+        // Correct Logic:
+        // Positive Side (R, L, U, B): CW Visual = Negative Angle (turns < 0).
+        // Negative Side (uL, uR, F, D): CW Visual = Positive Angle (turns > 0).
+
+        // So if Negative Side, we need to invert turns to match "Standard" notation direction.
+        if (isNegativeSide) {
+            notationTurns *= -1;
+        }
+
+        // Now:
+        // notationTurns < 0 -> CW -> Base
+        // notationTurns > 0 -> CCW -> Prime
+
+        // Wait. 'R' usually means CW. 
+        // If `turns` is -1 (CW on R), then I want "R".
+        // If `turns` is 1 (CCW on R), then I want "R'".
+
+        let suffix = '';
+        if (Math.abs(notationTurns) === -1 || notationTurns < 0) {
+            // CW. No suffix? 
+            // Wait, usually turns is 1 for base?
+            // Standard Moves:
+            // R -> 1 turn?
+            // queueMove('R', 1) -> 
+            // getMoveInfo calls angle = dir * -1 * val.
+            // dir=1 -> angle = -90.
+            // pivot rotates -90.
+            // finishMove sees -90. turns = -1.
+            // logMove sees turns = -1.
+            // notation should be 'R'. 
+
+            // So turns < 0 => "R" (Base).
+            // turns > 0 => "R'" (Prime).
+
+            suffix = '';
+        } else {
+            suffix = "'";
+        }
+
+        // Handle double moves?? Skewb doesn't really have 2 moves, it's 120 degrees?
+        // My code used Math.PI * 2 / 3.
+        // turns will be fractional? 
+        // finishMove normalizes turns by 90 degrees usually?
+        // Skewb move is ~120 degrees.
+        // snapPivot: `targetTurns` based on `piHalf` (90).
+        // Skewb: 120 deg.
+        // My Generic Snap uses 90 deg.
+        // Skewb needs to override `getSnapAngle`? Yes.
+
+        // I should probably also implement `getSnapAngle` to return 120 degrees (2pi/3).
+        // Otherwise snap logic will try to snap to 90.
+
+        // But back to notation:
+        // If turns is negative -> Base.
+        // If turns is positive -> Prime.
+
+        return prefix + suffix;
+    }
+
+
+    getDragAxis(faceNormal, screenMoveVec, intersectedCubie, camera, intersectedPoint) {
         // console.log(`[Skewb.getDragAxis] Checking drag...`);
         if (!intersectedCubie) return null;
 
@@ -596,13 +821,16 @@ export class Skewb extends Puzzle {
         // Transform faceNormal to local space
         const localFaceNormal = faceNormal.clone().transformDirection(state.cubeWrapper.matrixWorld.clone().invert()).normalize();
 
-        // Find best matching face normal (0..5) - Wait, we don't have faceNormals array in Skewb like Pyraminx?
-        // We have keys in createGeometry. Let's reconstruct or store them.
+        // Find best matching face normal (0..5)
         const faceDefinitions = [
             new THREE.Vector3(1, 0, 0), new THREE.Vector3(-1, 0, 0),
             new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, -1, 0),
             new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 0, -1)
         ];
+
+
+
+
 
         let bestFaceIdx = -1;
         let maxDot = 0;
@@ -614,22 +842,17 @@ export class Skewb extends Puzzle {
             }
         });
 
-        // 2. Evaluate Axes
-        let bestMatch = null;
-        let bestScore = 0;
-
-        const candidates = []; // For debug arrows
+        // 2. Evaluate Axes and Filter by Drag Alignment
+        const matches = [];
+        const threshold = 0.5; // Score threshold for alignment
 
         this.axes.forEach((axis, i) => {
-            candidates.push(i);
-
             // Calculate Logical Tangent (Axis x Normal)
             const tangent = new THREE.Vector3().crossVectors(axis, localFaceNormal);
             if (tangent.lengthSq() < 0.001) return; // Parallel
             tangent.normalize();
 
             // Project to Screen
-            // Helper point p1 (piece center)
             const p1 = intersectedCubie.position.clone().applyMatrix4(state.cubeWrapper.matrixWorld).add(new THREE.Vector3().setFromMatrixPosition(state.cubeWrapper.matrixWorld));
             const p2 = p1.clone().add(tangent.clone().transformDirection(state.cubeWrapper.matrixWorld));
 
@@ -639,26 +862,91 @@ export class Skewb extends Puzzle {
             const screenTangent = new THREE.Vector2(v2.x - v1.x, -(v2.y - v1.y)).normalize(); // Invert Y for screen coords
 
             const score = Math.abs(screenTangent.dot(screenMoveVec));
-            if (score > bestScore) {
-                bestScore = score;
+
+            if (score > threshold) {
                 // Determine dominant axis
                 const inputAxis = Math.abs(screenTangent.x) > Math.abs(screenTangent.y) ? 'x' : 'y';
                 const angleScale = Math.sign(screenTangent[inputAxis]) || 1;
 
-                bestMatch = {
-                    axis: i.toString(),
-                    rotationAxis: axis,
+                matches.push({
+                    axisIdx: i,
+                    axisVec: axis,
+                    score: score,
+                    tangent: tangent,
                     angleScale: angleScale,
                     inputAxis: inputAxis
-                };
+                });
             }
         });
 
-        if (this.showDebugArrows) {
-            this.updateDebugArrows(intersectedCubie, candidates, camera, localFaceNormal);
+        let bestMatch = null;
+
+        if (matches.length > 0) {
+            // Sort by score descending
+            matches.sort((a, b) => b.score - a.score);
+
+            const bestScore = matches[0].score;
+            // Keep candidates within 10% of best score
+            const candidates = matches.filter(m => m.score > bestScore * 0.9);
+
+            if (candidates.length === 1) {
+                bestMatch = {
+                    axis: candidates[0].axisIdx.toString(),
+                    rotationAxis: candidates[0].axisVec,
+                    angleScale: candidates[0].angleScale,
+                    inputAxis: candidates[0].inputAxis
+                };
+            } else {
+                // Disambiguate using Closest Corner
+                if (intersectedPoint) {
+                    const localPoint = intersectedPoint.clone().applyMatrix4(state.cubeWrapper.matrixWorld.clone().invert());
+                    let bestDistSq = Infinity;
+                    let winner = null;
+
+                    candidates.forEach(cand => {
+                        // Check which end of the axis is closer (approximate corner direction)
+                        const cornerA = cand.axisVec.clone().normalize();
+                        const cornerB = cand.axisVec.clone().negate().normalize();
+
+                        const dirToPoint = localPoint.clone().normalize();
+
+                        const distA = dirToPoint.distanceToSquared(cornerA);
+                        const distB = dirToPoint.distanceToSquared(cornerB);
+
+                        const minDist = Math.min(distA, distB);
+                        if (minDist < bestDistSq) {
+                            bestDistSq = minDist;
+                            winner = cand;
+                        }
+                    });
+
+                    if (winner) {
+                        bestMatch = {
+                            axis: winner.axisIdx.toString(),
+                            rotationAxis: winner.axisVec,
+                            angleScale: winner.angleScale,
+                            inputAxis: winner.inputAxis
+                        };
+                    }
+                } else {
+                    // Fallback
+                    bestMatch = {
+                        axis: candidates[0].axisIdx.toString(),
+                        rotationAxis: candidates[0].axisVec,
+                        angleScale: candidates[0].angleScale,
+                        inputAxis: candidates[0].inputAxis
+                    };
+                }
+            }
         }
 
-        if (bestMatch && bestScore > 0.4) {
+        // Debug Arrows
+        if (this.showDebugArrows) {
+            const arrowCandidates = matches.map(m => m.axisIdx);
+            this.updateDebugArrows(intersectedCubie, arrowCandidates, camera, localFaceNormal);
+        }
+
+        if (bestMatch) {
             console.log(`[Skewb.getDragAxis] Best Axis: ${bestMatch.axis}`);
 
             // Determine slice value
@@ -769,30 +1057,118 @@ export class Skewb extends Puzzle {
         // axisStr might be "0", "1", "2", "3" from Drag, or "R", "L", etc from Keyboard
         // turns: 1 (CW), -1 (CCW)
 
-        // Internal Map must match getMoveInfo
-        let axisIdx = parseInt(axisStr);
-        if (isNaN(axisIdx)) {
-            const notationMap = { 'R': 0, 'L': 1, 'U': 2, 'B': 3, 'F': 3 };
-            if (notationMap.hasOwnProperty(axisStr)) axisIdx = notationMap[axisStr];
-            else return null;
+        // Normalize turns (modulo 3)
+        let t = Math.round(turns) % 3;
+        if (t === 2) t = -1;
+        if (t === -2) t = 1;
+        if (t === 0) return null; // No move or 360
+
+        // 1. Handle String Inputs directly (Keyboard)
+        const notationMap = {
+            'R': { axis: 0, val: 1 },
+            'L': { axis: 1, val: 1 },
+            'U': { axis: 2, val: 1 },
+            'B': { axis: 3, val: 1 },
+            'uR': { axis: 1, val: -1 }, // uR is opposite L (Axis 1)
+            'uL': { axis: 0, val: -1 }, // uL is opposite R (Axis 0)
+            'D': { axis: 2, val: -1 },  // D is opposite U (Axis 2)
+            'F': { axis: 3, val: -1 }   // F is opposite B (Axis 3)
+        };
+
+        if (notationMap.hasOwnProperty(axisStr)) {
+            // Already a notation string (from keyboard)
+            // Just need to append turns suffix
+            let suffix = '';
+            if (Math.abs(turns) === 2) suffix = '2';
+            else if (turns === -1) suffix = "'"; // Standard logic: turns < 0 is CW (base), turns > 0 is CCW (')?
+            // Wait, previous logic: 
+            // Negative Side: CW Visual = Positive Angle (turns > 0).
+            // Positive Side: CW Visual = Negative Angle (turns < 0).
+
+            // However, getMoveInfo normalizes this.
+            // If I queueMove('uR', 1), it sends dir=1.
+            // getMoveInfo sees 'uR', sets targetSide=-1.
+            // Inverts angle? 
+            // If targetSide=-1, moveDir *= -1. So dir becomes -1.
+            // Angle = -1 * -1 * 120 = 120 (Positive).
+            // finishMove sees positive angle -> turns > 0.
+
+            // So for uR (Negative Side):
+            // Keyboard 'uR' (CW) -> turns > 0.
+            // If turns > 0, we want "uR".
+            // If turns < 0, we want "uR'".
+
+            // For R (Positive Side):
+            // Keyboard 'R' (CW) -> dir=1 -> Angle = -120 (Neg).
+            // finishMove sees negative angle -> turns < 0.
+            // If turns < 0, we want "R".
+            // If turns > 0, we want "R'".
+
+            // So:
+            // if (isNegativeSide) { turns > 0 -> Base } else { turns < 0 -> Base }
+
+            const info = notationMap[axisStr];
+            const isNeg = info.val < 0;
+
+            let isPrime = false;
+            // Use normalized t
+            if (isNeg) {
+                // Negative Side: t > 0 is Base. t < 0 is Prime.
+                if (t < 0) isPrime = true;
+            } else {
+                // Positive Side: t < 0 is Base. t > 0 is Prime.
+                if (t > 0) isPrime = true;
+            }
+
+            if (isPrime) suffix = "'";
+            return axisStr + suffix;
         }
 
-        // Map Axis Index back to Letter for history
-        // 0: R, 1: L, 2: U, 3: B (default)
-        const reverseMap = { 0: 'R', 1: 'L', 2: 'U', 3: 'B' };
-        let char = reverseMap[axisIdx] || '?';
+        // 2. Handle Numeric Inputs (Drag)
+        let axisIdx = parseInt(axisStr);
+        if (isNaN(axisIdx)) return null;
 
-        // Differentiate F and B
-        // Both use Axis 3. B selects positive/default side. F selects negative side.
-        if (axisIdx === 3 && sliceVal < 0) char = 'F';
+        // Valid Axis Indices: 0, 1, 2, 3
+        // Determine Slice Side from sliceVal
+        // sliceVal > 0 -> Positive Side (R, L, U, B)
+        // sliceVal < 0 -> Negative Side (uL, uR, D, F)
+
+        let char = '?';
+        let isNegativeSide = (sliceVal < -0.01);
+
+        /*
+           Mapping:
+           Axis 0: Pos -> R, Neg -> uL
+           Axis 1: Pos -> L, Neg -> uR
+           Axis 2: Pos -> U, Neg -> D
+           Axis 3: Pos -> B, Neg -> F
+        */
+
+        if (axisIdx === 0) char = isNegativeSide ? 'uL' : 'R';
+        else if (axisIdx === 1) char = isNegativeSide ? 'uR' : 'L';
+        else if (axisIdx === 2) char = isNegativeSide ? 'D' : 'U';
+        else if (axisIdx === 3) char = isNegativeSide ? 'F' : 'B';
+
+        // Suffix Logic
+        let isPrime = false;
+        // Use normalized t
+        if (isNegativeSide) {
+            // Negative Side: t > 0 is Base.
+            if (t < 0) isPrime = true;
+        } else {
+            // Positive Side: t < 0 is Base.
+            if (t > 0) isPrime = true;
+        }
 
         let suffix = '';
-        if (Math.abs(turns) === 2) suffix = '2';
-        else if (turns === -1) suffix = "'";
-
+        if (isPrime) suffix = "'";
         return char + suffix;
     }
 
+
+    getCycleLength() {
+        return 3;
+    }
 
     getScramble() {
         const moves = [];
@@ -882,34 +1258,62 @@ export class Skewb extends Puzzle {
     }
 
     isSolved() {
-        // Simple check: All quaternions should be effectively identity (or symmetric equivalent?)
-        // Actually, piece orientation matters.
-        // If we snap to validQuats, then solved state is when all quats are Identity (relative to starting state).
-        // BUT, pieces might shuffle positions.
-        // A robust isSolved needs to check permutation AND orientation.
-        // For visual app, checking colors/stickers is best, but we don't track stickers easily.
-        // Checking quaternions: If all pieces are aligned with puzzle frame (Identity), is it solved?
-        // On Skewb, centers have 4 orientations (actually 1 if directional, but 4 if single color).
-        // This 'isSolved' is just for UI 'Solved!' popup.
+        // Check all 6 directions for uniform colors
+        // This is rotation-invariant - it checks sticker orientations relative to cube, not world.
+        // Similar to StandardCube implementation.
 
-        // Simple heuristic: If all pieces have Identity quaternion, it's definitely solved.
-        // (Assuming we started solved and track relative rotation).
-        // Since we snap to Identity-relative group, yes.
-        const epsilon = 0.1;
-        for (const c of this.cubieList) {
-            // We need to compare to a "Solved State" reference?
-            // Or just check if everything is Identity.
-            // If pieces move, they might rotate.
-            // But if the puzzle is reformed, all pieces should be upright.
-            // (Assuming centers don't need rotation - Skewb centers have orientation on "Super Skewb" but regular Skewb centers are single color?)
-            // Regular Skewb centers: orientation usually doesn't matter (single color).
-            // But my puzzle has vector stickers? No, flat stickers.
+        const directions = [
+            new THREE.Vector3(1, 0, 0),   // Right
+            new THREE.Vector3(-1, 0, 0),  // Left
+            new THREE.Vector3(0, 1, 0),   // Top
+            new THREE.Vector3(0, -1, 0),  // Bottom
+            new THREE.Vector3(0, 0, 1),   // Front
+            new THREE.Vector3(0, 0, -1)   // Back
+        ];
 
-            // Let's implement full check later.
-            // For now: Just check if any piece is "in between" states (already handled by snap).
-            // Let's return false until we have a real check.
+        let isAllSolved = true;
+
+        for (const faceDir of directions) {
+            let faceColorHex = null;
+            let stickerCount = 0;
+
+            // Check all cubies for stickers facing this direction
+            for (const group of this.cubieList) {
+                for (const child of group.children) {
+                    if (child.userData.isSticker) {
+                        // Calculate the sticker's normal in local cube space (relative to cubeWrapper)
+                        const normal = new THREE.Vector3(0, 0, 1);
+                        normal.applyQuaternion(child.quaternion);
+                        normal.applyQuaternion(group.quaternion);
+
+                        // Check if this sticker is facing the current direction
+                        const dotProduct = normal.dot(faceDir);
+                        if (dotProduct > 0.9) {
+                            const stickerColor = child.material.color.getHex();
+                            stickerCount++;
+
+                            if (faceColorHex === null) {
+                                faceColorHex = stickerColor;
+                            } else if (faceColorHex !== stickerColor) {
+                                // Found a sticker facing this direction with a different color
+                                isAllSolved = false;
+                                break;
+                            }
+                        }
+                    }
+                }
+                if (!isAllSolved) break;
+            }
+
+            // Each face must have at least one sticker (Skewb has 5 per face: 1 center + 4 corners)
+            if (stickerCount === 0) {
+                isAllSolved = false;
+            }
+
+            if (!isAllSolved) break;
         }
-        return false;
+
+        return isAllSolved;
     }
 }
 

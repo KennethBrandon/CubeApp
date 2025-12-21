@@ -154,7 +154,7 @@ export function openLeaderboardModal() {
             if (!puzzleCategories.mirror.includes(p)) {
                 initialCategory = 'custom';
             }
-        } else if (p === 'megaminx' || p === 'pyraminx') {
+        } else if (p === 'megaminx' || p === 'pyraminx' || p === 'skewb') {
             initialCategory = 'standard';
         } else if (p.includes('x')) {
             // Could be cuboid or standard/big (if NxNxN) or custom
@@ -236,6 +236,11 @@ export function openLeaderboardModal() {
             // It's a Pyraminx
             initialCategory = 'standard';
             initialPuzzle = 'pyraminx';
+
+        } else if (active && active.constructor.name === 'Skewb') {
+            // It's a Skewb
+            initialCategory = 'standard';
+            initialPuzzle = 'skewb';
 
         } else if (dims.x !== dims.y || dims.y !== dims.z) {
             // Cuboid
@@ -497,6 +502,9 @@ function renderPuzzleChips(category, autoSelect = false, smooth = true) {
                     } else if (val === 'pyraminx') {
                         label = 'Pyraminx';
                         value = 'pyraminx';
+                    } else if (val === 'skewb') {
+                        label = 'Skewb';
+                        value = 'skewb';
                     } else {
                         label = `${val}x${val}x${val}`;
                         value = `${val}x${val}x${val}`;

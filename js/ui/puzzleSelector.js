@@ -852,6 +852,8 @@ function updatePuzzleButtonText(dims, isMirror, puzzleType) {
         text = "Megaminx";
     } else if (puzzleType === 'pyraminx') {
         text = "Pyraminx";
+    } else if (puzzleType === 'skewb') {
+        text = "Skewb";
     } else if (String(puzzleType).startsWith('stl:')) {
         text = getPuzzleName(puzzleType);
     } else if (dims.x === dims.y && dims.y === dims.z) {
@@ -862,7 +864,7 @@ function updatePuzzleButtonText(dims, isMirror, puzzleType) {
         text = `${dims.y}x${dims.x}x${dims.z}`; // Y is largest in our logic usually
     }
 
-    if (puzzleType !== 'molecube' && puzzleType !== 'voidcube' && puzzleType !== 'acorns' && puzzleType !== 'megaminx' && puzzleType !== 'pyraminx' && !String(puzzleType).startsWith('stl:')) {
+    if (puzzleType !== 'molecube' && puzzleType !== 'voidcube' && puzzleType !== 'acorns' && puzzleType !== 'megaminx' && puzzleType !== 'pyraminx' && puzzleType !== 'skewb' && !String(puzzleType).startsWith('stl:')) {
         if (isMirror) text += " Mirror";
         else text += " Cube";
     }
@@ -892,13 +894,15 @@ function updatePageTitle(dims, isMirror, puzzleType) {
         text = "Megaminx";
     } else if (puzzleType === 'pyraminx') {
         text = "Pyraminx";
+    } else if (puzzleType === 'skewb') {
+        text = "Skewb";
     } else if (dims.x === dims.y && dims.y === dims.z) {
         text = `${dims.x}x${dims.x}x${dims.x}`;
     } else {
         text = `${dims.y}x${dims.x}x${dims.z}`;
     }
 
-    if (puzzleType !== 'molecube' && puzzleType !== 'voidcube' && puzzleType !== 'acorns' && puzzleType !== 'megaminx' && puzzleType !== 'pyraminx' && !String(puzzleType).startsWith('stl:')) {
+    if (puzzleType !== 'molecube' && puzzleType !== 'voidcube' && puzzleType !== 'acorns' && puzzleType !== 'megaminx' && puzzleType !== 'pyraminx' && puzzleType !== 'skewb' && !String(puzzleType).startsWith('stl:')) {
         if (isMirror) text += " Mirror Cube";
         else text += " Cube";
     }
