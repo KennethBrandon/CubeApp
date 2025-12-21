@@ -574,7 +574,7 @@ export function getPuzzleIconPath(value) {
     if (puzzleCategories.cuboids.includes(valStr)) return `assets/icons/puzzle-${valStr}.png`;
 
     // Check Mods (and special WCA puzzles like Megaminx/Pyraminx)
-    if (puzzleCategories.mods.includes(valStr) || valStr === 'megaminx' || valStr === 'pyraminx') return `assets/icons/puzzle-${valStr}.png`;
+    if (puzzleCategories.mods.includes(valStr) || valStr === 'megaminx' || valStr === 'pyraminx' || valStr === 'skewb') return `assets/icons/puzzle-${valStr}.png`;
 
     // Check STL Custom
     if (valStr.startsWith('stl:')) {
