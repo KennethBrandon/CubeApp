@@ -21,9 +21,9 @@ export class StandardCube extends Puzzle {
         // Rotation tuning for whole-cube moves (x, y, z)
         // Managed by RotationTuner.js
         this.rotationTuning = {
-            x: { negate: false, scale: 1 },
-            y: { negate: false, scale: 1 },
-            z: { negate: false, scale: 1 }
+            x: { negate: true, scale: -1 },
+            y: { negate: true, scale: 1 },
+            z: { negate: true, scale: 1 }
         };
     }
 
@@ -229,62 +229,68 @@ export class StandardCube extends Puzzle {
     }
 
     getMoveInfo(axisStr, direction, sliceVal) {
-        // Handle Whole Cube Rotations (x, y, z)
-        if (sliceVal === Infinity || isNaN(parseInt(axisStr)) || ['x', 'y', 'z', 'X', 'Y', 'Z'].includes(axisStr)) {
+        let upper = axisStr.toUpperCase();
+        // Find standard basis axis for this move
+        const standardNormal = new THREE.Vector3();
+        if (['R', 'L', 'M', 'X', 'x'].includes(axisStr)) standardNormal.set(1, 0, 0);
+        else if (['U', 'D', 'E', 'Y', 'y'].includes(axisStr)) standardNormal.set(0, 1, 0);
+        else if (['F', 'B', 'S', 'Z', 'z'].includes(axisStr)) standardNormal.set(0, 0, 1);
+
+        // 1. Handle Whole Cube Rotations (x, y, z)
+        // CRITICAL: StandardCube uses 'x', 'y', 'z' as coordinate strings for layer moves too.
+        // We MUST verify sliceVal is Infinity for a whole-cube rotation.
+        if (sliceVal === Infinity) { // The axisStr will be 'x', 'y', or 'z' for these.
             const rotAxis = this.getLockedRotationAxis(axisStr);
+            // WCA x, y, z are CW. To make direction=1 be CW around standardNormal,
+            // we use the dot product to adjust the angle.
+            // CW around standardNormal = angle -PI/2.
+            // rotAxis * angle = standardNormal * -PI/2  => angle = -PI/2 / (rotAxis.dot(standardNormal))
+            const dot = rotAxis ? rotAxis.dot(standardNormal) : 1;
+            const angle = direction * (-Math.PI / 2) * (dot || 1);
+
             return {
-                axisVector: rotAxis || new THREE.Vector3(0, 1, 0),
+                axisVector: rotAxis || standardNormal,
                 cubies: this.cubieList,
-                angle: direction * (Math.PI / 2)
+                angle: angle
             };
         }
 
-        let axisVector = new THREE.Vector3();
-        let cubies = [];
+        // 2. Handle Layer Moves
+        const axisVector = this.getLockedRotationAxis(axisStr) || standardNormal.clone();
 
-        const S = CUBE_SIZE + this.getSpacing();
-        const dims = state.activeDimensions || this.config.dimensions;
+        let moveNormal = standardNormal.clone();
 
-        if (['R', 'L', 'U', 'D', 'F', 'B', 'M', 'E', 'S', 'X', 'Y', 'Z'].includes(axisStr)) {
-            if (['R', 'L', 'M', 'X'].includes(axisStr)) {
-                axisVector.set(1, 0, 0);
-            } else if (['U', 'D', 'E', 'Y'].includes(axisStr)) {
-                axisVector.set(0, 1, 0);
-            } else if (['F', 'B', 'S', 'Z'].includes(axisStr)) {
-                axisVector.set(0, 0, 1);
-            }
-
-            if (sliceVal === null) {
-                const maxIndexX = (dims.x - 1) / 2;
-                const maxIndexY = (dims.y - 1) / 2;
-                const maxIndexZ = (dims.z - 1) / 2;
-                if (axisStr === 'R') sliceVal = maxIndexX * S;
-                else if (axisStr === 'L') sliceVal = -maxIndexX * S;
-                else if (axisStr === 'U') sliceVal = maxIndexY * S;
-                else if (axisStr === 'D') sliceVal = -maxIndexY * S;
-                else if (axisStr === 'F') sliceVal = maxIndexZ * S;
-                else if (axisStr === 'B') sliceVal = -maxIndexZ * S;
-                else if (['M', 'E', 'S'].includes(axisStr)) sliceVal = 0;
-                else if (['X', 'Y', 'Z'].includes(axisStr)) sliceVal = Infinity;
-            }
-        }
-
-        let shouldNegate = false;
-        if (axisVector.x !== 0) { if (sliceVal > 0.1) shouldNegate = true; }
-        else if (axisVector.y !== 0) { if (sliceVal > 0.1) shouldNegate = true; }
-        else if (axisVector.z !== 0) { if (sliceVal > -0.1) shouldNegate = true; }
-
-        if (['R', 'U', 'F', 'S'].includes(axisStr)) shouldNegate = true;
-        if (shouldNegate) axisVector.negate();
-
-        if (sliceVal !== Infinity) {
-            let searchAxis = axisVector.x !== 0 ? 'x' : (axisVector.y !== 0 ? 'y' : 'z');
-            cubies = this.getCubiesInSlice(searchAxis, sliceVal);
+        // Determine effective face normal based on slice position
+        // This is crucial for keyboard moves which pass generic 'x', 'y', 'z' axes
+        const epsilon = 0.01;
+        if (['L', 'D', 'B', 'M', 'E'].includes(upper)) {
+            moveNormal.negate();
+        } else if (['R', 'U', 'F', 'S'].includes(upper)) {
+            // Keep standard normal
         } else {
-            cubies = this.cubieList;
+            // Derive normal from slice value for generic axes
+            if (upper === 'X') {
+                // M (0) and L (<0) follow X-
+                if (sliceVal < epsilon) moveNormal.negate();
+            } else if (upper === 'Y') {
+                // E (0) and D (<0) follow Y-
+                if (sliceVal < epsilon) moveNormal.negate();
+            } else if (upper === 'Z') {
+                // B (<0) follows Z-; S (0) follows Z+
+                if (sliceVal < -epsilon) moveNormal.negate();
+            }
         }
 
-        return { axisVector, cubies, angle: direction * (Math.PI / 2), axis: axisStr, sliceVal };
+        // Target: CW rotation around moveNormal.
+        // CW around moveNormal means angle -PI/2 around moveNormal.
+        // axisVector * angle = moveNormal * (direction * -PI/2)
+        // angle = (direction * -PI/2) * (axisVector.dot(moveNormal))
+        const dot = axisVector.dot(moveNormal);
+        const angle = direction * (-Math.PI / 2) * (dot || 1);
+
+        const cubies = this.getCubiesInSlice(standardNormal.x !== 0 ? 'x' : (standardNormal.y !== 0 ? 'y' : 'z'), sliceVal);
+
+        return { axisVector, cubies, angle: angle, axis: axisStr, sliceVal };
     }
 
     getNotation(axis, sliceVal, turns, isDrag, dragRotationAxis) {
@@ -294,59 +300,68 @@ export class StandardCube extends Puzzle {
         const axisDim = dims[axis] || dims['x'];
         const maxIndex = (axisDim - 1) / 2;
 
-        let logTurns = turns;
-
-        // 1. Handle global axis inversion for drags (previously in moves.js)
-        // Only if it's a drag and we have a negative drag axis, flip the notation interpretation.
-        if (isDrag && dragRotationAxis) {
-            if (axis === 'x' && dragRotationAxis.x < -0.5) logTurns *= -1;
-            if (axis === 'y' && dragRotationAxis.y < -0.5) logTurns *= -1;
-            if (axis === 'z' && dragRotationAxis.z < -0.5) logTurns *= -1;
-        }
-
-        // 2. Handle slice-based inversion (R, U, F/S follow L, D, B directions in 3D but have inverted notation)
-        if (sliceVal !== Infinity) {
-            if (axis === 'x' && sliceVal > 0.1) logTurns *= -1; // R only
-            else if (axis === 'y' && sliceVal > 0.1) logTurns *= -1; // U only
-            else if (axis === 'z' && sliceVal > -0.1) logTurns *= -1; // F and S
-        }
-
+        // 1. Identify move Char and its Standard Normal
         let char = '';
+        const moveNormal = new THREE.Vector3();
+
         if (sliceVal === Infinity) {
-            if (axis === 'x') char = 'x';
-            else if (axis === 'y') char = 'y';
-            else if (axis === 'z') char = 'z';
-        } else if (axis === 'x') {
-            const index = Math.round(sliceVal / S * 10) / 10;
-            if (Math.abs(index - maxIndex) < epsilon) char = 'R';
-            else if (Math.abs(index + maxIndex) < epsilon) char = 'L';
-            else if (Math.abs(index) < epsilon) char = 'M';
-            else char = (index > 0 ? Math.round(maxIndex - index + 1) + 'R' : Math.round(maxIndex - Math.abs(index) + 1) + 'L');
-        } else if (axis === 'y') {
-            const index = Math.round(sliceVal / S * 10) / 10;
-            if (Math.abs(index - maxIndex) < epsilon) char = 'U';
-            else if (Math.abs(index + maxIndex) < epsilon) char = 'D';
-            else if (Math.abs(index) < epsilon) char = 'E';
-            else char = (index > 0 ? Math.round(maxIndex - index + 1) + 'U' : Math.round(maxIndex - Math.abs(index) + 1) + 'D');
-        } else if (axis === 'z') {
-            const index = Math.round(sliceVal / S * 10) / 10;
-            if (Math.abs(index - maxIndex) < epsilon) char = 'F';
-            else if (Math.abs(index + maxIndex) < epsilon) char = 'B';
-            else if (Math.abs(index) < epsilon) char = 'S';
-            else char = (index > 0 ? Math.round(maxIndex - index + 1) + 'F' : Math.round(maxIndex - Math.abs(index) + 1) + 'B');
+            char = axis.toLowerCase();
+            if (char === 'x') moveNormal.set(1, 0, 0);
+            else if (char === 'y') moveNormal.set(0, 1, 0);
+            else if (char === 'z') moveNormal.set(0, 0, 1);
         } else {
-            if (['R', 'L', 'U', 'D', 'F', 'B'].includes(axis)) char = axis;
+            const index = Math.round(sliceVal / S * 10) / 10;
+            if (axis === 'x') {
+                if (Math.abs(index - maxIndex) < epsilon) { char = 'R'; moveNormal.set(1, 0, 0); }
+                else if (Math.abs(index + maxIndex) < epsilon) { char = 'L'; moveNormal.set(-1, 0, 0); }
+                else if (Math.abs(index) < epsilon) { char = 'M'; moveNormal.set(-1, 0, 0); }
+                else char = (index > 0 ? Math.round(maxIndex - index + 1) + 'R' : Math.round(maxIndex - Math.abs(index) + 1) + 'L');
+            } else if (axis === 'y') {
+                if (Math.abs(index - maxIndex) < epsilon) { char = 'U'; moveNormal.set(0, 1, 0); }
+                else if (Math.abs(index + maxIndex) < epsilon) { char = 'D'; moveNormal.set(0, -1, 0); }
+                else if (Math.abs(index) < epsilon) { char = 'E'; moveNormal.set(0, -1, 0); }
+                else char = (index > 0 ? Math.round(maxIndex - index + 1) + 'U' : Math.round(maxIndex - Math.abs(index) + 1) + 'D');
+            } else if (axis === 'z') {
+                if (Math.abs(index - maxIndex) < epsilon) { char = 'F'; moveNormal.set(0, 0, 1); }
+                else if (Math.abs(index + maxIndex) < epsilon) { char = 'B'; moveNormal.set(0, 0, -1); }
+                else if (Math.abs(index) < epsilon) { char = 'S'; moveNormal.set(0, 0, 1); }
+                else char = (index > 0 ? Math.round(maxIndex - index + 1) + 'F' : Math.round(maxIndex - Math.abs(index) + 1) + 'B');
+            }
         }
 
         if (!char) return null;
-        let t = logTurns % 4;
+
+        // If moveNormal was not set by the branches above (e.g. numbered layers), set it now
+        if (moveNormal.lengthSq() < 0.1) {
+            const uChar = char.slice(-1).toUpperCase();
+            if (['R', 'X'].includes(uChar)) moveNormal.set(1, 0, 0);
+            else if (['L', 'M'].includes(uChar)) moveNormal.set(-1, 0, 0);
+            else if (['U', 'Y'].includes(uChar)) moveNormal.set(0, 1, 0);
+            else if (['D', 'E'].includes(uChar)) moveNormal.set(0, -1, 0);
+            else if (['F', 'S', 'Z'].includes(uChar)) moveNormal.set(0, 0, 1);
+            else if (['B'].includes(uChar)) moveNormal.set(0, 0, -1);
+        }
+
+        // 2. Adjust turns based on effective rotation axis vs moveNormal
+        const rotAxis = dragRotationAxis || this.getLockedRotationAxis(axis);
+        const dot = rotAxis ? rotAxis.dot(moveNormal) : 1;
+        // WCA Convention: logTurns = 1 means a CW rotation around moveNormal happened.
+        // CW around moveNormal is angle -PI/2.
+        // Physical rotation angle is (turns * PI/2).
+        // Projection onto moveNormal is (turns * PI/2) * (rotAxis . moveNormal).
+        // We want (logTurns * -PI/2) = (turns * PI/2) * dot
+        // So logTurns = -turns * dot.
+        let logTurns = -turns * (dot || 1);
+
+        let t = Math.round(logTurns) % 4;
         if (t === 3) t = -1;
         if (t === -3) t = 1;
 
-        let suffix = Math.abs(t) === 2 ? '2' : (t < 0 ? "'" : "");
         if (t === 0) return null;
+        let suffix = Math.abs(t) === 2 ? '2' : (t < 0 ? "'" : "");
         return char + suffix;
     }
+
 
     async getScramble(numMoves = 25) {
         const dims = this.config.dimensions;

@@ -62,8 +62,14 @@ export function performMove(axisStr, direction, duration, sliceVal = null) {
         if (progress < 1) {
             requestAnimationFrame(loop);
         } else {
-            finishMove(direction, axisVector, sliceVal);
-            logMove(axisStr, sliceVal, direction, false, null); // Log the move (not a drag)
+            // Calculate geometric turns for logging/finish
+            // We use targetAngle to determine the actual physical rotation that occurred
+            // direction is the logical input, but logging needs physical turns to reverse-calc
+            const piHalf = Math.PI / 2;
+            const geometricTurns = targetAngle / piHalf;
+
+            finishMove(geometricTurns, axisVector, sliceVal);
+            logMove(axisStr, sliceVal, geometricTurns, false, null); // Log the move (not a drag)
             processQueue();
         }
     }
