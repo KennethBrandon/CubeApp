@@ -675,27 +675,48 @@ export class Skewb extends Puzzle {
         // Same symmetry group as Pyraminx
         if (!this._validQuats) {
             this._validQuats = [];
-            const axes180 = [
+
+            // 1. Identity
+            this._validQuats.push(new THREE.Quaternion());
+
+            // 2. Face Rotations (X, Y, Z) - 90, 180, 270 degrees
+            // Total: 3 axes * 3 angles = 9 rotations
+            const axesFace = [
                 new THREE.Vector3(1, 0, 0),
                 new THREE.Vector3(0, 1, 0),
                 new THREE.Vector3(0, 0, 1)
             ];
-            // 4 Diagonals for 120 rotations
-            const axes120 = this.axes;
-
-            // Identity
-            this._validQuats.push(new THREE.Quaternion());
-
-            // 180 deg rotations (X,Y,Z)
-            axes180.forEach(axis => {
+            axesFace.forEach(axis => {
+                this._validQuats.push(new THREE.Quaternion().setFromAxisAngle(axis, Math.PI / 2));
                 this._validQuats.push(new THREE.Quaternion().setFromAxisAngle(axis, Math.PI));
+                this._validQuats.push(new THREE.Quaternion().setFromAxisAngle(axis, 3 * Math.PI / 2));
             });
 
-            // 120 and 240 deg rotations
-            axes120.forEach(axis => {
+            // 3. Corner Rotations (Diagonals) - 120, 240 degrees
+            // Total: 4 axes * 2 angles = 8 rotations
+            // Use this.axes which are the 4 main diagonals
+            this.axes.forEach(axis => {
                 this._validQuats.push(new THREE.Quaternion().setFromAxisAngle(axis, 2 * Math.PI / 3));
                 this._validQuats.push(new THREE.Quaternion().setFromAxisAngle(axis, 4 * Math.PI / 3));
             });
+
+            // 4. Edge Rotations (Face Diagonals/Midpoints) - 180 degrees
+            // Total: 6 axes * 1 angle = 6 rotations
+            // Axes: (±1, ±1, 0), (±1, 0, ±1), (0, ±1, ±1) normalized
+            const v = 1 / Math.sqrt(2);
+            const axesEdge = [
+                new THREE.Vector3(v, v, 0),
+                new THREE.Vector3(v, -v, 0),
+                new THREE.Vector3(v, 0, v),
+                new THREE.Vector3(v, 0, -v),
+                new THREE.Vector3(0, v, v),
+                new THREE.Vector3(0, v, -v)
+            ];
+            axesEdge.forEach(axis => {
+                this._validQuats.push(new THREE.Quaternion().setFromAxisAngle(axis, Math.PI));
+            });
+
+            // Total: 1 + 9 + 8 + 6 = 24 rotations (Full Octahedral Symmetry)
         }
 
         cubies.forEach(c => {
