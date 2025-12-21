@@ -7,7 +7,7 @@ import { queueMove } from '../game/moves.js';
 export class Skewb extends Puzzle {
     constructor(config) {
         super(config);
-        this.scrambleLength = 12; // WCA standard is typically around 11? Random state. 12 is fine.
+        this.scrambleLength = 24; // WCA standard is typically around 11? Random state. 12 is fine.
         this.parent = config.parent || state.cubeWrapper;
         this.cubieList = config.cubieList || state.allCubies;
 
@@ -1035,8 +1035,13 @@ export class Skewb extends Puzzle {
     getScramble() {
         const moves = [];
         const axes = ['0', '1', '2', '3'];
+        let lastAxis = null;
         for (let i = 0; i < this.scrambleLength; i++) {
-            const axis = axes[Math.floor(Math.random() * axes.length)];
+            let axis = axes[Math.floor(Math.random() * axes.length)];
+            while (axis === lastAxis) {
+                axis = axes[Math.floor(Math.random() * axes.length)];
+            }
+            lastAxis = axis;
             const dir = Math.random() < 0.5 ? 1 : -1;
             moves.push({ axis, dir });
         }
