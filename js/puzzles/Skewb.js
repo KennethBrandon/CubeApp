@@ -540,101 +540,81 @@ export class Skewb extends Puzzle {
         const key = event.key;
         const lowerKey = key.toLowerCase();
         const shift = event.shiftKey;
-        const dir = shift ? -1 : 1;
 
-        // Map keys to axes
-        // T -> uR (UBR)
-        // Y -> uL (UFL)
-        // R, L, U, B, F -> Standard corners
+        // Define Base Direction per Axis-Side to match Physics
+        // Front Faces (R, L, U, B): CW = Negative Angle (-1)
+        // Back Faces (uL, uR, D, F): CW = Positive Angle (1)
 
+        // Layout defines correct Axis, Slice, and Base Direction (CW)
         const layout = {
-            't': 'uR',
-            'y': 'uL',
-            'r': 'R',
-            'l': 'L',
-            'u': 'U',
-            'b': 'B',
-            'f': 'F',
-            'd': 'D'
+            'r': { axis: '0', slice: 1, baseDir: -1 }, // R
+            'l': { axis: '1', slice: 1, baseDir: -1 }, // L
+            'u': { axis: '2', slice: 1, baseDir: -1 }, // U
+            'b': { axis: '3', slice: 1, baseDir: -1 }, // B
+
+            'y': { axis: '0', slice: -1, baseDir: 1 },  // uL
+            't': { axis: '1', slice: -1, baseDir: 1 },  // uR
+            'f': { axis: '3', slice: -1, baseDir: 1 },  // F
+            'd': { axis: '2', slice: -1, baseDir: 1 }   // D
         };
 
         if (layout.hasOwnProperty(lowerKey)) {
-            const axisStr = layout[lowerKey];
-            queueMove(axisStr, dir);
+            const move = layout[lowerKey];
+            // If shift (Prime), invert baseDir
+            const dir = shift ? -move.baseDir : move.baseDir;
+
+            queueMove(move.axis, dir, state.animationSpeed, move.slice);
             return true;
         }
 
         return false;
     }
 
+    parseNotation(notation) {
+        // notation: e.g. "R", "R'", "uR", "uL'"
+        const match = notation.match(/^([a-zA-Z]+)(['2]?)$/);
+        if (!match) return null;
+
+        const axisStr = match[1];
+        const suffix = match[2];
+
+        // Map String Axis to Internal Numeric & Base Direction
+        const axisMap = {
+            'R': { axis: '0', slice: 1, baseDir: -1 },
+            'L': { axis: '1', slice: 1, baseDir: -1 },
+            'U': { axis: '2', slice: 1, baseDir: -1 },
+            'B': { axis: '3', slice: 1, baseDir: -1 },
+
+            'uL': { axis: '0', slice: -1, baseDir: 1 },
+            'uR': { axis: '1', slice: -1, baseDir: 1 },
+            'F': { axis: '3', slice: -1, baseDir: 1 },
+            'D': { axis: '2', slice: -1, baseDir: 1 }
+        };
+
+        if (!axisMap[axisStr]) return null;
+
+        const move = axisMap[axisStr];
+
+        // Determine direction
+        let dir = move.baseDir;
+        if (suffix === "'") dir = -move.baseDir;
+        else if (suffix === "2") dir = 2; // Double moves not strictly standard but handled
+
+        return {
+            axis: move.axis,
+            dir: dir,
+            sliceVal: move.slice
+        };
+    }
+
     getMoveInfo(axisStr, dir, sliceVal) {
         // console.log(`[Skewb.getMoveInfo] axisStr: ${axisStr}, dir: ${dir}, sliceVal: ${sliceVal}`);
 
-        const notationMap = {
-            'R': 0,
-            'L': 1,
-            'U': 2,
-            'B': 3,
-            'F': 3, // F is opposite B
-            'uR': 1, // uR (UBR) is opposite L
-            'uL': 0, // uL (UFL) is opposite R
-            'D': 2   // D (FDR) is opposite U
-        };
+        const axisIdx = parseInt(axisStr);
+        if (isNaN(axisIdx)) return null;
 
-        // Define which side of the axis (positive or negative) corresponds to the notation
-        // 1 = Positive Side (along axis)
-        // -1 = Negative Side (opposite axis)
-        const sideMap = {
-            'R': 1,
-            'L': 1,
-            'U': 1,
-            'B': 1,
-            'F': -1,
-            'uR': -1,
-            'uL': -1,
-            'D': -1
-        };
-
-        let axisIdx = parseInt(axisStr);
-        let moveDir = dir;
-        let targetSide = 1; // Default to positive side
-
-        if (isNaN(axisIdx)) {
-            if (notationMap.hasOwnProperty(axisStr)) {
-                axisIdx = notationMap[axisStr];
-
-                // Determine target side
-                targetSide = sideMap[axisStr] || 1;
-
-                // Logic for Inversion:
-                // If we are moving a "Negative Side" (Opposite) corner, we usually need to invert the rotation 
-                // to match the visual "Clockwise" expectation for that corner.
-                // Standard Logic: 
-                // Axis Defined 0..3.
-                // R (Axis 0, Pos): CW -> Angle * 1
-                // L (Axis 1, Pos): CW -> Angle * 1
-                // U (Axis 2, Pos): CW -> Angle * 1
-                // B (Axis 3, Pos): CW -> Angle * 1
-
-                // F (Axis 3, Neg): CW (Visual) -> CCW around Axis 3 -> Angle * -1
-                // uR (Axis 1, Neg): CW (Visual) -> CCW around Axis 1 -> Angle * -1
-                // uL (Axis 0, Neg): CW (Visual) -> CCW around Axis 0 -> Angle * -1
-
-                if (targetSide === -1) {
-                    moveDir *= -1;
-                }
-
-            } else {
-                console.warn(`[Skewb] Unknown axisStr: ${axisStr}`);
-                return null;
-            }
-        } else {
-            // Numeric axis passed (e.g. from drag)
-            // Determine side from sliceVal if present
-            if (sliceVal !== null && sliceVal < -0.01) {
-                targetSide = -1;
-            }
-        }
+        // Determine target side for cubie selection
+        const targetSide = (sliceVal !== null && sliceVal < -0.01) ? -1 : 1;
 
         const normal = this.axes[axisIdx];
         if (!normal) return null;
@@ -645,24 +625,13 @@ export class Skewb extends Puzzle {
             return targetSide > 0 ? dot > 0.01 : dot < -0.01;
         });
 
-        // WCA Direction Compliance:
-        // WCA defines moves as Clockwise around the corner.
-        // Our Axes are defined pointing towards specific corners (R, L, U, B).
-        // If we select the Positive side (R, L, U, B), a positive rotation around the axis is CCW (Right Hand Rule).
-        // Wait, THREE.js rotation is CCW around axis for positive angle.
-        // So angle > 0 -> CCW.
-        // WCA "R" means Clockwise R.
-        // Facing R corner, Clockwise = Negative Rotation around axis pointing at you.
-        // So for "Normal" corners (R, L, U, B), "CW" -> Angle < 0.
+        // Angle Calculation
+        // dir is now Physics-Aligned.
+        // Front Face CW (-1) -> Negative Angle.
+        // Back Face CW (1) -> Positive Angle.
+        // So Angle = dir * Constant.
 
-        // Let's test standard first. 
-        // If I pass dir=1 (CW), I usually want negative angle in THREE.js.
-        // `moves.js` often multiplies by (Math.PI/2) * dir.
-        // If dir=1 -> Angle = 90. 90 in Three.js is CCW.
-        // So visually that looks inverted.
-        // Let's invert ALL angles to match "Standard" CW = Negative Angle.
-
-        const angle = moveDir * -1 * (2 * Math.PI / 3);
+        const angle = dir * (2 * Math.PI / 3);
 
         return {
             axisVector: normal,
@@ -672,142 +641,35 @@ export class Skewb extends Puzzle {
     }
 
     getNotation(axis, sliceVal, turns) {
-        const axisIdx = parseInt(axis);
+        let axisIdx = parseInt(axis);
         if (isNaN(axisIdx)) return null;
 
-        // turns: -1 (CW?), 1 (CCW?)
-        // In logMove/finishMove, turns is derived from angle.
-        // angle < 0 -> turns < 0? 
-        // If we inverted logic in getMoveInfo (dir 1 -> angle -1),
-        // Then an executed move of dir 1 results in turns = -1 (approx).
-        // Let's see what finishMove passes.
-        // It passes turns based on drag angle.
-        // If drag was CW (visual), angle is negative (standard 3D).
-        // turns is negative.
-
-        // So turns = -1 -> CW Visual.
-        // turns = 1 -> CCW Visual.
-
         const isNegativeSide = (sliceVal < -0.01);
-
         let prefix = '';
-
-        /* 
-           Mapping:
-           Axis 0: Pos -> R, Neg -> uL
-           Axis 1: Pos -> L, Neg -> uR
-           Axis 2: Pos -> U, Neg -> D (unused usually, maybe just D?)
-           Axis 3: Pos -> B, Neg -> F
-        */
+        let notationTurns = turns;
 
         if (axisIdx === 0) prefix = isNegativeSide ? 'uL' : 'R';
         else if (axisIdx === 1) prefix = isNegativeSide ? 'uR' : 'L';
-        else if (axisIdx === 2) prefix = isNegativeSide ? 'D' : 'U'; // D is unofficial but logical
+        else if (axisIdx === 2) prefix = isNegativeSide ? 'D' : 'U';
         else if (axisIdx === 3) prefix = isNegativeSide ? 'F' : 'B';
 
-        // Inversion Logic for Notation
-        // If we are on Negative Side (uL, uR, F, D), the "Axis" points AWAY from the corner.
-        // A "CW" move around the corner (Visual CW) is CCW around the Axis (since axis points away?).
-        // Wait.
-        // Axis points to R. uL is opposite R.
-        // Vector R points AWAY from uL.
-        // Facing uL, the R-axis points into the screen (away from you).
-        // Positive Rotation around R-axis (CCW relative to R-axis) -> CCW from your view (facing uL).
-        // So Positive Angle -> CCW Visual.
-        // Negative Angle -> CW Visual.
-
-        // So for "Negative Side" corners (uL):
-        // Turns = -1 (Neg Angle) -> CW Visual.
-        // Turns = 1 (Pos Angle) -> CCW Visual.
-
-        // For "Positive Side" corners (R):
-        // Facing R, Axis points AT you.
-        // Positive Rotation (CCW relative to Axis) -> CCW Visual.
-        // Negative Rotation -> CW Visual.
-
-        // It seems consistent?
-        // If Turns < 0 -> CW.
-        // If Turns > 0 -> CCW (Prime).
-
-        let notationTurns = turns;
-
-        // Adjust for internal consistency if needed. 
-        // In previous logic I inverted F?
-        // Let's stick to: "CW Visual = Notation Base". "CCW Visual = Notation Prime".
-        // If turns < 0, that's CW. -> Base.
-        // If turns > 0, that's CCW. -> Prime.
-
-        // However, let's double check my Drag Logic.
-        // Drag produces an angle. 
-        // If I drag R CW, angle goes negative. turns = -1.
-        // Notation should be 'R'.
-
-        // If I drag F (Neg Side).
-        // If I drag F CW.
-        // Axis points Away.
-        // Visual CW = Rotation around Axis?
-        // Facing F, Axis points Away. Use Right Hand Thumb points away. Fingers curl CW.
-        // So Positive Rotation (CCW relative to axis?) No. Positive is CCW.
-        // If Thumb points Away (Positive Z?? No, Axis direction).
-        // If Axis points Away, Positive Rotation is CW (Visual).
-        // So Backside: Positive Angle = CW Visual.
-        // Frontside: Negative Angle = CW Visual.
-
-        // Correct Logic:
-        // Positive Side (R, L, U, B): CW Visual = Negative Angle (turns < 0).
-        // Negative Side (uL, uR, F, D): CW Visual = Positive Angle (turns > 0).
-
-        // So if Negative Side, we need to invert turns to match "Standard" notation direction.
+        // Invert notation turns for Negative Side to match Base/Prime convention
+        // Physics: Back CW = 1. Notation: Back CW = Base (-1 logical).
+        // So 1 -> -1. (Multiply by -1).
         if (isNegativeSide) {
             notationTurns *= -1;
         }
 
-        // Now:
-        // notationTurns < 0 -> CW -> Base
-        // notationTurns > 0 -> CCW -> Prime
-
-        // Wait. 'R' usually means CW. 
-        // If `turns` is -1 (CW on R), then I want "R".
-        // If `turns` is 1 (CCW on R), then I want "R'".
+        if (!prefix) return null;
 
         let suffix = '';
-        if (Math.abs(notationTurns) === -1 || notationTurns < 0) {
-            // CW. No suffix? 
-            // Wait, usually turns is 1 for base?
-            // Standard Moves:
-            // R -> 1 turn?
-            // queueMove('R', 1) -> 
-            // getMoveInfo calls angle = dir * -1 * val.
-            // dir=1 -> angle = -90.
-            // pivot rotates -90.
-            // finishMove sees -90. turns = -1.
-            // logMove sees turns = -1.
-            // notation should be 'R'. 
-
-            // So turns < 0 => "R" (Base).
-            // turns > 0 => "R'" (Prime).
-
-            suffix = '';
-        } else {
+        if (Math.abs(notationTurns) === 2 || Math.abs(notationTurns) === 120) {
+            suffix = '2';
+        } else if (notationTurns > 0) {
+            // Positive -> Prime
             suffix = "'";
         }
-
-        // Handle double moves?? Skewb doesn't really have 2 moves, it's 120 degrees?
-        // My code used Math.PI * 2 / 3.
-        // turns will be fractional? 
-        // finishMove normalizes turns by 90 degrees usually?
-        // Skewb move is ~120 degrees.
-        // snapPivot: `targetTurns` based on `piHalf` (90).
-        // Skewb: 120 deg.
-        // My Generic Snap uses 90 deg.
-        // Skewb needs to override `getSnapAngle`? Yes.
-
-        // I should probably also implement `getSnapAngle` to return 120 degrees (2pi/3).
-        // Otherwise snap logic will try to snap to 90.
-
-        // But back to notation:
-        // If turns is negative -> Base.
-        // If turns is positive -> Prime.
+        // Negative -> Base
 
         return prefix + suffix;
     }
