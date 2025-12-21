@@ -657,100 +657,96 @@ export class Skewb extends Puzzle {
 
         return char + suffix;
     }
-    if(Math.abs(turns) === 2) suffix = '2';
-        else if (turns === -1) suffix = "'";
 
-return char + suffix;
+
+    getScramble() {
+        const moves = [];
+        const axes = ['0', '1', '2', '3'];
+        for (let i = 0; i < this.scrambleLength; i++) {
+            const axis = axes[Math.floor(Math.random() * axes.length)];
+            const dir = Math.random() < 0.5 ? 1 : -1;
+            moves.push({ axis, dir });
+        }
+        return moves;
     }
 
-getScramble() {
-    const moves = [];
-    const axes = ['0', '1', '2', '3'];
-    for (let i = 0; i < this.scrambleLength; i++) {
-        const axis = axes[Math.floor(Math.random() * axes.length)];
-        const dir = Math.random() < 0.5 ? 1 : -1;
-        moves.push({ axis, dir });
-    }
-    return moves;
-}
+    snapCubies(cubies) {
+        // Define valid Tetrahedral rotations (12 in total)
+        // Same symmetry group as Pyraminx
+        if (!this._validQuats) {
+            this._validQuats = [];
+            const axes180 = [
+                new THREE.Vector3(1, 0, 0),
+                new THREE.Vector3(0, 1, 0),
+                new THREE.Vector3(0, 0, 1)
+            ];
+            // 4 Diagonals for 120 rotations
+            const axes120 = this.axes;
 
-snapCubies(cubies) {
-    // Define valid Tetrahedral rotations (12 in total)
-    // Same symmetry group as Pyraminx
-    if (!this._validQuats) {
-        this._validQuats = [];
-        const axes180 = [
-            new THREE.Vector3(1, 0, 0),
-            new THREE.Vector3(0, 1, 0),
-            new THREE.Vector3(0, 0, 1)
-        ];
-        // 4 Diagonals for 120 rotations
-        const axes120 = this.axes;
+            // Identity
+            this._validQuats.push(new THREE.Quaternion());
 
-        // Identity
-        this._validQuats.push(new THREE.Quaternion());
+            // 180 deg rotations (X,Y,Z)
+            axes180.forEach(axis => {
+                this._validQuats.push(new THREE.Quaternion().setFromAxisAngle(axis, Math.PI));
+            });
 
-        // 180 deg rotations (X,Y,Z)
-        axes180.forEach(axis => {
-            this._validQuats.push(new THREE.Quaternion().setFromAxisAngle(axis, Math.PI));
-        });
+            // 120 and 240 deg rotations
+            axes120.forEach(axis => {
+                this._validQuats.push(new THREE.Quaternion().setFromAxisAngle(axis, 2 * Math.PI / 3));
+                this._validQuats.push(new THREE.Quaternion().setFromAxisAngle(axis, 4 * Math.PI / 3));
+            });
+        }
 
-        // 120 and 240 deg rotations
-        axes120.forEach(axis => {
-            this._validQuats.push(new THREE.Quaternion().setFromAxisAngle(axis, 2 * Math.PI / 3));
-            this._validQuats.push(new THREE.Quaternion().setFromAxisAngle(axis, 4 * Math.PI / 3));
-        });
-    }
+        cubies.forEach(c => {
+            c.quaternion.normalize();
+            let bestQ = null;
+            let maxDot = -1;
 
-    cubies.forEach(c => {
-        c.quaternion.normalize();
-        let bestQ = null;
-        let maxDot = -1;
+            this._validQuats.forEach(q => {
+                const dot = Math.abs(c.quaternion.dot(q));
+                if (dot > maxDot) {
+                    maxDot = dot;
+                    bestQ = q;
+                }
+            });
 
-        this._validQuats.forEach(q => {
-            const dot = Math.abs(c.quaternion.dot(q));
-            if (dot > maxDot) {
-                maxDot = dot;
-                bestQ = q;
+            if (bestQ) {
+                c.quaternion.copy(bestQ);
             }
         });
-
-        if (bestQ) {
-            c.quaternion.copy(bestQ);
-        }
-    });
-}
-
-isSolved() {
-    // Simple check: All quaternions should be effectively identity (or symmetric equivalent?)
-    // Actually, piece orientation matters.
-    // If we snap to validQuats, then solved state is when all quats are Identity (relative to starting state).
-    // BUT, pieces might shuffle positions.
-    // A robust isSolved needs to check permutation AND orientation.
-    // For visual app, checking colors/stickers is best, but we don't track stickers easily.
-    // Checking quaternions: If all pieces are aligned with puzzle frame (Identity), is it solved?
-    // On Skewb, centers have 4 orientations (actually 1 if directional, but 4 if single color).
-    // This 'isSolved' is just for UI 'Solved!' popup.
-
-    // Simple heuristic: If all pieces have Identity quaternion, it's definitely solved.
-    // (Assuming we started solved and track relative rotation).
-    // Since we snap to Identity-relative group, yes.
-    const epsilon = 0.1;
-    for (const c of this.cubieList) {
-        // We need to compare to a "Solved State" reference?
-        // Or just check if everything is Identity.
-        // If pieces move, they might rotate.
-        // But if the puzzle is reformed, all pieces should be upright.
-        // (Assuming centers don't need rotation - Skewb centers have orientation on "Super Skewb" but regular Skewb centers are single color?)
-        // Regular Skewb centers: orientation usually doesn't matter (single color).
-        // But my puzzle has vector stickers? No, flat stickers.
-
-        // Let's implement full check later.
-        // For now: Just check if any piece is "in between" states (already handled by snap).
-        // Let's return false until we have a real check.
     }
-    return false;
-}
+
+    isSolved() {
+        // Simple check: All quaternions should be effectively identity (or symmetric equivalent?)
+        // Actually, piece orientation matters.
+        // If we snap to validQuats, then solved state is when all quats are Identity (relative to starting state).
+        // BUT, pieces might shuffle positions.
+        // A robust isSolved needs to check permutation AND orientation.
+        // For visual app, checking colors/stickers is best, but we don't track stickers easily.
+        // Checking quaternions: If all pieces are aligned with puzzle frame (Identity), is it solved?
+        // On Skewb, centers have 4 orientations (actually 1 if directional, but 4 if single color).
+        // This 'isSolved' is just for UI 'Solved!' popup.
+
+        // Simple heuristic: If all pieces have Identity quaternion, it's definitely solved.
+        // (Assuming we started solved and track relative rotation).
+        // Since we snap to Identity-relative group, yes.
+        const epsilon = 0.1;
+        for (const c of this.cubieList) {
+            // We need to compare to a "Solved State" reference?
+            // Or just check if everything is Identity.
+            // If pieces move, they might rotate.
+            // But if the puzzle is reformed, all pieces should be upright.
+            // (Assuming centers don't need rotation - Skewb centers have orientation on "Super Skewb" but regular Skewb centers are single color?)
+            // Regular Skewb centers: orientation usually doesn't matter (single color).
+            // But my puzzle has vector stickers? No, flat stickers.
+
+            // Let's implement full check later.
+            // For now: Just check if any piece is "in between" states (already handled by snap).
+            // Let's return false until we have a real check.
+        }
+        return false;
+    }
 }
 
 function createSparkleMap(maxDim = 3) {
