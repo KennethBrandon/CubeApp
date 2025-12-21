@@ -72,6 +72,8 @@ export class Skewb extends Puzzle {
         this.stickerUseSparkle = false;
 
         this.showDebugPlanes = false;
+        this.showDebugArrows = true; // User requested default ON
+        this.debugArrows = [];
 
         // Create geometry immediately
         this.rebuildGeometry();
@@ -586,47 +588,180 @@ export class Skewb extends Puzzle {
         };
     }
 
-    getDragAxis(faceNormal, moveVec) {
+    getDragAxis(faceNormal, screenMoveVec, intersectedCubie, camera) {
         // console.log(`[Skewb.getDragAxis] Checking drag...`);
-        let bestAxis = null;
-        let maxDot = -1;
-        // Direction multiplier to align visual drag with code logical direction
-        let angleScale = 1;
+        if (!intersectedCubie) return null;
 
-        this.axes.forEach((axis, i) => {
-            // Tangent flow: axis x normal
-            const tangent = new THREE.Vector3().crossVectors(axis, faceNormal);
-            if (tangent.lengthSq() < 0.001) return; // Parallel
-            tangent.normalize();
+        // 1. Identify the clicked Face Index from faceNormal
+        // Transform faceNormal to local space
+        const localFaceNormal = faceNormal.clone().transformDirection(state.cubeWrapper.matrixWorld.clone().invert()).normalize();
 
-            const dot = moveVec.dot(tangent);
-            if (Math.abs(dot) > maxDot) {
-                maxDot = Math.abs(dot);
-                bestAxis = i.toString();
-                // If dot is positive, we are dragging in direction of tangent.
-                // Tangent = axis x normal.
-                // Right hand rule: Rotation around axis determines local velocity.
-                // v = w x r. Here r is roughly faceNormal. w is axis.
-                // v = axis x faceNormal.
-                // So dragging in direction of tangent corresponds to positive rotation.
-                // If dot < 0, angleScale should be -1? 
-                // The main interaction loop calculates amount = dot * sensitivity.
-                // So if we just return the axis, correct sign is automatic?
-                // Unless the interaction code expects 'rotationAxis' to be used for projection.
-                // Passing angleScale = 1 works if tangent physics holds.
-                angleScale = 1;
+        // Find best matching face normal (0..5) - Wait, we don't have faceNormals array in Skewb like Pyraminx?
+        // We have keys in createGeometry. Let's reconstruct or store them.
+        const faceDefinitions = [
+            new THREE.Vector3(1, 0, 0), new THREE.Vector3(-1, 0, 0),
+            new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, -1, 0),
+            new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 0, -1)
+        ];
+
+        let bestFaceIdx = -1;
+        let maxDot = 0;
+        faceDefinitions.forEach((n, i) => {
+            const dot = n.dot(localFaceNormal);
+            if (dot > maxDot) {
+                maxDot = dot;
+                bestFaceIdx = i;
             }
         });
 
-        if (bestAxis) {
-            console.log(`[Skewb.getDragAxis] Best Axis: ${bestAxis}`);
+        // 2. Evaluate Axes
+        let bestMatch = null;
+        let bestScore = 0;
+
+        const candidates = []; // For debug arrows
+
+        this.axes.forEach((axis, i) => {
+            candidates.push(i);
+
+            // Calculate Logical Tangent (Axis x Normal)
+            const tangent = new THREE.Vector3().crossVectors(axis, localFaceNormal);
+            if (tangent.lengthSq() < 0.001) return; // Parallel
+            tangent.normalize();
+
+            // Project to Screen
+            // Helper point p1 (piece center)
+            const p1 = intersectedCubie.position.clone().applyMatrix4(state.cubeWrapper.matrixWorld).add(new THREE.Vector3().setFromMatrixPosition(state.cubeWrapper.matrixWorld));
+            const p2 = p1.clone().add(tangent.clone().transformDirection(state.cubeWrapper.matrixWorld));
+
+            const v1 = p1.clone().project(camera);
+            const v2 = p2.clone().project(camera);
+
+            const screenTangent = new THREE.Vector2(v2.x - v1.x, -(v2.y - v1.y)).normalize(); // Invert Y for screen coords
+
+            const score = Math.abs(screenTangent.dot(screenMoveVec));
+            if (score > bestScore) {
+                bestScore = score;
+                // Determine dominant axis
+                const inputAxis = Math.abs(screenTangent.x) > Math.abs(screenTangent.y) ? 'x' : 'y';
+                const angleScale = Math.sign(screenTangent[inputAxis]) || 1;
+
+                bestMatch = {
+                    axis: i.toString(),
+                    rotationAxis: axis,
+                    angleScale: angleScale,
+                    inputAxis: inputAxis
+                };
+            }
+        });
+
+        if (this.showDebugArrows) {
+            this.updateDebugArrows(intersectedCubie, candidates, camera, localFaceNormal);
+        }
+
+        if (bestMatch && bestScore > 0.4) {
+            console.log(`[Skewb.getDragAxis] Best Axis: ${bestMatch.axis}`);
+
+            // Determine slice value
+            // Skewb cuts are deep (through center).
+            // Logic: Determine which side of the cut projection the piece is on.
+            // But Skewb pieces move together in a half-space.
+            // If we selected a valid axis, the piece is definitely on one side of the cut.
+            // Which side?
+            // The cut plane passes through origin (constant=0).
+            // So side = sign(pos . normal).
+            const axisNormal = bestMatch.rotationAxis;
+            // BestMatch.axis is index 0..3.
+            // Check dot product of piece center with axis normal.
+
+            // We need the piece's current position (approx centroid).
+            const piecePos = intersectedCubie.position.clone(); // Local to parent (which is 0,0,0 usually? or wrapper?)
+            // Cubies are children of puzzle (this.parent?), wait.
+            // In Skewb constructor: this.parent = config.parent || state.cubeWrapper;
+            // Cubies are added to this.parent.
+            // So cubie.position is in World Space (if wrapper is at 0,0,0 and unrotated) or Wrapper Space.
+            // getDragAxis is called with Wrapper Space normals typically?
+            // axisNormal is from this.axes (local/wrapper space).
+
+            const dot = piecePos.dot(axisNormal);
+            // If dot > 0, side is +1. If dot < 0, side is -1.
+            // Skewb sliceVal threshold is 0.
+            // But we need a value that SELECTS that side.
+            // getSliceCubies logic:
+            // return sign > 0 ? dot > 0.01 : dot < -0.01;
+            // So if dot > 0, we want sliceVal > 0. Say 0.5.
+            // If dot < 0, we want sliceVal < 0. Say -0.5.
+
+            const sliceVal = (dot > 0) ? 0.5 : -0.5;
+
             return {
-                axis: bestAxis,
-                rotationAxis: this.axes[parseInt(bestAxis)],
-                angleScale: 1
+                dragAxis: bestMatch.axis,
+                dragRotationAxis: bestMatch.rotationAxis,
+                dragAngleScale: bestMatch.angleScale,
+                dragSliceValue: sliceVal,
+                dragInputAxis: bestMatch.inputAxis
             };
         }
         return null;
+    }
+
+    updateDebugArrows(intersectedCubie, candidates, camera, faceNormal) {
+        if (this.debugArrows) {
+            this.debugArrows.forEach(a => {
+                if (a.parent) a.parent.remove(a);
+            });
+        }
+        this.debugArrows = [];
+
+        if (!intersectedCubie) return;
+
+        // Origin for arrows (try to put on surface)
+        let originLocal = intersectedCubie.position.clone();
+
+        // Find the sticker that matches the faceNormal (approx) to place arrow on surface
+        let bestSticker = null;
+        let maxStickerDot = 0.8; // Threshold
+
+        intersectedCubie.children.forEach(child => {
+            if (child.userData.isSticker) {
+                // Sticker normal is approximately its Z axis in local space.
+                // Or rather, the sticker's Z-axis (transformed by quaternion) matches the piece's outward normal.
+                const stickerNormal = new THREE.Vector3(0, 0, 1).applyQuaternion(child.quaternion);
+                const dot = stickerNormal.dot(faceNormal);
+                if (dot > maxStickerDot) {
+                    maxStickerDot = dot;
+                    bestSticker = child;
+                }
+            }
+        });
+
+        if (bestSticker) {
+            // Sticker position is relative to intersectedCubie
+            originLocal.add(bestSticker.position);
+            // Move slightly out to avoid z-fighting with sticker
+            originLocal.add(faceNormal.clone().multiplyScalar(0.05));
+        } else {
+            // Fallback: piece center + radius * normal
+            originLocal.add(faceNormal.clone().multiplyScalar(this.radius * 0.5));
+        }
+
+        candidates.forEach(axisIdx => {
+            const axis = this.axes[axisIdx];
+            const tangent = new THREE.Vector3().crossVectors(axis, faceNormal).normalize();
+
+            const len = 0.75;
+            const color = 0xff0000;
+            const headLen = 0.2;
+            const headWidth = 0.1;
+
+            const arrow = new THREE.ArrowHelper(tangent, originLocal, len, color, headLen, headWidth);
+            this.parent.add(arrow);
+            this.debugArrows.push(arrow);
+
+            const arrow2 = new THREE.ArrowHelper(tangent.clone().negate(), originLocal, len, color, headLen, headWidth);
+
+            this.parent.add(arrow2);
+            this.debugArrows.push(arrow2);
+        });
     }
 
     getNotation(axisStr, sliceVal, turns) {
@@ -736,6 +871,14 @@ export class Skewb extends Puzzle {
                 c.quaternion.copy(bestQ);
             }
         });
+    }
+
+    isFaceRectangular(axis) {
+        return false; // Skewb faces are not rectangular grid-like for rotation snapping logic
+    }
+
+    getSnapAngle() {
+        return (Math.PI * 2) / 3; // 120 degrees
     }
 
     isSolved() {

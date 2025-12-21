@@ -34,6 +34,10 @@ function createSkewbTuner() {
                 <input type="checkbox" id="chk-skewb-debug-planes" class="mr-2 w-4 h-4 text-orange-500 bg-gray-700 border-gray-600 rounded focus:ring-orange-500">
                 <label for="chk-skewb-debug-planes" class="text-gray-300 text-xs">Show Debug Planes</label>
             </div>
+            <div class="flex items-center mt-2">
+                <input type="checkbox" id="chk-skewb-debug-arrows" class="mr-2 w-4 h-4 text-orange-500 bg-gray-700 border-gray-600 rounded focus:ring-orange-500">
+                <label for="chk-skewb-debug-arrows" class="text-gray-300 text-xs">Show Debug Arrows</label>
+            </div>
         </div>
 
         <div class="mt-4 pt-4 border-t border-white/10 space-y-4">
@@ -117,6 +121,10 @@ function syncValues() {
     if (debugPlanesCheckbox) {
         debugPlanesCheckbox.checked = p.showDebugPlanes || false;
     }
+    const debugArrowsCheckbox = document.getElementById('chk-skewb-debug-arrows');
+    if (debugArrowsCheckbox) {
+        debugArrowsCheckbox.checked = p.showDebugArrows || false;
+    }
     const sparkleCheck = document.getElementById('skewb-stickerUseSparkle');
     if (sparkleCheck) sparkleCheck.checked = p.stickerUseSparkle;
 }
@@ -139,6 +147,8 @@ function attachSkewbListeners() {
             document.getElementById(`${e.target.id}-val`).textContent = val.toFixed(3);
         } else if (e.target.type === 'checkbox' && e.target.id === 'chk-skewb-debug-planes') {
             puzzle.showDebugPlanes = e.target.checked;
+        } else if (e.target.type === 'checkbox' && e.target.id === 'chk-skewb-debug-arrows') {
+            puzzle.showDebugArrows = e.target.checked;
         }
 
         if (puzzle.rebuildGeometry) {
@@ -152,10 +162,11 @@ function attachSkewbListeners() {
     });
 
     document.getElementById('chk-skewb-debug-planes').addEventListener('change', updatePuzzle);
+    document.getElementById('chk-skewb-debug-arrows').addEventListener('change', updatePuzzle);
 
     const checkboxes = document.querySelectorAll('#skewb-tuner-ui input[type="checkbox"]');
     checkboxes.forEach(chk => {
-        if (chk.id === 'chk-skewb-debug-planes') return;
+        if (chk.id === 'chk-skewb-debug-planes' || chk.id === 'chk-skewb-debug-arrows') return;
 
         chk.addEventListener('change', (e) => {
             if (!state.activePuzzle || state.activePuzzle.constructor.name !== 'Skewb') return;
@@ -182,7 +193,8 @@ function attachSkewbListeners() {
             stickerMetalness: 0.1,
             stickerUseSparkle: true,
             scrambleLength: 12,
-            showDebugPlanes: false
+            showDebugPlanes: false,
+            showDebugArrows: false
         };
 
         if (state.activePuzzle && state.activePuzzle.constructor.name === 'Skewb') {
