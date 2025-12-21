@@ -228,7 +228,8 @@ export function onMouseUp() {
             state.cubeWrapper.updateMatrixWorld(true);
         } else {
             let piHalf = Math.PI / 2;
-            if (state.activePuzzle && typeof state.activePuzzle.getSnapAngle === 'function') {
+            // Only use puzzle snap angle if NOT a background drag (or if free rotation, but that case is handled above)
+            if (!state.isBackgroundDrag && state.activePuzzle && typeof state.activePuzzle.getSnapAngle === 'function') {
                 piHalf = state.activePuzzle.getSnapAngle();
             }
             const rawTurns = state.currentDragAngle / piHalf;

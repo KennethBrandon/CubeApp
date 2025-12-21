@@ -152,6 +152,13 @@ export async function startReverseSolve() {
             return;
         }
 
+        if (['x', 'y', 'z', 'X', 'Y', 'Z'].includes(char)) {
+            axis = char.toLowerCase();
+            sliceVal = Infinity;
+            queueMove(axis, dir, duration, sliceVal); // Undo direction is already handled by 'dir' calc above
+            return;
+        }
+
         if (['R', 'L'].includes(char.toUpperCase())) axis = 'x';
         else if (['U', 'D'].includes(char.toUpperCase())) axis = 'y';
         else if (['F', 'B'].includes(char.toUpperCase())) axis = 'z';

@@ -15,7 +15,7 @@ export class Skewb extends Puzzle {
         this.radius = 1.5; // Overall size
         this.cubieGap = 0.01;
         this.stickerScale = 0.9;
-        this.stickerOffset = 0.002;
+
         this.stickerRadius = 0.02;
         this.cornerStickerInset = 0.08;
         this.centerStickerInset = 0.08;
@@ -67,9 +67,6 @@ export class Skewb extends Puzzle {
 
         this.cutDist = 0.0; // Deep cut through center
 
-        this.stickerRoughness = 0.2;
-        this.stickerMetalness = 0.1;
-        this.stickerUseSparkle = false;
 
         this.showDebugPlanes = false;
         this.showDebugArrows = false;
@@ -552,7 +549,7 @@ export class Skewb extends Puzzle {
             'u': { axis: '2', slice: 1, baseDir: -1 }, // U
             'b': { axis: '3', slice: 1, baseDir: -1 }, // B
 
-            'y': { axis: '0', slice: -1, baseDir: 1 },  // uL
+            'h': { axis: '0', slice: -1, baseDir: 1 },  // uL (was y)
             't': { axis: '1', slice: -1, baseDir: 1 },  // uR
             'f': { axis: '3', slice: -1, baseDir: 1 },  // F
             'd': { axis: '2', slice: -1, baseDir: 1 }   // D

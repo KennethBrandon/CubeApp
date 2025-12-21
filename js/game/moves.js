@@ -155,10 +155,10 @@ export function performMove(axisStr, direction, duration, sliceVal = null) {
         // L, D, B are "Negative Faces" and their Clockwise rotation corresponds to POSITIVE rotation around their axes (or rather, around the main axis).
         // S follows F (Positive Face logic), so it needs negation.
 
-        if (['R', 'U', 'F', 'S', 'X', 'Y', 'Z'].includes(axisStr)) {
+        if (['R', 'U', 'F', 'S'].includes(axisStr)) {
             axisVector.negate();
-        } else if (['L', 'D', 'B', 'M', 'E'].includes(axisStr)) {
-            // Do nothing, standard axis direction is correct for L, D, B, M, E
+        } else if (['L', 'D', 'B', 'M', 'E', 'X', 'Y', 'Z'].includes(axisStr)) {
+            // Do nothing, standard axis direction is correct for L, D, B, M, E, X, Y, Z
         } else {
             // Fallback for generic 'x', 'y', 'z' moves (e.g. from arrow keys or other sources)
             // If sliceVal > 0, we assume it behaves like R/U/F
@@ -174,8 +174,11 @@ export function performMove(axisStr, direction, duration, sliceVal = null) {
         // x follows R (negate)
         // y follows U (negate)
         // z follows F (negate)
-        if (sliceVal === Infinity || ['x', 'y', 'z', 'X', 'Y', 'Z'].includes(axisStr)) {
-            axisVector.negate();
+        // UPDATE: User requested X/Y/Z match Drag Direction (Natural Positive).
+        // Standard WCA X follows R (Negated). User wants "Drag Up" (Positive Angle?).
+        // Removing X/Y/Z from negation here aligns them with "Positive Axis" moves.
+        if (sliceVal === Infinity) {
+            // Don't negate.
         }
     }
 
@@ -299,7 +302,7 @@ export function snapPivot(targetAngle, turns, axis, sliceVal) {
             requestAnimationFrame(loop);
         } else {
             // Normalize turns before finishing
-            let normalizedInputTurns = normalizeTurns(turns);
+            let normalizedInputTurns = normalizeTurns(turns, sliceVal);
 
             finishMove(normalizedInputTurns, axis, sliceVal);
 
@@ -331,8 +334,8 @@ export function snapPivot(targetAngle, turns, axis, sliceVal) {
     loop();
 }
 
-function normalizeTurns(turns) {
-    const cycle = (state.activePuzzle && typeof state.activePuzzle.getCycleLength === 'function')
+function normalizeTurns(turns, sliceVal) {
+    const cycle = (sliceVal !== Infinity && state.activePuzzle && typeof state.activePuzzle.getCycleLength === 'function')
         ? state.activePuzzle.getCycleLength()
         : 4;
 
@@ -367,12 +370,12 @@ export function attachSliceToPivot() {
     state.cubeWrapper.add(state.pivot);
     state.cubeWrapper.add(state.pivot);
     let cubies;
-    if (state.activePuzzle && typeof state.activePuzzle.getSliceCubies === 'function') {
-        cubies = state.activePuzzle.getSliceCubies(state.dragAxis, state.dragSliceValue);
-        console.log(`[Moves] Delegated slice selection to activePuzzle. Count: ${cubies.length}`);
-    } else if (state.dragSliceValue === Infinity) {
+    if (state.dragSliceValue === Infinity) {
         console.log("Attaching ALL cubies (Whole Cube Rotation)");
         cubies = state.allCubies;
+    } else if (state.activePuzzle && typeof state.activePuzzle.getSliceCubies === 'function') {
+        cubies = state.activePuzzle.getSliceCubies(state.dragAxis, state.dragSliceValue);
+        console.log(`[Moves] Delegated slice selection to activePuzzle. Count: ${cubies.length}`);
     } else {
         const epsilon = 0.5;
         cubies = state.allCubies.filter(c => Math.abs(c.position[state.dragAxis] - state.dragSliceValue) < epsilon);
@@ -394,8 +397,8 @@ export function logMove(axis, sliceVal, turns) {
         const notation = state.activePuzzle.getNotation(axis, sliceVal, turns);
         if (notation) {
             addToHistory(notation, false);
+            return;
         }
-        return;
     }
 
     const S = CUBE_SIZE + (state.activePuzzle ? state.activePuzzle.getSpacing() : SPACING);
@@ -549,19 +552,6 @@ export function onKeyDown(event) {
     if (state.activePuzzle && typeof state.activePuzzle.handleKeyDown === 'function') {
         const handled = state.activePuzzle.handleKeyDown(event);
         if (handled) return;
-        // If returns true/truthy, we return. If undefined/false, we continue?
-        // My Megaminx implementation currently returns undefined.
-        // But for safety, if it has the method, we probably should assume it takes over?
-        // Or I update Megaminx to return true. 
-        // Let's assume if the method exists, it might want to consume the event.
-        // But maybe I want 'SPACE' to still work? (Not handled here, handled elsewhere?)
-        // Moves.js only handles face moves.
-        // For now, let's just return if it exists to avoid R/L/U/D triggering weirdness on Megaminx.
-        return;
-
-        // Wait, I need to update Megaminx to actually return true? 
-        // Or if I just return here, it stops the R/L/U/D logic below.
-        // That's fine.
     }
 
     if (!isCameraKey && (state.isAnimating || state.isScrambling || state.isAutoSolving || state.isDragging)) return;
