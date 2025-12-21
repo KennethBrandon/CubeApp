@@ -414,3 +414,78 @@ export function hideLoading() {
         }, 300);
     }
 }
+
+export function openFeedbackModal() {
+    overlayManager.open('feedback-modal');
+
+    // Reset View
+    const successDiv = document.getElementById('feedback-success');
+    const footerDiv = document.getElementById('feedback-footer');
+    const inputs = ['feedback-category', 'feedback-email', 'feedback-message'];
+
+    if (successDiv) successDiv.classList.add('hidden');
+    if (footerDiv) footerDiv.classList.remove('hidden');
+
+    inputs.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.parentElement.classList.remove('hidden');
+            if (id === 'feedback-message') el.value = "";
+        }
+    });
+
+    // Keep email if previously typed
+    const savedEmail = localStorage.getItem('cubeapp_user_email');
+    if (savedEmail) document.getElementById('feedback-email').value = savedEmail;
+
+    document.getElementById('feedback-spinner').classList.add('hidden');
+    document.getElementById('btn-submit-feedback').disabled = false;
+    document.getElementById('btn-submit-feedback').querySelector('span').textContent = "Send";
+}
+
+export async function handleFeedbackSubmit() {
+    const category = document.getElementById('feedback-category').value;
+    const email = document.getElementById('feedback-email').value.trim();
+    const message = document.getElementById('feedback-message').value.trim();
+
+    if (!message) {
+        alert("Please enter a message!");
+        return;
+    }
+
+    // UI Loading State
+    const btn = document.getElementById('btn-submit-feedback');
+    const spinner = document.getElementById('feedback-spinner');
+    const label = btn.querySelector('span');
+
+    btn.disabled = true;
+    label.textContent = "Sending...";
+    spinner.classList.remove('hidden');
+
+    try {
+        const { submitFeedback } = await import('../leaderboard/feedback.js');
+        const success = await submitFeedback(message, email, category);
+
+        if (success) {
+            // Success UI
+            document.getElementById('feedback-footer').classList.add('hidden');
+            document.getElementById('feedback-success').classList.remove('hidden');
+
+            // Hide inputs
+            ['feedback-category', 'feedback-email', 'feedback-message'].forEach(id => {
+                document.getElementById(id).parentElement.classList.add('hidden');
+            });
+
+            if (email) localStorage.setItem('cubeapp_user_email', email);
+        } else {
+            alert("Failed to send feedback. Please try again.");
+        }
+    } catch (e) {
+        console.error(e);
+        alert("Error sending feedback.");
+    } finally {
+        btn.disabled = false;
+        label.textContent = "Send";
+        spinner.classList.add('hidden');
+    }
+}

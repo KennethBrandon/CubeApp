@@ -267,6 +267,12 @@ export function onKeyUp(event) {
 }
 
 export function onKeyDown(event) {
+    // Ignore input if user is typing in a text field
+    const tag = document.activeElement.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA') {
+        return;
+    }
+
     // Check if any modal is open
     const modals = ['solved-modal', 'leaderboard-modal', 'detail-modal', 'debug-modal', 'custom-puzzle-panel'];
     const isModalOpen = modals.some(id => {

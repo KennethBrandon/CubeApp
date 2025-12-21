@@ -6,7 +6,7 @@ import { startScramble, handleResetClick, hardReset } from '../game/scramble.js'
 import { toggleMirrors } from '../core/environment.js';
 import { playSolveAnimation, animateVictory } from '../animations/victory.js';
 
-import { showWinModal, togglePanel, openDetailModal, updateHistoryUI, updateActivePuzzleTab, initHistoryWindow, toggleDrawer } from './ui.js';
+import { showWinModal, togglePanel, openDetailModal, updateHistoryUI, updateActivePuzzleTab, initHistoryWindow, toggleDrawer, openFeedbackModal, handleFeedbackSubmit } from './ui.js';
 import { submitScore, fetchLeaderboard } from '../leaderboard/firebase.js';
 import { playCubeAnimation, animateWrapperReset } from '../animations/transitions.js';
 import { adjustCameraForCubeSize } from '../core/controls.js';
@@ -105,6 +105,18 @@ export function setupUIEventListeners() {
         toggleDrawer(false);
         overlayManager.open('about-modal');
         gtag('event', 'open_about_modal');
+    });
+
+    // Feedback (Drawer)
+    document.getElementById('btn-drawer-feedback')?.addEventListener('click', () => {
+        toggleDrawer(false);
+        openFeedbackModal();
+        gtag('event', 'open_feedback_modal');
+    });
+
+    document.getElementById('btn-submit-feedback')?.addEventListener('click', () => {
+        // Dynamic import logic is inside handleFeedbackSubmit in ui.js
+        handleFeedbackSubmit();
     });
 
     // Handle External Links (e.g. Grinch Credit)
