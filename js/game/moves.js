@@ -53,8 +53,16 @@ export function performMove(axisStr, direction, duration, sliceVal = null) {
     // Instead of complex nesting, let's wrap the standard logic.
     // If I successfully got custom logic, I skip standard logic.
     const isCustom = !!customAngle;
+    const hasCustomHandler = state.activePuzzle && typeof state.activePuzzle.getMoveInfo === 'function';
 
     if (!isCustom) {
+        // If puzzle has handler (like Skewb) but returned null, only allow X, Y, Z fallback
+        if (hasCustomHandler && !['x', 'y', 'z', 'X', 'Y', 'Z'].includes(axisStr)) {
+            console.log(`[Moves] Custom puzzle rejected move ${axisStr}. Ignoring standard fallback.`);
+            state.isAnimating = false;
+            return;
+        }
+
         if (axisStr === 'x' || axisStr === 'X') axisVector.set(1, 0, 0);
         else if (axisStr === 'y' || axisStr === 'Y') axisVector.set(0, 1, 0);
         else if (axisStr === 'z' || axisStr === 'Z') axisVector.set(0, 0, 1);
@@ -75,7 +83,7 @@ export function performMove(axisStr, direction, duration, sliceVal = null) {
     else if (['z', 'Z', 'F', 'B', 'S'].includes(axisStr)) maxIndex = (dims.z - 1) / 2;
     else maxIndex = (state.cubeSize - 1) / 2; // Fallback
 
-    if (['R', 'L', 'U', 'D', 'F', 'B', 'M', 'E', 'S', 'X', 'Y', 'Z'].includes(axisStr)) {
+    if (!isCustom && ['R', 'L', 'U', 'D', 'F', 'B', 'M', 'E', 'S', 'X', 'Y', 'Z'].includes(axisStr)) {
         if (sliceVal === null) {
             let sliceIndex = 0;
             if (['R', 'U', 'F'].includes(axisStr)) sliceIndex = maxIndex;

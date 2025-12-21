@@ -7,6 +7,7 @@ import { VoidCube } from '../puzzles/VoidCube.js';
 import { AcornsMod } from '../puzzles/AcornsMod.js';
 import { Megaminx } from '../puzzles/Megaminx.js';
 import { Pyraminx } from '../puzzles/Pyraminx.js';
+import { Skewb } from '../puzzles/Skewb.js';
 
 import { StlPuzzleMod } from '../puzzles/StlPuzzleMod.js';
 import { hardReset } from '../game/scramble.js';
@@ -640,6 +641,10 @@ export function changePuzzle(val, isCustom = false, customDims = null, isMirrorC
             newSize = 3;
             newDims = { x: 3, y: 3, z: 3 };
             PuzzleClass = Pyraminx;
+        } else if (val === 'skewb') {
+            newSize = 3;
+            newDims = { x: 3, y: 3, z: 3 };
+            PuzzleClass = Skewb;
         } else if (val === 'mirror-2x2x2') {
             newSize = 2;
             newDims = { x: 2, y: 2, z: 2 };
