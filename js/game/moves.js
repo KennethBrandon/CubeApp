@@ -23,7 +23,7 @@ export function performMove(axisStr, direction, duration, sliceVal = null) {
     let cubies = [];
     let customAngle = null;
 
-    // Check if active puzzle has custom move logic
+    // Check if active puzzle has custom move logic (ALL puzzles should now)
     if (state.activePuzzle && typeof state.activePuzzle.getMoveInfo === 'function') {
         const info = state.activePuzzle.getMoveInfo(axisStr, direction, sliceVal);
         if (info) {
@@ -31,155 +31,16 @@ export function performMove(axisStr, direction, duration, sliceVal = null) {
             cubies = info.cubies;
             customAngle = info.angle;
         } else {
-            console.log(`[Moves] Custom info returned null.`);
-        }
-    } else {
-        console.log(`[Moves] No custom logic found. ActivePuzzle: ${!!state.activePuzzle}`);
-    }
-
-    if (!customAngle && cubies.length === 0) { // Fallback to standard logic if overridden logic didn't return info we needed
-        // Determine axis vector and cubies
-        if (axisStr === 'x' || axisStr === 'X') axisVector.set(1, 0, 0);
-        else if (axisStr === 'y' || axisStr === 'Y') axisVector.set(0, 1, 0);
-        else if (axisStr === 'z' || axisStr === 'Z') axisVector.set(0, 0, 1);
-
-        // ... (standard logic continues) ...
-        // I need to skip the huge block if I already found cubies/axis.
-    }
-
-    // Determine maxIndex based on axis
-    // ... logic ...
-
-    // Instead of complex nesting, let's wrap the standard logic.
-    // If I successfully got custom logic, I skip standard logic.
-    const isCustom = !!customAngle;
-    const hasCustomHandler = state.activePuzzle && typeof state.activePuzzle.getMoveInfo === 'function';
-
-    if (!isCustom) {
-        // If puzzle has handler (like Skewb) but returned null, only allow X, Y, Z fallback
-        if (hasCustomHandler && !['x', 'y', 'z', 'X', 'Y', 'Z'].includes(axisStr)) {
-            console.log(`[Moves] Custom puzzle rejected move ${axisStr}. Ignoring standard fallback.`);
+            // Fallback for X/Y/Z on some puzzles or invalid moves
+            // If info is null, we assume the move is invalid or not handled
+            console.log(`[Moves] Move rejected by puzzle: ${axisStr}`);
             state.isAnimating = false;
             return;
         }
-
-        if (axisStr === 'x' || axisStr === 'X') axisVector.set(1, 0, 0);
-        else if (axisStr === 'y' || axisStr === 'Y') axisVector.set(0, 1, 0);
-        else if (axisStr === 'z' || axisStr === 'Z') axisVector.set(0, 0, 1);
-
-        // Handle named moves (R, L, U, D, F, B)
-        // ...
-        // Copying existing logic is risky. 
-        // I should just wrap the existing logic in if (!isCustom).
-    }
-
-    const S = CUBE_SIZE + (state.activePuzzle ? state.activePuzzle.getSpacing() : SPACING);
-    const dims = state.activeDimensions || state.cubeDimensions;
-
-    // Determine maxIndex based on axis
-    let maxIndex = 0;
-    if (['x', 'X', 'R', 'L', 'M'].includes(axisStr)) maxIndex = (dims.x - 1) / 2;
-    else if (['y', 'Y', 'U', 'D', 'E'].includes(axisStr)) maxIndex = (dims.y - 1) / 2;
-    else if (['z', 'Z', 'F', 'B', 'S'].includes(axisStr)) maxIndex = (dims.z - 1) / 2;
-    else maxIndex = (state.cubeSize - 1) / 2; // Fallback
-
-    if (!isCustom && ['R', 'L', 'U', 'D', 'F', 'B', 'M', 'E', 'S', 'X', 'Y', 'Z'].includes(axisStr)) {
-        if (sliceVal === null) {
-            let sliceIndex = 0;
-            if (['R', 'U', 'F'].includes(axisStr)) sliceIndex = maxIndex;
-            else if (['L', 'D', 'B'].includes(axisStr)) sliceIndex = -maxIndex;
-            else sliceIndex = 0; // M, E, S
-
-            sliceVal = sliceIndex * S;
-        }
-
-        if (['R', 'L', 'M'].includes(axisStr)) axisVector.set(1, 0, 0);
-        else if (['U', 'D', 'E'].includes(axisStr)) axisVector.set(0, 1, 0);
-        else if (['F', 'B', 'S'].includes(axisStr)) axisVector.set(0, 0, 1);
-
-        // Add to history
-        let notation = axisStr;
-        let notationDir = direction;
-
-        if (['X', 'Y', 'Z'].includes(axisStr)) {
-            notation = axisStr.toLowerCase();
-            // No inversion needed if we negate the axis vector below
-        }
-
-        // Check for layer prefix
-        if (sliceVal !== null && !['M', 'E', 'S', 'X', 'Y', 'Z'].includes(axisStr)) {
-            let layer = 1;
-            // Reverse the logic from onKeyDown
-            if (['R', 'U', 'F'].includes(axisStr)) {
-                layer = Math.round(maxIndex + 1 - sliceVal / S);
-            } else {
-                layer = Math.round(sliceVal / S + maxIndex + 1);
-            }
-
-            if (layer > 1) {
-                notation = layer + notation;
-            }
-        }
-
-        if (notationDir === -1) notation += "'";
-        else if (notationDir === 2 || notationDir === -2) notation += "2";
-        addToHistory(notation, false);
-
-        // Start timer if not scrambling/auto-solving and not already running
-        // AND not a whole cube rotation (X, Y, Z)
-        if (!state.isScrambling && !state.isAutoSolving && !['X', 'Y', 'Z'].includes(axisStr)) {
-            if (!state.timerRunning && state.isGameActive && state.hasBeenScrambled) {
-                startTimer();
-            }
-        }
-    } else if (state.activePuzzle && typeof state.activePuzzle.getNotation === 'function') {
-        const notation = state.activePuzzle.getNotation(axisStr, sliceVal, direction);
-        if (notation) {
-            addToHistory(notation, false);
-            if (!state.isScrambling && !state.isAutoSolving) {
-                if (!state.timerRunning && state.isGameActive && state.hasBeenScrambled) {
-                    startTimer();
-                }
-            }
-        }
-    }
-
-    // Generic slice selection
-    if (!isCustom && sliceVal !== null && sliceVal !== Infinity) {
-        cubies = getCubiesInSlice(axisStr === 'x' || axisStr === 'R' || axisStr === 'L' || axisStr === 'M' ? 'x' :
-            (axisStr === 'y' || axisStr === 'U' || axisStr === 'D' || axisStr === 'E' ? 'y' : 'z'), sliceVal);
-
-        // Adjust rotation axis based on Face Polarity
-        // R, U, F are "Positive Faces" but their rotation is defined as Clockwise, 
-        // which corresponds to NEGATIVE rotation around their respective positive axes (Right Hand Rule).
-        // L, D, B are "Negative Faces" and their Clockwise rotation corresponds to POSITIVE rotation around their axes (or rather, around the main axis).
-        // S follows F (Positive Face logic), so it needs negation.
-
-        if (['R', 'U', 'F', 'S'].includes(axisStr)) {
-            axisVector.negate();
-        } else if (['L', 'D', 'B', 'M', 'E', 'X', 'Y', 'Z'].includes(axisStr)) {
-            // Do nothing, standard axis direction is correct for L, D, B, M, E, X, Y, Z
-        } else {
-            // Fallback for generic 'x', 'y', 'z' moves (e.g. from arrow keys or other sources)
-            // If sliceVal > 0, we assume it behaves like R/U/F
-            if (sliceVal > 0) {
-                axisVector.negate();
-            }
-        }
-    } else if (cubies.length === 0) {
-        // Whole cube rotation (M, E, S or similar)
-        cubies = state.allCubies;
-
-        // Adjust direction for whole cube rotations (x, y, z)
-        // x follows R (negate)
-        // y follows U (negate)
-        // z follows F (negate)
-        // UPDATE: User requested X/Y/Z match Drag Direction (Natural Positive).
-        // Standard WCA X follows R (Negated). User wants "Drag Up" (Positive Angle?).
-        // Removing X/Y/Z from negation here aligns them with "Positive Axis" moves.
-        if (sliceVal === Infinity) {
-            // Don't negate.
-        }
+    } else {
+        console.warn(`[Moves] No active puzzle or getMoveInfo not implemented.`);
+        state.isAnimating = false;
+        return;
     }
 
     state.pivot.rotation.set(0, 0, 0);
@@ -202,6 +63,7 @@ export function performMove(axisStr, direction, duration, sliceVal = null) {
             requestAnimationFrame(loop);
         } else {
             finishMove(direction, axisVector, sliceVal);
+            logMove(axisStr, sliceVal, direction, false, null); // Log the move (not a drag)
             processQueue();
         }
     }
@@ -256,8 +118,9 @@ export function finishMove(turns, axisVectorOrAxis, sliceVal) {
 
     // Update active dimensions if whole cube rotation
     if (sliceVal === Infinity) {
-        const turns = Math.round(state.currentDragAngle / (Math.PI / 2));
-        if (Math.abs(turns) % 2 !== 0) {
+        const piHalf = state.activePuzzle && typeof state.activePuzzle.getSnapAngle === 'function' ? state.activePuzzle.getSnapAngle() : Math.PI / 2;
+        const turns = Math.round(state.currentDragAngle / piHalf);
+        if (Math.abs(turns) % 2 !== 0 && piHalf === Math.PI / 2) {
             const dims = state.activeDimensions || state.cubeDimensions;
             if (!dims) return; // Should not happen
 
@@ -307,27 +170,7 @@ export function snapPivot(targetAngle, turns, axis, sliceVal) {
             finishMove(normalizedInputTurns, axis, sliceVal);
 
             if (normalizedInputTurns !== 0) {
-                let logTurns = normalizedInputTurns;
-                // Normalize turns to positive axis direction if drag axis is negative
-                if (state.dragRotationAxis) {
-                    if (axis === 'x' && state.dragRotationAxis.x < -0.5) logTurns *= -1;
-                    if (axis === 'y' && state.dragRotationAxis.y < -0.5) logTurns *= -1;
-                    if (axis === 'z' && state.dragRotationAxis.z < -0.5) logTurns *= -1;
-                }
-
-                // Patch for inverted Positive Slice Drags (R, F, U) and S
-                // R (X > 0) -> Invert
-                // U (Y > 0) -> Invert
-                // F (Z > 0) -> Invert
-                // S (Z = 0) -> Invert (Follows F)
-                // M (X = 0) -> Normal (Follows L)
-                // E (Y = 0) -> Normal (Follows D)
-
-                if (axis === 'x' && sliceVal > 0.1) logTurns *= -1; // R only
-                else if (axis === 'y' && sliceVal > 0.1) logTurns *= -1; // U only
-                else if (axis === 'z' && sliceVal > -0.1) logTurns *= -1; // F and S
-
-                logMove(axis, sliceVal, logTurns);
+                logMove(axis, sliceVal, normalizedInputTurns, true, state.dragRotationAxis);
             }
         }
     }
@@ -335,29 +178,23 @@ export function snapPivot(targetAngle, turns, axis, sliceVal) {
 }
 
 function normalizeTurns(turns, sliceVal) {
-    const cycle = (sliceVal !== Infinity && state.activePuzzle && typeof state.activePuzzle.getCycleLength === 'function')
+    const cycle = (state.activePuzzle && typeof state.activePuzzle.getCycleLength === 'function')
         ? state.activePuzzle.getCycleLength()
         : 4;
 
     let t = Math.round(turns) % cycle;
 
     if (cycle === 4) {
-        // Standard: 
-        // 0 -> 0
-        // 1 -> 1
-        // 2 -> 2
-        // 3 -> -1
         if (t === 3) return -1;
         if (t === -3) return 1;
-        // -1 -> -1
-        // -2 -> 2 (or -2)
     } else if (cycle === 3) {
-        // Skewb:
-        // 0 -> 0 (360)
-        // 1 -> 1
-        // 2 -> -1
         if (t === 2) return -1;
         if (t === -2) return 1;
+    } else if (cycle === 5) {
+        if (t === 3) return -2;
+        if (t === 4) return -1;
+        if (t === -3) return 2;
+        if (t === -4) return 1;
     }
 
     if (t === 0) return 0;
@@ -384,126 +221,19 @@ export function attachSliceToPivot() {
     cubies.forEach(c => state.pivot.attach(c));
 }
 
-export function logMove(axis, sliceVal, turns) {
+export function logMove(axis, sliceVal, turns, isDrag = false, dragRotationAxis = null) {
     if (state.isScrambling || state.isAutoSolving) return;
 
-    // Convert internal move to notation
-    // axis: 'x', 'y', 'z'
-    // sliceVal: position of slice
-    // turns: number of 90 deg turns (1, -1, 2)
-
-    // Check if active puzzle has custom notation logic
+    // Check if active puzzle has custom notation logic (should be true for all)
     if (state.activePuzzle && typeof state.activePuzzle.getNotation === 'function') {
-        const notation = state.activePuzzle.getNotation(axis, sliceVal, turns);
+        const notation = state.activePuzzle.getNotation(axis, sliceVal, turns, isDrag, dragRotationAxis);
         if (notation) {
             addToHistory(notation, false);
             return;
         }
     }
 
-    const S = CUBE_SIZE + (state.activePuzzle ? state.activePuzzle.getSpacing() : SPACING);
-    const epsilon = 0.1;
-
-    // Use activeDimensions to get the correct dimension for this axis
-    const dims = state.activeDimensions || state.cubeDimensions;
-    const axisDim = dims[axis];
-    const maxIndex = (axisDim - 1) / 2;
-
-    let char = '';
-    let notationTurns = turns;
-
-    // Determine layer index
-    // sliceVal ranges from -maxIndex*S to +maxIndex*S
-    let index = sliceVal / S;
-
-    if (state.isBackgroundDrag || sliceVal === Infinity) {
-        // Whole cube rotations
-        if (axis === 'x') char = 'x';
-        else if (axis === 'y') char = 'y';
-        else if (axis === 'z') char = 'z';
-
-        // Invert notation for whole cube rotations to match user expectation
-        // User wants visual direction to be opposite of notation
-        notationTurns *= -1;
-    } else {
-        // Face moves
-        if (axis === 'x') {
-            if (Math.abs(index - maxIndex) < epsilon) {
-                char = 'R';
-                notationTurns *= -1; // R is -X rotation
-            } else if (Math.abs(index + maxIndex) < epsilon) {
-                char = 'L';
-            } else {
-                // Inner slice
-                if (axisDim % 2 !== 0 && Math.abs(index) < epsilon) {
-                    char = 'M'; // True middle
-                } else {
-                    // Numbered slice
-                    if (index > 0) {
-                        // Closer to R
-                        let depth = Math.round(maxIndex - index + 1);
-                        char = depth + 'R';
-                        notationTurns *= -1; // Follows R direction
-                    } else {
-                        // Closer to L
-                        let depth = Math.round(maxIndex - Math.abs(index) + 1);
-                        char = depth + 'L';
-                    }
-                }
-            }
-        } else if (axis === 'y') {
-            if (Math.abs(index - maxIndex) < epsilon) {
-                char = 'U';
-                notationTurns *= -1; // U is -Y rotation
-            } else if (Math.abs(index + maxIndex) < epsilon) {
-                char = 'D';
-            } else {
-                if (axisDim % 2 !== 0 && Math.abs(index) < epsilon) {
-                    char = 'E';
-                } else {
-                    if (index > 0) {
-                        // Closer to U
-                        let depth = Math.round(maxIndex - index + 1);
-                        char = depth + 'U';
-                        notationTurns *= -1; // Follows U
-                    } else {
-                        // Closer to D
-                        let depth = Math.round(maxIndex - Math.abs(index) + 1);
-                        char = depth + 'D';
-                    }
-                }
-            }
-        } else if (axis === 'z') {
-            if (Math.abs(index - maxIndex) < epsilon) {
-                char = 'F';
-                notationTurns *= -1; // F is -Z rotation
-            } else if (Math.abs(index + maxIndex) < epsilon) {
-                char = 'B';
-            } else {
-                if (axisDim % 2 !== 0 && Math.abs(index) < epsilon) {
-                    char = 'S';
-                    notationTurns *= -1;
-                } else {
-                    if (index > 0) {
-                        // Closer to F
-                        let depth = Math.round(maxIndex - index + 1);
-                        char = depth + 'F';
-                        notationTurns *= -1; // Follows F
-                    } else {
-                        // Closer to B
-                        let depth = Math.round(maxIndex - Math.abs(index) + 1);
-                        char = depth + 'B';
-                    }
-                }
-            }
-        }
-    }
-
-    let suffix = '';
-    if (Math.abs(notationTurns) === 2) suffix = '2';
-    else if (notationTurns < 0) suffix = "'";
-
-    addToHistory(char + suffix, false);
+    console.warn("[Moves] No notation returned by activePuzzle.getNotation");
 }
 
 // Removed local heldKeys, using state.activeKeys
@@ -548,77 +278,24 @@ export function onKeyDown(event) {
     state.activeKeys.add(key.toLowerCase());
     state.activeKeys.add(key.toUpperCase());
 
+    if (!isCameraKey && (state.isAnimating || state.isScrambling || state.isAutoSolving || state.isDragging)) return;
+
     // Delegate to active puzzle if it has custom handling (e.g. Megaminx)
     if (state.activePuzzle && typeof state.activePuzzle.handleKeyDown === 'function') {
         const handled = state.activePuzzle.handleKeyDown(event);
         if (handled) return;
     }
 
-    if (!isCameraKey && (state.isAnimating || state.isScrambling || state.isAutoSolving || state.isDragging)) return;
+    // Default handling for arrow keys ONLY if not handled by puzzle? 
+    // Wait, arrow keys usually rotate the camera (handled above by isCameraKey return if not animating)
+    // Actually, arrow keys are sometimes mapped to rotates.
+    // But StandardCube now handles ALL keys including R, L, U etc.
 
-    const upperKey = key.toUpperCase();
-    const shift = event.shiftKey;
-    const direction = shift ? -1 : 1;
-
-    if (['R', 'L', 'U', 'D', 'F', 'B', 'M', 'E', 'S', 'X', 'Y', 'Z'].includes(upperKey)) {
-        let axis = '';
-        if (['R', 'L', 'M', 'X'].includes(upperKey)) axis = 'x';
-        else if (['U', 'D', 'E', 'Y'].includes(upperKey)) axis = 'y';
-        else if (['F', 'B', 'S', 'Z'].includes(upperKey)) axis = 'z';
-
-        let finalDir = direction;
-        if (isFaceRectangular(axis)) {
-            finalDir = 2;
-        }
-
-        // Determine layer from held keys
-        let layer = 1;
-        if (state.activeKeys.has('0') || state.activeKeys.has(')')) layer = 10;
-        else if (state.activeKeys.has('9') || state.activeKeys.has('(')) layer = 9;
-        else if (state.activeKeys.has('8') || state.activeKeys.has('*')) layer = 8;
-        else if (state.activeKeys.has('7') || state.activeKeys.has('&')) layer = 7;
-        else if (state.activeKeys.has('6') || state.activeKeys.has('^')) layer = 6;
-        else if (state.activeKeys.has('5') || state.activeKeys.has('%')) layer = 5;
-        else if (state.activeKeys.has('4') || state.activeKeys.has('$')) layer = 4;
-        else if (state.activeKeys.has('3') || state.activeKeys.has('#')) layer = 3;
-        else if (state.activeKeys.has('2') || state.activeKeys.has('@')) layer = 2;
-
-        // Validate M, E, S moves on even puzzles
-        const dims = state.activeDimensions || state.cubeDimensions;
-        const axisDim = dims[axis];
-        if (['M', 'E', 'S'].includes(upperKey)) {
-            if (axisDim % 2 === 0) return; // Cannot do middle slice on even puzzles
-        }
-
-        // Validate layer bounds
-        if (layer > axisDim) return; // Cannot rotate a layer that doesn't exist
-
-        let sliceVal = null;
-        if (['X', 'Y', 'Z'].includes(upperKey)) {
-            sliceVal = Infinity;
-        } else if (layer > 1 && !['M', 'E', 'S'].includes(upperKey)) {
-            const S = CUBE_SIZE + (state.activePuzzle ? state.activePuzzle.getSpacing() : SPACING);
-            const maxIndex = (axisDim - 1) / 2;
-
-            // Calculate slice index based on face polarity
-            // Positive Faces (R, U, F): Layer 1 is at maxIndex. Layer n is maxIndex - (n-1)
-            // Negative Faces (L, D, B): Layer 1 is at -maxIndex. Layer n is -maxIndex + (n-1)
-            if (['R', 'U', 'F'].includes(upperKey)) {
-                sliceVal = (maxIndex - (layer - 1)) * S;
-            } else {
-                sliceVal = (-maxIndex + (layer - 1)) * S;
-            }
-        }
-
-        queueMove(upperKey, finalDir, state.animationSpeed, sliceVal);
-    }
+    // So if handleKeyDown returns false, we just ignore it?
+    // Unless there are global keys like 'Space' for scramble/solve which should be handled elsewhere?
+    // Scramble logic is usually in UI buttons.
+    // 'Space' might be handled in Timer or something.
+    // End of onKeyDown
 }
+// isFaceRectangular moved to Puzzle.js
 
-function isFaceRectangular(axis) {
-    if (!state.activeDimensions) return false;
-    const dims = state.activeDimensions;
-    if (axis === 'x') return dims.y !== dims.z;
-    if (axis === 'y') return dims.x !== dims.z;
-    if (axis === 'z') return dims.x !== dims.y;
-    return false;
-}

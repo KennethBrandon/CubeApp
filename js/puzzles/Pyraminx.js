@@ -580,6 +580,23 @@ export class Pyraminx extends Puzzle {
             return true;
         }
 
+        // 3. Handle Whole Cube Rotations (x, y, z)
+        const rotMap = {
+            'y': { axis: 'y', notation: 'RotateU' },
+            'z': { axis: 'z', notation: 'RotateB' },
+            'x': { axis: 'x', notation: 'RotateL' }
+        };
+
+        if (rotMap.hasOwnProperty(char)) {
+            const rot = rotMap[char];
+            let dir = shift ? -1 : 1;
+            // For L/x rotation, usually direction is inverted in notation vs axis, 
+            // but let's see if the user wants parity with StandardCube.
+            // For now, let's keep it simple.
+            queueMove(rot.axis, dir, state.animationSpeed, Infinity);
+            return true;
+        }
+
         return false;
     }
 
@@ -639,6 +656,16 @@ export class Pyraminx extends Puzzle {
 
     // This getMoveInfo is called by the queueMove system to get the actual cubies and axis for a move.
     getMoveInfo(axisStr, dir, sliceVal) {
+        // Handle Whole Cube Rotations (x, y, z)
+        if (sliceVal === Infinity || isNaN(parseInt(axisStr)) || ['x', 'y', 'z'].includes(axisStr)) {
+            const rotAxis = this.getLockedRotationAxis(axisStr).clone();
+            return {
+                axisVector: rotAxis,
+                cubies: this.cubieList,
+                angle: dir * (Math.PI * 2 / 3) // 3-cycle (120 degrees)
+            };
+        }
+
         const faceIdx = parseInt(axisStr);
         // console.log(`[getMoveInfo] Called with axis: ${axisStr}, sliceVal: ${sliceVal}, total pieces: ${this.cubieList.length}`);
 
@@ -671,74 +698,60 @@ export class Pyraminx extends Puzzle {
         return null; // Fallback
     }
 
-    getSliceCubies(axisStr, sliceVal) {
-        // Called by attachSliceToPivot during drag operations
-        const faceIdx = parseInt(axisStr);
-        // console.log(`[getSliceCubies] Called with axis: ${axisStr}, sliceVal: ${sliceVal}`);
+    getSliceCubies(axis, sliceVal) {
+        if (sliceVal === Infinity) return this.cubieList;
+        const faceIdx = parseInt(axis);
+        if (isNaN(faceIdx) || faceIdx < 0 || faceIdx >= 4) return [];
 
-        if (!isNaN(faceIdx) && faceIdx >= 0 && faceIdx < 4) {
-            const normal = this.faceNormals[faceIdx];
-            const threshold = (typeof sliceVal === 'number') ? sliceVal : -this.cutDistMiddle;
+        const normal = this.faceNormals[faceIdx];
+        // Threshold for Pyraminx logic: pieces with dot <= threshold are selected
+        const threshold = (typeof sliceVal === 'number') ? sliceVal : -this.cutDistMiddle;
 
-            const cubies = this.cubieList.filter(c => {
-                const currentPos = c.position;
-                const dot = currentPos.dot(normal);
-                const isSelected = dot <= threshold + 0.01;
-                // console.log(`  [getSliceCubies] Piece type: ${c.userData.type}, dot: ${dot.toFixed(3)}, selected: ${isSelected}`);
-                return isSelected;
-            });
-
-            // console.log(`[getSliceCubies] Returning ${cubies.length} pieces`);
-            return cubies;
-        }
-        return [];
+        return this.cubieList.filter(c => {
+            const dot = c.position.dot(normal);
+            return dot <= threshold + 0.01;
+        });
     }
 
-    getNotation(axisStr, sliceVal, turns, isScramble) {
-        const faceIdx = parseInt(axisStr);
-        if (isNaN(faceIdx)) return axisStr;
+    getNotation(axis, sliceVal, turns, isDrag, dragRotationAxis) {
+        // Handle Whole Cube Rotations
+        if (isNaN(parseInt(axis))) {
+            const rotMap = {
+                'y': 'RotateU',
+                'z': 'RotateB',
+                'x': 'RotateL'
+            };
+            const prefix = rotMap[axis];
+            if (!prefix) return axis;
 
-        // WCA Mapping:
-        // Axis 0 (Green/Front) -> B (Rotates Back Corner)
-        // Axis 1 (Blue/Right) -> L (Rotates Left Corner)
-        // Axis 2 (Red/Left)   -> R (Rotates Right Corner)
-        // Axis 3 (Yellow/Down)-> U (Rotates Up Corner)
+            let t = turns % 3;
+            if (t === 2) t = -1;
+            if (t === -2) t = 1;
+            if (t === 0) return null;
+
+            let suffix = (t === -1) ? "'" : "";
+            return prefix + suffix;
+        }
+
+        const faceIdx = parseInt(axis);
+        if (isNaN(faceIdx) || faceIdx < 0 || faceIdx >= 4) return null;
+
         const letters = ['B', 'L', 'R', 'U'];
-        let letter = letters[faceIdx] || '?';
+        let letter = letters[faceIdx];
 
-        // Check if Tip
-        // Scramble generator uses specific sliceVals (-cutDistTip for tips)
-        // Tip threshold is around -2.0. Deep is around 0.0 or -0.4.
-        // If sliceVal is closer to Tip cut (-2.0) than Deep cut (-0.4), it's a tip.
-        const tipCut = -this.cutDistTip; // -2.0
-        const deepCut = -this.cutDistMiddle - 0.05; // ~-0.45
-
-        // Use a threshold halfway between tip and deep
-        const boundary = (tipCut + deepCut) / 2;
-
-        if (sliceVal < boundary) {
+        // Pyraminx notation: Uppercase = Layer, Lowercase = Tip
+        // Tip threshold is around -1.5
+        if (sliceVal < -1.5 && sliceVal !== Infinity) {
             letter = letter.toLowerCase();
         }
 
-        let suffix = '';
-        // Turns: 
-        // Pyraminx Axis points AWAY from corner.
-        // 1 = CW (Standard)
-        // -1 = CCW (Prime)
-
         // Normalize turns (modulo 3)
-        // 3 turns = 0 (No move)
-        // 2 turns = -1 (Prime)
-        // -2 turns = 1 (Standard)
         let t = turns % 3;
         if (t === 2) t = -1;
         if (t === -2) t = 1;
+        if (t === 0) return null;
 
-        if (t === 0) return null; // No net move
-
-        if (t === -1) suffix = "'"; // CCW/Prime
-        else if (t === 1) suffix = ""; // CW/Standard
-
+        let suffix = (t === -1) ? "'" : "";
         return letter + suffix;
     }
 
@@ -1253,6 +1266,9 @@ export class Pyraminx extends Puzzle {
     getSnapAngle() {
         return (Math.PI * 2) / 3; // 120 degrees
     }
+    getCycleLength() {
+        return 3;
+    }
 
     isSolved() {
         // For Pyraminx, all pieces (tips, centers, edges) must be in their original orientation (Identity)
@@ -1274,40 +1290,6 @@ export class Pyraminx extends Puzzle {
         return true;
     }
 
-    getSliceCubies(axis, sliceVal) {
-        // Handle whole puzzle rotation
-        if (sliceVal === Infinity) {
-            return this.cubieList;
-        }
-
-        const cubies = [];
-        const norm = this.faceNormals[parseInt(axis)];
-        // Tolerance for floating point comparisons
-        const epsilon = 0.1;
-
-        // Determine the direction of the normal for comparison
-        // If sliceVal is negative, we're looking for cubies on the "other" side of the plane
-        const effectiveNormal = sliceVal < 0 ? norm.clone().negate() : norm;
-        const effectiveSliceVal = Math.abs(sliceVal);
-
-        for (const cubie of this.cubieList) {
-            // Get the cubie's position in local coordinates (relative to wrapper/pivot)
-            // Using world position is risky if wrapper is rotated.
-            const pos = cubie.position;
-
-            // Project the cubie's position onto the normal vector
-            const projection = pos.dot(effectiveNormal);
-
-            // Check if the cubie is on the correct side of the slicing plane
-            // For a positive sliceVal, we want cubies where projection >= sliceVal - epsilon
-            // For a negative sliceVal, we want cubies where projection <= sliceVal + epsilon (which is projection >= -abs(sliceVal) - epsilon)
-            // So, for effectiveSliceVal, we want projection >= effectiveSliceVal - epsilon
-            if (projection >= effectiveSliceVal - epsilon) {
-                cubies.push(cubie);
-            }
-        }
-        return cubies;
-    }
 
     getRotationAxes() {
         const axes = {};
@@ -1315,23 +1297,29 @@ export class Pyraminx extends Puzzle {
         return axes;
     }
 
+    // Rotation tuning for whole-cube moves (x, y, z)
+    // Managed by RotationTuner.js
+    rotationTuning = {
+        x: { negate: false, scale: 1.5 },
+        y: { negate: false, scale: 1.5 },
+        z: { negate: false, scale: -1.5 }
+    };
+
     getLockedRotationAxis(axis) {
-        // Axis Lock Logic:
-        // 'y' (Horizontal Drag) -> U axis (Face 3)
-        // 'z' (Right Vertical Drag) -> R axis (Face 2)
-        // 'x' (Left Vertical Drag) -> L axis (Face 1)
+        const config = this.rotationTuning[axis] || { negate: false };
+        let vec;
+        if (axis === 'y') vec = this.faceNormals[3].clone(); // Down
+        else if (axis === 'z') vec = this.faceNormals[0].clone(); // Toward
+        else if (axis === 'x') vec = this.faceNormals[1].clone(); // L-Outward
+        else vec = new THREE.Vector3(0, 1, 0);
 
-        // Note: The interactions.js sends 'x', 'y', 'z' based on screen zone.
-        // We map these to our specific Pyraminx axes.
+        if (config.negate) vec.negate();
+        return vec;
+    }
 
-        if (axis === 'y') {
-            return this.faceNormals[3].clone().negate(); // U (Inverted per user request)
-        } else if (axis === 'z') {
-            return this.faceNormals[0].clone(); // B (Requested change: Right side -> B Axis)
-        } else if (axis === 'x') {
-            return this.faceNormals[1].clone(); // L
-        }
-        return new THREE.Vector3(0, 1, 0);
+    getDragAngleScale(axis) {
+        const config = this.rotationTuning[axis] || { scale: 1 };
+        return config.scale;
     }
 
     dispose() {

@@ -9,3 +9,4 @@ export * from './MegaminxTuner.js';
 export * from './PyraminxTuner.js';
 export * from './TunerBase.js';
 export * from './SkewbTuner.js';
+export * from './RotationTuner.js';

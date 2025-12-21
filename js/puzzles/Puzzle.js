@@ -14,6 +14,11 @@ export class Puzzle {
         throw new Error("Method 'createGeometry()' must be implemented.");
     }
 
+    getSpacing() {
+        return SPACING;
+    }
+
+
     /**
      * Returns the rotation axes for the puzzle.
      * @returns {Object} Map of axis names to THREE.Vector3.
@@ -23,82 +28,87 @@ export class Puzzle {
     }
 
     /**
-     * Performs a move on the puzzle.
-     * @param {string} axis - The axis of rotation.
-     * @param {number} direction - The direction of rotation (1 or -1).
-     * @param {number} duration - Animation duration.
-     * @param {number} sliceVal - The slice value (optional).
+     * Get notation for a move.
+     * @param {string} axis - Axis string ('x', 'y', 'z' or numerical for some puzzles)
+     * @param {number} sliceVal - Slice coordinate (Infinity for whole puzzle)
+     * @param {number} turns - Number of turns (e.g., 1, -1, 2)
+     * @param {boolean} isDrag - Whether the move was triggered by a drag
+     * @param {THREE.Vector3} dragRotationAxis - The axis vector used for the drag
+     * @returns {string|null}
      */
-    performMove(axis, direction, duration, sliceVal) {
-        throw new Error("Method 'performMove()' must be implemented.");
-    }
-
-    /**
-     * Checks if the puzzle is solved.
-     * @returns {boolean} True if solved, false otherwise.
-     */
-    isSolved() {
-        throw new Error("Method 'isSolved()' must be implemented.");
-    }
-
-    /**
-     * Generates a scramble sequence for the puzzle.
-     * @returns {Array} List of moves.
-     */
-    getScramble() {
-        throw new Error("Method 'getScramble()' must be implemented.");
-    }
-
-    /**
-     * Gets the notation for a move.
-     * @param {string} axis 
-     * @param {number} sliceVal 
-     * @param {number} turns 
-     * @returns {string} Move notation.
-     */
-    getNotation(axis, sliceVal, turns) {
-        throw new Error("Method 'getNotation()' must be implemented.");
-    }
-
-    /**
-     * Parses a notation string into move parameters.
-     * @param {string} notation 
-     * @returns {Object|null} { axis, dir, sliceVal } or null if invalid
-     */
-    parseNotation(notation) {
-        // Optional implementation. If not implemented, scramble.js falls back to default logic.
+    getNotation(axis, sliceVal, turns, isDrag, dragRotationAxis) {
         return null;
     }
 
     /**
-     * Determines the drag axis based on mouse movement.
-     * @param {THREE.Vector3} faceNormal 
-     * @param {THREE.Vector2} screenMoveVec 
-     * @returns {Object} { axis, rotationAxis, angleScale }
+     * Handles keyboard input.
+     * @param {KeyboardEvent} event 
+     * @returns {boolean} True if handled.
      */
-    getDragAxis(faceNormal, screenMoveVec) {
-        throw new Error("Method 'getDragAxis()' must be implemented.");
-    }
-    /**
-     * Snaps the cubies to their grid positions and rotations.
-     * @param {Array} cubies - List of cubies to snap.
-     */
-    snapCubies(cubies) {
-        throw new Error("Method 'snapCubies()' must be implemented.");
+    handleKeyDown(event) {
+        return false;
     }
 
     /**
-     * Cleans up any resources or objects created by the puzzle.
+     * Returns information needed to animate a move.
+     * @param {string} axis 
+     * @param {number} direction 
+     * @param {number} sliceVal 
+     * @returns {Object|null} { axisVector, cubies, angle }
+     */
+    getMoveInfo(axis, direction, sliceVal) {
+        return null;
+    }
+
+    /**
+     * Returns cubies in a specific slice.
+     * @param {string} axis 
+     * @param {number} sliceVal 
+     * @returns {Array} List of cubies.
+     */
+    getSliceCubies(axis, sliceVal) {
+        return [];
+    }
+
+    /**
+     * Returns the move cycle length (e.g. 4 for cube, 3 for Pyraminx/Skewb).
+     * @returns {number}
+     */
+    getCycleLength() {
+        return 4;
+    }
+
+    /**
+     * Returns the snap angle for moves (default 90 degrees).
+     * @returns {number}
+     */
+    getSnapAngle() {
+        return Math.PI / 2;
+    }
+
+    /**
+     * Checks if a face is rectangular (non-square).
+     * @param {string} axis 
+     * @returns {boolean}
+     */
+    isFaceRectangular(axis) {
+        return false;
+    }
+
+    /**
+     * Returns the locked rotation axis for a background drag, if applicable.
+     * @param {string} axis 
+     * @returns {THREE.Vector3|null}
+     */
+    /**
+     * Disposes of the puzzle by removing cubies from their parent.
      */
     dispose() {
-        // Default implementation does nothing
-    }
-
-    /**
-     * Returns the spacing between cubies.
-     * @returns {number} Spacing value.
-     */
-    getSpacing() {
-        return SPACING;
+        if (this.cubieList) {
+            this.cubieList.forEach(c => {
+                if (c.parent) c.parent.remove(c);
+            });
+            this.cubieList.length = 0;
+        }
     }
 }

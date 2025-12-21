@@ -228,9 +228,14 @@ export function onMouseUp() {
             state.cubeWrapper.updateMatrixWorld(true);
         } else {
             let piHalf = Math.PI / 2;
-            // Only use puzzle snap angle if NOT a background drag (or if free rotation, but that case is handled above)
-            if (!state.isBackgroundDrag && state.activePuzzle && typeof state.activePuzzle.getSnapAngle === 'function') {
-                piHalf = state.activePuzzle.getSnapAngle();
+            const isWholeCube = state.dragSliceValue === Infinity || ['x', 'y', 'z'].includes(state.dragAxis);
+
+            if (state.activePuzzle && typeof state.activePuzzle.getSnapAngle === 'function') {
+                if (isWholeCube && state.activePuzzle.isCubic) {
+                    piHalf = Math.PI / 2;
+                } else {
+                    piHalf = state.activePuzzle.getSnapAngle();
+                }
             }
             const rawTurns = state.currentDragAngle / piHalf;
             let targetTurns = Math.round(rawTurns);
@@ -291,47 +296,49 @@ function determineDragAxis(dx, dy) {
             return;
         }
 
+        let dragAxis = '';
         if (moveX) {
-            let axis = new THREE.Vector3(0, 1, 0);
-            if (state.activePuzzle && typeof state.activePuzzle.getLockedRotationAxis === 'function') {
-                axis = state.activePuzzle.getLockedRotationAxis('y');
-            }
-            state.dragRotationAxis = axis;
-            state.dragAngleScale = 1;
-            state.dragAxis = 'y';
-            state.dragInputAxis = 'x';
+            dragAxis = 'y';
         } else {
-            // Common check for Megaminx
-            const isMegaminx = state.activePuzzle && state.activePuzzle.constructor.name === 'Megaminx';
-
-            if (state.isRightZone) {
-                let axis = new THREE.Vector3(0, 0, 1);
-                if (state.activePuzzle && typeof state.activePuzzle.getLockedRotationAxis === 'function') {
-                    axis = state.activePuzzle.getLockedRotationAxis('z');
-                }
-                state.dragRotationAxis = axis;
-                // Megaminx uses reversed rotation (1), Standard uses normal (-1)
-                // Wait, based on analysis: 1 was "Reversed" state?
-                // Let's stick to the pattern: Standard wants OPPOSITE of what is there if it was "reversed".
-                // Current Right code has 1. If 1 is "Reversed", Standard wants -1.
-                state.dragAngleScale = isMegaminx ? 1 : -1;
-                state.dragAxis = 'z';
-                state.dragInputAxis = 'y';
-            } else {
-                let axis = new THREE.Vector3(1, 0, 0);
-                if (state.activePuzzle && typeof state.activePuzzle.getLockedRotationAxis === 'function') {
-                    axis = state.activePuzzle.getLockedRotationAxis('x');
-                }
-                state.dragRotationAxis = axis;
-                // Megaminx uses reversed rotation (-1), Standard uses normal (1)
-                state.dragAngleScale = isMegaminx ? -1 : 1;
-                state.dragAxis = 'x';
-                state.dragInputAxis = 'y';
-            }
+            dragAxis = state.isRightZone ? 'z' : 'x';
         }
-        state.dragSliceValue = Infinity;
+
+        // Check for puzzle-specific locked rotation axis (e.g. Megaminx, Pyraminx)
+        const lockedAxis = state.activePuzzle.getLockedRotationAxis ? state.activePuzzle.getLockedRotationAxis(dragAxis) : null;
+        if (lockedAxis) {
+            state.dragRotationAxis = lockedAxis;
+            state.dragAxis = dragAxis;
+            state.dragInputAxis = moveX ? 'x' : 'y';
+
+            // Default scales for Standard Cube: y=-1 (L->R is CW), x=1 (UP is CW)
+            const defaultScale = (dragAxis === 'y' ? -1 : 1);
+
+            // Allow puzzle to override drag scale for specific axes
+            let customScale = 1;
+            if (typeof state.activePuzzle.getDragAngleScale === 'function') {
+                customScale = state.activePuzzle.getDragAngleScale(dragAxis);
+            }
+            state.dragAngleScale = defaultScale * customScale;
+
+            state.dragSliceValue = Infinity; // Background drag
+            return;
+        }
+
+        // Use default standard axes as fallback if puzzle returned nothing
+        if (!state.dragRotationAxis) {
+            state.dragAxis = dragAxis;
+            if (dragAxis === 'y') state.dragRotationAxis = new THREE.Vector3(0, 1, 0);
+            else if (dragAxis === 'x') state.dragRotationAxis = new THREE.Vector3(1, 0, 0);
+            else if (dragAxis === 'z') state.dragRotationAxis = new THREE.Vector3(0, 0, 1);
+
+            state.dragInputAxis = moveX ? 'x' : 'y';
+            state.dragAngleScale = 1; // Default scale
+            state.dragSliceValue = Infinity;
+        }
+
         return;
     }
+
 
     const screenMoveVec = new THREE.Vector2(dx, dy).normalize();
     const dragData = state.activePuzzle.getDragAxis(

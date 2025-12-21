@@ -737,34 +737,19 @@ export class Megaminx extends Puzzle {
         return axes;
     }
 
-    getMoveInfo(axis, dir, sliceVal) {
-        // Handle Whole Cube Rotations
-        if (['x', 'y', 'z'].includes(axis)) {
-            let axisVector = new THREE.Vector3();
-            // Map generic axes to Megaminx logic
-            // y -> RotateU (Vertical Axis, Y)
-            // z -> RotateR (Approx Z)
-            // x -> RotateL (Approx X)
-
-            if (axis === 'y') axisVector.set(0, 1, 0);
-            else if (axis === 'x') axisVector.set(1, 0, 0);
-            else if (axis === 'z') axisVector.set(0, 0, 1);
-
-            // IMPORTANT: Negate the axis to match the behavior in moves.js performMove
-            // which negates axes for whole-cube rotations (x, y, z)
-            axisVector.negate();
-
-            // Use 90 degrees for whole-cube rotations (matches snapping in onMouseUp)
+    getMoveInfo(axisStr, dir, sliceVal) {
+        // Handle Whole Cube Rotations (x, y, z)
+        if (sliceVal === Infinity || isNaN(parseInt(axisStr)) || ['x', 'y', 'z'].includes(axisStr)) {
+            const rotAxis = this.getLockedRotationAxis(axisStr);
             return {
-                axisVector,
-                cubies: this.cubieList, // All cubies
-                angle: dir * (Math.PI / 2), // 90 degrees
-                axis: axis
+                axisVector: rotAxis || new THREE.Vector3(0, 1, 0),
+                cubies: this.cubieList,
+                angle: dir * (Math.PI * 2 / 5) // 5-cycle (72 degrees)
             };
         }
 
         // Axis 0-11
-        const moveId = parseInt(axis);
+        const moveId = parseInt(axisStr);
         if (isNaN(moveId)) return null;
 
         const axisVector = this.faceNormals[moveId];
@@ -999,100 +984,74 @@ export class Megaminx extends Puzzle {
         return null;
     }
 
-    getNotation(axis, sliceVal, turns, isScramble) {
-        // Normalize turns for pentagonal faces (mod 5)
-        // 3 -> -2, 4 -> -1, -3 -> 2, -4 -> 1
-        let normTurns = turns % 5;
-        if (normTurns > 2) normTurns -= 5;
-        else if (normTurns < -2) normTurns += 5;
+    getNotation(axis, sliceVal, turns, isDrag, dragRotationAxis) {
+        // Handle Whole Cube Rotations
+        if (['x', 'y', 'z'].includes(axis)) {
+            const rotMap = {
+                'y': 'RotateU',
+                'x': 'RotateL',
+                'z': 'RotateR'
+            };
+            const prefix = rotMap[axis];
+            if (!prefix) return axis;
 
-        // If the move effectively does nothing (0 turns, 5 turns, etc), return null to skip logging
-        if (normTurns === 0) return null;
+            // Whole cube rotations usually use 4-cycle or 5-cycle? 
+            // Megaminx uses 72 deg snap, so 5 steps = 360.
+            let t = turns % 5;
+            if (t > 2) t -= 5;
+            else if (t < -2) t += 5;
+            if (t === 0) return null;
 
-        const faceIdx = parseInt(axis);
-        // Console log removed for cleaner output
-
-        if (isNaN(faceIdx)) {
-            // Handle Cube Rotations (x, y, z)
-            // y -> RotateU
-            // z -> RotateR
-            // x -> RotateL
-            let prefix = "";
-            let suffix = "";
-
-            if (axis === 'y') prefix = "RotateU";
-            else if (axis === 'z') prefix = "RotateR";
-            else if (axis === 'x') {
-                prefix = "RotateL";
-                normTurns *= -1;
-            }
-            else return axis; // Unknown axis
-
-            // Suffix Logic for Rotations
-            // 1 (CCW) -> "'"
-            // -1 (CW) -> ""
-            // 2 (CCW Double) -> "2'"
-            // -2 (CW Double) -> "2"
-            if (normTurns === 1) suffix = "'";
-            else if (normTurns === -1) suffix = "";
-            else if (normTurns === 2) suffix = "2'";
-            else if (normTurns === -2) suffix = "2";
+            let suffix = (t < 0) ? "'" : "";
+            // If it's more than 1 turn (e.g. 144 deg), we might need "2" suffix.
+            // But usually whole cube is 1 step.
+            if (Math.abs(t) === 2) suffix = (t < 0 ? "2'" : "2");
 
             return prefix + suffix;
         }
 
-        // Check for Deep Move (Pochmann Style) manually triggered
-        // sliceVal approx -0.6
-        const isDeepMove = sliceVal !== null && Math.abs(sliceVal - (-0.6)) < 0.1;
+        // Normalize turns for pentagonal faces (mod 5)
+        let t = turns % 5;
+        if (t > 2) t -= 5;
+        else if (t < -2) t += 5;
+        if (t === 0) return null;
 
-        // Scramble Notation (Pochmann)
-        // Use Pochmann if explicitly checking for scramble OR if it matches a deep move characteristics
-        if (isScramble || isDeepMove) {
+        const faceIdx = parseInt(axis);
+
+        // Check for Deep Move (Pochmann Style) - sliceVal approx -0.6
+        const isPochmann = sliceVal !== null && Math.abs(sliceVal - (-0.6)) < 0.1;
+
+        if (isPochmann) {
             let name = "";
-            if (faceIdx === 2) name = "R"; // R uses Axis 2 now (Opposite of L)
+            if (faceIdx === 2) name = "R";
             else if (faceIdx === 7) name = "D";
             else if (faceIdx === 4) name = "U";
             else name = "F" + faceIdx;
 
-            // Pochmann Suffixes
-            // WCA Scramble: ++ (-2 CW), -- (2 CCW).
-            // U (CW, -1), U' (CCW, 1).
             let suffix = "";
-            if (Math.abs(normTurns) === 2) {
-                // Invert logic: -2 is ++ (CW), 2 is -- (CCW)
-                suffix = normTurns === -2 ? "++" : "--";
+            if (Math.abs(t) === 2) {
+                suffix = t === -2 ? "++" : "--";
             } else {
-                // For U moves in scramble (usually single turns)
-                // 1 -> ', -1 -> ""
-                // Based on previous inversion: 1 -> ', -1 -> ""
-                suffix = normTurns === 1 ? "'" : "";
+                suffix = t === 1 ? "'" : "";
             }
             return name + suffix;
         }
 
-        // 12-Face Notation
+        // Standard 12-Face Notation
         const faceNames = {
             "4": "U", "7": "D", "6": "F", "5": "B",
             "0": "R", "3": "bL", "1": "L", "2": "bR",
             "8": "uR", "11": "dL", "9": "uL", "10": "dR"
         };
 
-        const name = faceNames[String(faceIdx)];
-
-        const finalName = name || ("F" + faceIdx);
-
-        // Suffix Logic (12-Face)
-        // 1 (CCW) -> "'"
-        // -1 (CW) -> ""
-        // 2 (CCW Double) -> "2'"
-        // -2 (CW Double) -> "2"
+        const name = faceNames[String(faceIdx)] || ("F" + faceIdx);
         let suffix = "";
-        if (normTurns === 1) suffix = "'";
-        else if (normTurns === -1) suffix = "";
-        else if (normTurns === 2) suffix = "2'";
-        else if (normTurns === -2) suffix = "2";
+        if (t === 1) suffix = "'";
+        else if (t === -1) suffix = "";
+        else if (t === 2) suffix = "2'";
+        else if (t === -2) suffix = "2";
 
-        return finalName + suffix;
+        return name + suffix;
     }
 
     isSolved() {
@@ -1157,6 +1116,15 @@ export class Megaminx extends Puzzle {
 
     isFaceRectangular(axis) { return false; }
     getSnapAngle() { return Math.PI * 2 / 5; }
+    getCycleLength() { return 5; }
+
+    // Rotation tuning for whole-cube moves (x, y, z)
+    // Managed by RotationTuner.js
+    rotationTuning = {
+        x: { negate: true, scale: 1.5 },
+        y: { negate: true, scale: 1.5 },
+        z: { negate: true, scale: -1.5 }
+    };
 
     getSliceCubies(axisId, val) {
         // axisId is face index (0-11) or 'x','y','z'
@@ -1210,7 +1178,6 @@ export class Megaminx extends Puzzle {
         // Find closest Face Normal
         let bestN = null;
         let maxDot = -1;
-
         for (const n of this.faceNormals) {
             const dot = n.dot(localVec);
             if (dot > maxDot) {
@@ -1219,7 +1186,15 @@ export class Megaminx extends Puzzle {
             }
         }
 
-        return bestN || new THREE.Vector3(0, 1, 0);
+        let res = (bestN || new THREE.Vector3(0, 1, 0)).clone();
+        const config = this.rotationTuning[axis] || { negate: false };
+        if (config.negate) res.negate();
+        return res;
+    }
+
+    getDragAngleScale(axis) {
+        const config = this.rotationTuning[axis] || { scale: 1 };
+        return config.scale;
     }
 
     getDragAxis(faceNormal, screenMoveVec, intersectedCubie, camera) {
@@ -1261,8 +1236,6 @@ export class Megaminx extends Puzzle {
             // Check if piece is in this layer
             const localPos = intersectedCubie.position.clone();
             // Sync threshold with getSliceCubies (0.5)
-            // Center to Adjacent Center dot is ~0.45. We want to EXCLUDE centers from adjacent layers.
-            // Edge/Corner dot is higher.
             const inLayer = localPos.normalize().dot(axisVec) >= 0.5;
             if (!inLayer) return; // Not in layer
 
@@ -1272,64 +1245,31 @@ export class Megaminx extends Puzzle {
             const wrapperPosWorld = new THREE.Vector3().setFromMatrixPosition(state.cubeWrapper.matrixWorld);
 
             // Tangent direction of rotation (Right hand rule)
-            // v = w x r 
             const tangent = new THREE.Vector3().crossVectors(axisVecWorld, piecePosWorld.sub(wrapperPosWorld)).normalize();
 
             // Project to screen
-            const p1 = piecePosWorld.clone().add(wrapperPosWorld); // Restore world pos
+            const p1 = piecePosWorld.clone().add(wrapperPosWorld);
             const p2 = p1.clone().add(tangent);
 
-            // Need accurate projection
-            // We can just project vector difference
-            // Actually, simply:
             const v1 = p1.clone().project(camera);
             const v2 = p2.clone().project(camera);
 
             const screenTangent = new THREE.Vector2(v2.x - v1.x, v2.y - v1.y).normalize();
-            // Y is inverted in screen space usually? 
-            // In interactions.js: screenMoveVec is (dx, dy).
-            // THREE.js project: (-1 to 1). Y is up.
-            // Screen coords: Y is down.
-            // If dragging UP on screen, dy is negative.
-            // If moving UP in 3D, projected Y increases. 
-            // So we need to flip Y match?
-            // StandardCube uses: -(endPoint.y - startPoint.y)
             screenTangent.y = -screenTangent.y; // Match screen coord system
 
             const score = Math.abs(screenTangent.dot(screenMoveVec));
             if (score > bestScore) {
                 bestScore = score;
-                // Direction logic:
-                // If dragging with tangent (CCW), angle adds.
-                // StandardCube: angle = direction * (Math.PI/2).
-                // If I drag Right, and tangent is Right.
-                // If tangent is CCW rotation.
-                // We want performMove to rotate.
-                // Usually -1 is CW, 1 is CCW.
-                // If drag matches tangent (CCW), we want dir = 1.
-                // BUT, my tangent calculation (axis x r) is tangential velocity for CCW rotation?
-                // Yes. w x r with w positive is CCW?
-                // Right hand rule: Thumb along axis. Fingers curl CCW.
-                // So if drag matches tangent, rotation is CCW (positive angle).
-                // StandardCube seems to flip things.
-                // Let's try 1 if matches (CCW).
-
                 bestMatch = { axis: String(axisIdx) };
             }
         });
 
         if (bestMatch && bestScore > 0.5) {
-            // Re-evaluate tangent to decide if we want dx (x) or dy (y).
             const axisIdx = parseInt(bestMatch.axis);
             const axisVec = this.faceNormals[axisIdx];
 
-            // World Axis for Pivot Rotation
-            // Correction: snapPivot attaches pieces to 'pivot', which is added to 'cubeWrapper'.
-            // if cubeWrapper is rotated, pivot inherits rotation.
-            // So we want the Local Axis (axisVec) for the rotation to be correct relative to the puzzle.
             const axisVecWorld = axisVec.clone().transformDirection(state.cubeWrapper.matrixWorld).normalize();
 
-            // Calculate Screen Tangent to determine X vs Y input dominance
             const piecePosWorld = intersectedCubie.position.clone().applyMatrix4(state.cubeWrapper.matrixWorld);
             const wrapperPosWorld = new THREE.Vector3().setFromMatrixPosition(state.cubeWrapper.matrixWorld);
             const tangent = new THREE.Vector3().crossVectors(axisVecWorld, piecePosWorld.sub(wrapperPosWorld)).normalize();
@@ -1338,7 +1278,6 @@ export class Megaminx extends Puzzle {
             const p2 = p1.clone().add(tangent);
             const v1 = p1.clone().project(camera);
             const v2 = p2.clone().project(camera);
-            // Y is inverted in screen space
             const screenTangent = new THREE.Vector2(v2.x - v1.x, -(v2.y - v1.y)).normalize();
 
             const inputAxis = Math.abs(screenTangent.x) > Math.abs(screenTangent.y) ? 'x' : 'y';
@@ -1348,7 +1287,7 @@ export class Megaminx extends Puzzle {
                 dragAxis: bestMatch.axis,
                 dragAngleScale: angleScale,
                 dragSliceValue: null,
-                dragRotationAxis: axisVec, // Use local axis for pivot rotation
+                dragRotationAxis: axisVec,
                 dragInputAxis: inputAxis
             };
         }
@@ -1392,6 +1331,12 @@ export class Megaminx extends Puzzle {
             return true;
         }
 
+        if (['x', 'y', 'z'].includes(key)) {
+            const direction = shift ? -1 : 1;
+            queueMove(key, direction);
+            return true;
+        }
+
         // Deep Move Shortcuts (Pochmann Style)
         // r -> R++ (CW, Deep)
         // R -> R-- (CCW, Deep)
@@ -1416,6 +1361,10 @@ export class Megaminx extends Puzzle {
         }
 
         return false;
+    }
+
+    dispose() {
+        super.dispose();
     }
 }
 

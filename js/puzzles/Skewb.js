@@ -10,6 +10,7 @@ export class Skewb extends Puzzle {
         this.scrambleLength = 24; // WCA standard is typically around 11? Random state. 12 is fine.
         this.parent = config.parent || state.cubeWrapper;
         this.cubieList = config.cubieList || state.allCubies;
+        this.isCubic = true; // Use 90 deg for whole-cube rotations
 
         // Visual Parameters
         this.radius = 1.5; // Overall size
@@ -78,6 +79,9 @@ export class Skewb extends Puzzle {
 
     getSnapAngle() {
         return 2 * Math.PI / 3;
+    }
+    getCycleLength() {
+        return 3;
     }
 
     rebuildGeometry() {
@@ -508,7 +512,9 @@ export class Skewb extends Puzzle {
     }
 
     getSliceCubies(axisStr, sliceVal) {
-        console.log(`[Skewb.getSliceCubies] axisStr: ${axisStr}, sliceVal: ${sliceVal}`);
+        if (sliceVal === Infinity || ['x', 'y', 'z'].includes(axisStr)) {
+            return this.cubieList;
+        }
         const axisIdx = parseInt(axisStr);
         if (isNaN(axisIdx)) return [];
 
@@ -529,6 +535,31 @@ export class Skewb extends Puzzle {
         });
         console.log(`[Skewb] Selected ${cubies.length} cubies`);
         return cubies;
+    }
+
+    // Rotation tuning for whole-cube moves (x, y, z)
+    // Managed by RotationTuner.js
+    rotationTuning = {
+        x: { negate: true, scale: -1.6 },
+        y: { negate: true, scale: 1.6 },
+        z: { negate: true, scale: 1.6 }
+    };
+
+    getLockedRotationAxis(axis) {
+        let res;
+        if (axis === 'x') res = new THREE.Vector3(1, 0, 0);
+        else if (axis === 'y') res = new THREE.Vector3(0, 1, 0);
+        else if (axis === 'z') res = new THREE.Vector3(0, 0, 1);
+        else return null;
+
+        const config = this.rotationTuning[axis] || { negate: false };
+        if (config.negate) res.negate();
+        return res;
+    }
+
+    getDragAngleScale(axis) {
+        const config = this.rotationTuning[axis] || { scale: 1 };
+        return config.scale;
     }
 
     // --- Interaction Methods ---
@@ -555,6 +586,12 @@ export class Skewb extends Puzzle {
             'd': { axis: '2', slice: -1, baseDir: 1 }   // D
         };
 
+        if (['x', 'y', 'z'].includes(lowerKey)) {
+            const dir = shift ? -1 : 1;
+            queueMove(lowerKey, dir);
+            return true;
+        }
+
         if (layout.hasOwnProperty(lowerKey)) {
             const move = layout[lowerKey];
             // If shift (Prime), invert baseDir
@@ -563,6 +600,7 @@ export class Skewb extends Puzzle {
             queueMove(move.axis, dir, state.animationSpeed, move.slice);
             return true;
         }
+
 
         return false;
     }
@@ -605,7 +643,19 @@ export class Skewb extends Puzzle {
     }
 
     getMoveInfo(axisStr, dir, sliceVal) {
-        // console.log(`[Skewb.getMoveInfo] axisStr: ${axisStr}, dir: ${dir}, sliceVal: ${sliceVal}`);
+        const isWholeCube = sliceVal === Infinity ||
+            axisStr === 'x' || axisStr === 'y' || axisStr === 'z' ||
+            axisStr === 'X' || axisStr === 'Y' || axisStr === 'Z' ||
+            isNaN(parseInt(axisStr));
+
+        if (isWholeCube) {
+            const rotAxis = this.getLockedRotationAxis(axisStr);
+            return {
+                axisVector: rotAxis || new THREE.Vector3(0, 1, 0),
+                cubies: this.cubieList,
+                angle: dir * (Math.PI / 2)
+            };
+        }
 
         const axisIdx = parseInt(axisStr);
         if (isNaN(axisIdx)) return null;
@@ -637,39 +687,6 @@ export class Skewb extends Puzzle {
         };
     }
 
-    getNotation(axis, sliceVal, turns) {
-        let axisIdx = parseInt(axis);
-        if (isNaN(axisIdx)) return null;
-
-        const isNegativeSide = (sliceVal < -0.01);
-        let prefix = '';
-        let notationTurns = turns;
-
-        if (axisIdx === 0) prefix = isNegativeSide ? 'uL' : 'R';
-        else if (axisIdx === 1) prefix = isNegativeSide ? 'uR' : 'L';
-        else if (axisIdx === 2) prefix = isNegativeSide ? 'D' : 'U';
-        else if (axisIdx === 3) prefix = isNegativeSide ? 'F' : 'B';
-
-        // Invert notation turns for Negative Side to match Base/Prime convention
-        // Physics: Back CW = 1. Notation: Back CW = Base (-1 logical).
-        // So 1 -> -1. (Multiply by -1).
-        if (isNegativeSide) {
-            notationTurns *= -1;
-        }
-
-        if (!prefix) return null;
-
-        let suffix = '';
-        if (Math.abs(notationTurns) === 2 || Math.abs(notationTurns) === 120) {
-            suffix = '2';
-        } else if (notationTurns > 0) {
-            // Positive -> Prime
-            suffix = "'";
-        }
-        // Negative -> Base
-
-        return prefix + suffix;
-    }
 
 
     getDragAxis(faceNormal, screenMoveVec, intersectedCubie, camera, intersectedPoint) {
@@ -911,98 +928,43 @@ export class Skewb extends Puzzle {
         });
     }
 
-    getNotation(axisStr, sliceVal, turns) {
-        // Converts internal axis/turns to WCA notation
-        // axisStr might be "0", "1", "2", "3" from Drag, or "R", "L", etc from Keyboard
-        // turns: 1 (CW), -1 (CCW)
+    getNotation(axis, sliceVal, turns, isDrag, dragRotationAxis) {
+        // Handle Whole Cube Rotations
+        if (['x', 'y', 'z'].includes(axis)) {
+            const rotMap = {
+                'y': 'y',
+                'x': 'x',
+                'z': 'z'
+            };
+            const prefix = rotMap[axis];
+            if (!prefix) return axis;
 
-        // Normalize turns (modulo 3)
+            // Skewb is cube-shared, so 4-cycle (90 deg)
+            let t = Math.round(turns) % 4;
+            if (t === 3) t = -1;
+            if (t === -3) t = 1;
+            if (t === 2 || t === -2) {
+                return prefix + "2";
+            }
+            if (t === 0) return null;
+
+            let suffix = (t < 0) ? "'" : "";
+            return prefix + suffix;
+        }
+
+        // Normalize turns (modulo 3 for Skewb)
         let t = Math.round(turns) % 3;
         if (t === 2) t = -1;
         if (t === -2) t = 1;
-        if (t === 0) return null; // No move or 360
+        if (t === 0) return null;
 
-        // 1. Handle String Inputs directly (Keyboard)
-        const notationMap = {
-            'R': { axis: 0, val: 1 },
-            'L': { axis: 1, val: 1 },
-            'U': { axis: 2, val: 1 },
-            'B': { axis: 3, val: 1 },
-            'uR': { axis: 1, val: -1 }, // uR is opposite L (Axis 1)
-            'uL': { axis: 0, val: -1 }, // uL is opposite R (Axis 0)
-            'D': { axis: 2, val: -1 },  // D is opposite U (Axis 2)
-            'F': { axis: 3, val: -1 }   // F is opposite B (Axis 3)
-        };
-
-        if (notationMap.hasOwnProperty(axisStr)) {
-            // Already a notation string (from keyboard)
-            // Just need to append turns suffix
-            let suffix = '';
-            if (Math.abs(turns) === 2) suffix = '2';
-            else if (turns === -1) suffix = "'"; // Standard logic: turns < 0 is CW (base), turns > 0 is CCW (')?
-            // Wait, previous logic: 
-            // Negative Side: CW Visual = Positive Angle (turns > 0).
-            // Positive Side: CW Visual = Negative Angle (turns < 0).
-
-            // However, getMoveInfo normalizes this.
-            // If I queueMove('uR', 1), it sends dir=1.
-            // getMoveInfo sees 'uR', sets targetSide=-1.
-            // Inverts angle? 
-            // If targetSide=-1, moveDir *= -1. So dir becomes -1.
-            // Angle = -1 * -1 * 120 = 120 (Positive).
-            // finishMove sees positive angle -> turns > 0.
-
-            // So for uR (Negative Side):
-            // Keyboard 'uR' (CW) -> turns > 0.
-            // If turns > 0, we want "uR".
-            // If turns < 0, we want "uR'".
-
-            // For R (Positive Side):
-            // Keyboard 'R' (CW) -> dir=1 -> Angle = -120 (Neg).
-            // finishMove sees negative angle -> turns < 0.
-            // If turns < 0, we want "R".
-            // If turns > 0, we want "R'".
-
-            // So:
-            // if (isNegativeSide) { turns > 0 -> Base } else { turns < 0 -> Base }
-
-            const info = notationMap[axisStr];
-            const isNeg = info.val < 0;
-
-            let isPrime = false;
-            // Use normalized t
-            if (isNeg) {
-                // Negative Side: t > 0 is Base. t < 0 is Prime.
-                if (t < 0) isPrime = true;
-            } else {
-                // Positive Side: t < 0 is Base. t > 0 is Prime.
-                if (t > 0) isPrime = true;
-            }
-
-            if (isPrime) suffix = "'";
-            return axisStr + suffix;
-        }
-
-        // 2. Handle Numeric Inputs (Drag)
-        let axisIdx = parseInt(axisStr);
+        let axisIdx = parseInt(axis);
         if (isNaN(axisIdx)) return null;
-
-        // Valid Axis Indices: 0, 1, 2, 3
-        // Determine Slice Side from sliceVal
-        // sliceVal > 0 -> Positive Side (R, L, U, B)
-        // sliceVal < 0 -> Negative Side (uL, uR, D, F)
 
         let char = '?';
         let isNegativeSide = (sliceVal < -0.01);
 
-        /*
-           Mapping:
-           Axis 0: Pos -> R, Neg -> uL
-           Axis 1: Pos -> L, Neg -> uR
-           Axis 2: Pos -> U, Neg -> D
-           Axis 3: Pos -> B, Neg -> F
-        */
-
+        // Mapping: Axis 0: R/uL, 1: L/uR, 2: U/D, 3: B/F
         if (axisIdx === 0) char = isNegativeSide ? 'uL' : 'R';
         else if (axisIdx === 1) char = isNegativeSide ? 'uR' : 'L';
         else if (axisIdx === 2) char = isNegativeSide ? 'D' : 'U';
@@ -1010,20 +972,18 @@ export class Skewb extends Puzzle {
 
         // Suffix Logic
         let isPrime = false;
-        // Use normalized t
         if (isNegativeSide) {
-            // Negative Side: t > 0 is Base.
+            // Negative Side: t > 0 is Base Move (e.g. D).
+            // Logic: if turns > 0, it's CW for back faces in this engine.
             if (t < 0) isPrime = true;
         } else {
-            // Positive Side: t < 0 is Base.
+            // Positive Side: t < 0 is Base Move (e.g. U).
             if (t > 0) isPrime = true;
         }
 
-        let suffix = '';
-        if (isPrime) suffix = "'";
+        let suffix = isPrime ? "'" : "";
         return char + suffix;
     }
-
 
     getCycleLength() {
         return 3;
