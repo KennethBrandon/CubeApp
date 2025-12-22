@@ -3,6 +3,7 @@ import { state } from '../shared/state.js';
 import { CUBE_SIZE, SPACING } from '../shared/constants.js';
 import { animateVictory } from '../animations/victory.js';
 import { soundManager } from '../core/sound.js';
+import { Analytics } from '../services/analytics.js';
 
 export function startInspection() {
     state.isGameActive = true;
@@ -150,6 +151,14 @@ export function checkSolved() {
         console.log("🎉 Puzzle Solved! Victory!");
         stopTimer();
         state.isGameActive = false;
+
+        // Log Victory
+        Analytics.logEvent('puzzle_solved', {
+            puzzle_type: state.activePuzzle ? state.activePuzzle.constructor.name : 'Unknown',
+            time_ms: state.finalTimeMs,
+            time_formatted: document.getElementById('timer') ? document.getElementById('timer').textContent : ''
+        });
+
         animateVictory();
     }
 }

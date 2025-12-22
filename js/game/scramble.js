@@ -8,6 +8,7 @@ import { adjustCameraForCubeSize } from '../core/controls.js';
 import { createEnvironment, createMirrors } from '../core/environment.js';
 import { updateHistoryUI } from '../ui/ui.js';
 import { soundManager } from '../core/sound.js';
+import { Analytics } from '../services/analytics.js';
 
 export async function startScramble() {
     if (state.isAnimating) return;
@@ -38,6 +39,11 @@ export async function startScramble() {
 
     const type = state.activePuzzle ? state.activePuzzle.constructor.name : '';
     console.log("Scramble:\n" + formatScramble(state.scrambleSequence, type));
+
+    Analytics.logEvent('scramble', {
+        puzzle_type: type,
+        scramble_length: state.scrambleSequence.length
+    });
 
     // After scramble, enable game
     const checkInterval = setInterval(() => {

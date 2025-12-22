@@ -21,6 +21,7 @@ import { ensurePuzzleSelectorModal } from './components/PuzzleSelectorModal.js';
 import { puzzleCache } from '../utils/puzzleCache.js';
 import { assetManager } from '../game/AssetManager.js';
 import { showLoading, hideLoading } from './ui.js';
+import { Analytics } from '../services/analytics.js';
 
 import { puzzleCategories } from '../shared/puzzleData.js';
 export { puzzleCategories }; // Re-export for compatibility if needed, though direct import is better.
@@ -832,9 +833,12 @@ export function changePuzzle(val, isCustom = false, customDims = null, isMirrorC
         }, '', newUrl);
     }
 
-    if (typeof gtag === 'function') {
-        gtag('event', 'puzzle_change', { puzzle_type: val, custom: isCustom });
-    }
+    Analytics.logEvent('select_puzzle', {
+        puzzle_type: val,
+        custom: isCustom,
+        mirror: isMirrorCustom,
+        dims: isCustom ? newDims : null
+    });
 }
 
 function updatePuzzleButtonText(dims, isMirror, puzzleType) {

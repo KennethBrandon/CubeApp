@@ -8,33 +8,12 @@
     <link rel="icon" type="image/png" href="favicon.png">
     <script src="js/lib/tailwindcss.js"></script>
     <link rel="stylesheet" href="assets/styles/main.css">
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-PBWS3T1BYZ"></script>
+    <!-- Google Analytics and Tag Manager will be loaded by js/services/analytics.js -->
     <script>
-        const prodDomains = ['kennethbrandon.github.io', 'cube.redkb.com'];
-        // Check if running in Capacitor (mobile app) or on a production domain
-        const isCapacitor = window.Capacitor !== undefined;
-        const isProdDomain = prodDomains.includes(window.location.hostname);
-        const isProd = isProdDomain || isCapacitor;
-
-        const gaId = isProd ? 'G-PBWS3T1BYZ' : 'G-1L04D324RN';
-
-        // Load the correct script dynamically if not prod (since the default src above is prod)
-        if (!isProd) {
-            const script = document.querySelector('script[src*="googletagmanager.com"]');
-            if (script) script.src = `https://www.googletagmanager.com/gtag/js?id=${gaId}`;
-        }
-
+        // Ensure dataLayer exists immediately to avoid race conditions
         window.dataLayer = window.dataLayer || [];
         function gtag() { dataLayer.push(arguments); }
         gtag('js', new Date());
-
-        // Configure with custom dimension for platform type
-        gtag('config', gaId, {
-            'platform_type': isCapacitor ? 'mobile_app' : 'web'
-        });
-
-        console.log(`Analytics initialized in ${isProd ? 'PRODUCTION' : 'DEVELOPMENT'} mode with ID: ${gaId} (Platform: ${isCapacitor ? 'Mobile App' : 'Web'})`);
     </script>
     <!-- Import Map for Three.js -->
     <script type="importmap">

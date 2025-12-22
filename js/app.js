@@ -16,6 +16,9 @@ import { initNetworkMonitoring } from './utils/network.js';
 import { thumbnailGenerator } from './utils/ThumbnailGenerator.js';
 
 
+import { Analytics } from './services/analytics.js';
+import { ErrorReporting } from './services/errorReporting.js';
+
 // Expose functions to window for UI interactions (HTML onclick attributes)
 window.togglePanel = togglePanel;
 window.openDetailModal = openDetailModal;
@@ -24,6 +27,10 @@ window.generateThumbnails = () => thumbnailGenerator.generateAll();
 
 
 function init() {
+    // Initialize Core Services
+    Analytics.init();
+    ErrorReporting.init();
+
     // Initialize Scene & Renderer
     if (!initScene()) return;
 
