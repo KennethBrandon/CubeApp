@@ -29,6 +29,7 @@ function createSkewbTuner() {
             ${createSlider('Sticker Offset', 'stickerOffset', 0.001, 0.1, 0.001)}
             ${createSlider('Fillet Radius', 'filletRadius', 0.0, 0.25, 0.005)}
             ${createSlider('Fillet Steps', 'filletSteps', 1, 10, 1)}
+            ${createSlider('Drag Scale', 'dragInputScale', 0.1, 5.0, 0.1)}
             
             <div class="flex items-center mt-2">
                 <input type="checkbox" id="chk-skewb-debug-planes" class="mr-2 w-4 h-4 text-orange-500 bg-gray-700 border-gray-600 rounded focus:ring-orange-500">
@@ -85,7 +86,7 @@ function syncValues() {
     const params = [
         'radius', 'cubieGap', 'cornerStickerInset', 'centerStickerInset', 'cornerStickerRadius', 'centerStickerRadius',
         'stickerOffset', 'filletRadius', 'filletSteps', 'stickerRoughness', 'stickerMetalness', 'stickerUseSparkle', 'stickerNormalScale',
-        'scrambleLength'
+        'scrambleLength', 'dragInputScale'
     ];
 
     // ...
@@ -105,7 +106,8 @@ function syncValues() {
         stickerUseSparkle: true,
         stickerNormalScale: 0.7,
         scrambleLength: 12,
-        showDebugPlanes: false
+        showDebugPlanes: false,
+        dragInputScale: 1.7
     };
 
     params.forEach(prop => {
@@ -194,7 +196,8 @@ function attachSkewbListeners() {
             stickerUseSparkle: true,
             scrambleLength: 12,
             showDebugPlanes: false,
-            showDebugArrows: false
+            showDebugArrows: false,
+            dragInputScale: 1.7
         };
 
         if (state.activePuzzle && state.activePuzzle.constructor.name === 'Skewb') {

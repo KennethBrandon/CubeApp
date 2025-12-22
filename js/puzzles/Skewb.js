@@ -16,6 +16,7 @@ export class Skewb extends Puzzle {
         this.radius = 1.5; // Overall size
         this.cubieGap = 0.01;
         this.stickerScale = 0.9;
+        this.dragInputScale = 1.7;
 
         this.stickerRadius = 0.02;
         this.cornerStickerInset = 0.08;
@@ -558,8 +559,11 @@ export class Skewb extends Puzzle {
     }
 
     getDragAngleScale(axis) {
-        const config = this.rotationTuning[axis] || { scale: 1 };
-        return config.scale;
+        if (['x', 'y', 'z'].includes(axis)) {
+            const config = this.rotationTuning[axis] || { scale: 1 };
+            return config.scale;
+        }
+        return this.dragInputScale || 1.7;
     }
 
     // --- Interaction Methods ---
@@ -860,7 +864,7 @@ export class Skewb extends Puzzle {
             return {
                 dragAxis: bestMatch.axis,
                 dragRotationAxis: bestMatch.rotationAxis,
-                dragAngleScale: bestMatch.angleScale,
+                dragAngleScale: bestMatch.angleScale * (this.dragInputScale || 1.7),
                 dragSliceValue: sliceVal,
                 dragInputAxis: bestMatch.inputAxis
             };
