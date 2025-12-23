@@ -27,6 +27,12 @@
             padding-bottom: env(safe-area-inset-bottom);
         }
 
+        .safe-pb-4 {
+            padding-bottom: calc(1rem + env(safe-area-inset-bottom)) !important;
+        }
+
+
+
         .safe-pl {
             padding-left: env(safe-area-inset-left);
         }
