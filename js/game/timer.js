@@ -25,6 +25,15 @@ export function startInspection() {
     }
 
     // Run interval frequently for smooth decimal updates
+    startInspectionInterval();
+}
+
+function startInspectionInterval() {
+    const timerDisplay = document.getElementById('timer');
+
+    // Clear any existing interval just in case
+    if (state.inspectionInterval) clearInterval(state.inspectionInterval);
+
     state.inspectionInterval = setInterval(() => {
         const elapsed = (Date.now() - state.inspectionStartTime) / 1000;
         const remaining = Math.max(0, 15 - elapsed);
@@ -80,6 +89,56 @@ export function startInspection() {
         }
     }, 10); // Update every 10ms
 }
+
+export function pauseGameTimer() {
+    // Prevent overwriting the original pause time if multiple pause events fire
+    if (state.lastPauseTime !== 0) {
+        console.log("[Timer] pauseGameTimer called but already paused. Ignoring.");
+        return;
+    }
+
+    console.log("[Timer] pauseGameTimer called. Last pause:", state.lastPauseTime);
+    state.lastPauseTime = Date.now();
+    console.log("[Timer] Pausing at:", state.lastPauseTime);
+
+    // We don't change state.timerRunning or state.isInspection flags
+    // because the game is logically still in that state, just "frozen" until resume.
+
+    if (state.timerRunning) {
+        clearInterval(state.timerInterval);
+    }
+
+    if (state.isInspection) {
+        clearInterval(state.inspectionInterval);
+    }
+}
+
+export function resumeGameTimer() {
+    console.log("[Timer] resumeGameTimer called. Last pause:", state.lastPauseTime);
+    if (!state.lastPauseTime) return;
+
+    const pauseDuration = Date.now() - state.lastPauseTime;
+    console.log("[Timer] Resuming. Pause duration (ms):", pauseDuration);
+
+
+    if (state.timerRunning) {
+        state.startTime += pauseDuration;
+        // Resume timer interval
+        // Ensure we don't double intervals if resume is called multiple times without pause
+        clearInterval(state.timerInterval);
+        state.timerInterval = setInterval(() => {
+            updateTimerDisplay();
+        }, 10);
+    }
+
+    if (state.isInspection) {
+        state.inspectionStartTime += pauseDuration;
+        startInspectionInterval();
+    }
+
+    state.lastPauseTime = 0;
+}
+
 
 function updateTimerDisplay() {
     const elapsed = Date.now() - state.startTime;

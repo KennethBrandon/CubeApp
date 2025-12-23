@@ -60,6 +60,9 @@ export const state = {
     isInspection: false,
     inspectionInterval: null,
     inspectionTimeLeft: 15,
+    lastPauseTime: 0,
+    wasTimerRunning: false,
+    wasInspectionRunning: false,
 
     // Firebase User
     currentUser: null,

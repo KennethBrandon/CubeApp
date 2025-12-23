@@ -11,6 +11,8 @@ import { overlayManager } from './ui/overlayManager.js';
 import { state } from './shared/state.js';
 
 import { StandardCube } from './puzzles/StandardCube.js';
+import { pauseGameTimer, resumeGameTimer } from './game/timer.js';
+
 import { initNetworkMonitoring } from './utils/network.js';
 
 import { thumbnailGenerator } from './utils/ThumbnailGenerator.js';
@@ -75,6 +77,32 @@ function init() {
 
     // Initialize Firebase Auth
     initAuth();
+
+    // Handle Visibility Change (Pause/Resume Timer)
+    // We use multiple events to be robust (e.g. sometimes unique browser behaviors might miss one)
+    const handlePause = (source) => {
+        console.log(`[App] Pause triggered by: ${source}`);
+        pauseGameTimer();
+    };
+
+    const handleResume = (source) => {
+        console.log(`[App] Resume triggered by: ${source}`);
+        resumeGameTimer();
+    };
+
+    document.addEventListener('visibilitychange', () => {
+        console.log("[App] Visibility changed. Hidden:", document.hidden);
+        if (document.hidden) {
+            handlePause('visibilitychange');
+        } else {
+            handleResume('visibilitychange');
+        }
+    });
+
+    window.addEventListener('blur', () => handlePause('blur'));
+    window.addEventListener('focus', () => handleResume('focus'));
+
+    console.log("[App] Visibility/Focus/Blur listeners attached.");
 
     // Start Animation Loop
     animate();
