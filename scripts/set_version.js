@@ -5,6 +5,7 @@ const { execSync } = require('child_process');
 // Configuration
 const PACKAGE_JSON_PATH = path.join(__dirname, '../package.json');
 const ANDROID_GRADLE_PATH = path.join(__dirname, '../android/app/build.gradle');
+const INDEX_HTML_PATH = path.join(__dirname, '../index.html');
 
 // Helper: Parse version string "X.Y.Z"
 function parseVersion(versionStr) {
@@ -89,6 +90,22 @@ if (fs.existsSync(ANDROID_GRADLE_PATH)) {
     }
 } else {
     console.warn("Android build.gradle not found. Skipping Android update.");
+}
+
+// 4. Update index.html
+if (fs.existsSync(INDEX_HTML_PATH)) {
+    let indexContent = fs.readFileSync(INDEX_HTML_PATH, 'utf8');
+    // Regex to match vX.Y.Z (e.g. v1.2.0)
+    const versionRegex = /v\d+\.\d+\.\d+/g;
+
+    if (versionRegex.test(indexContent)) {
+        indexContent = indexContent.replace(versionRegex, `v${targetVersionStr}`);
+        fs.writeFileSync(INDEX_HTML_PATH, indexContent);
+        console.log(`Updated index.html to v${targetVersionStr}`);
+        filesToStage.push('index.html');
+    } else {
+        console.warn("Could not find version pattern (vX.Y.Z) in index.html");
+    }
 }
 
 // 4. Git Tag & Commit (Optional)
