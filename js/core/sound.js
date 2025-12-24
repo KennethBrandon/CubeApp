@@ -1,7 +1,7 @@
 export class SoundManager {
     constructor() {
         this.audioCtx = null;
-        this.isMuted = localStorage.getItem('cubeApp_isMuted') === 'true';
+        this.isMuted = localStorage.getItem('cubeVault_isMuted') === 'true';
     }
 
     init() {
@@ -16,7 +16,7 @@ export class SoundManager {
 
     toggleMute() {
         this.isMuted = !this.isMuted;
-        localStorage.setItem('cubeApp_isMuted', this.isMuted);
+        localStorage.setItem('cubeVault_isMuted', this.isMuted);
         return this.isMuted;
     }
 

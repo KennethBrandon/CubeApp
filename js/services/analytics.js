@@ -112,7 +112,7 @@ export const Analytics = {
         if (!this.isInitialized) this.init();
         this.gtag('event', 'screen_view', {
             'screen_name': viewName,
-            'app_name': 'Cube App'
+            'app_name': 'Cube Vault'
         });
     }
 };

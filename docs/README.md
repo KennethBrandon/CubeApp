@@ -1,4 +1,4 @@
-# Documentation Index
+# Cube Vault Documentation Index
 
 This directory contains documentation for the CubeApp project.
 

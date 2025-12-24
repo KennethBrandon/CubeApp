@@ -1,11 +1,11 @@
 {
-  "name": "cubeapp",
+  "name": "cube-vault",
   "version": "0.2.0",
-  "description": "A beautiful, interactive 3D Cube puzzle game built with Three.js and Firebase. Features multiple cube sizes, live leaderboards, and smooth animations.",
+  "description": "Cube Vault - A 3D Puzzle App, interactive 3D Cube puzzle game built with Three.js and Firebase. Features multiple cube sizes, live leaderboards, and smooth animations.",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "mkdir -p www && cp index.html favicon.png www/ && cp -r js assets www/",
+    "build": "mkdir -p www && cp index.html www/ && cp assets/logo_foreground.svg www/favicon.svg && cp -r js assets www/",
     "build:android": "./scripts/build_android.sh",
     "version:bump": "node scripts/set_version.js",
     "version:sync": "node scripts/set_version.js",

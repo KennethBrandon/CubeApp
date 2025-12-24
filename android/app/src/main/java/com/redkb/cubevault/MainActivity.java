@@ -1,4 +1,4 @@
-package com.redkb.cubeapp;
+package com.redkb.cubevault;
 
 import com.getcapacitor.BridgeActivity;
 

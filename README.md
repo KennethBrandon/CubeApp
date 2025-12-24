@@ -1,4 +1,4 @@
-# Cube App
+# Cube Vault
 
 A beautiful, interactive 3D Cube puzzle game built with Three.js and Firebase. Features multiple cube sizes, live leaderboards, and smooth animations.
 

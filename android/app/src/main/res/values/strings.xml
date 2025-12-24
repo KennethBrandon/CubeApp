@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Cube App</string>
-    <string name="title_activity_main">Cube App</string>
-    <string name="package_name">com.redkb.cubeapp</string>
-    <string name="custom_url_scheme">com.redkb.cubeapp</string>
+    <string name="app_name">Cube Vault</string>
+    <string name="title_activity_main">Cube Vault</string>
+    <string name="package_name">com.redkb.cubevault</string>
+    <string name="custom_url_scheme">com.redkb.cubevault</string>
 </resources>

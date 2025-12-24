@@ -435,7 +435,7 @@ export function openFeedbackModal() {
     });
 
     // Keep email if previously typed
-    const savedEmail = localStorage.getItem('cubeapp_user_email');
+    const savedEmail = localStorage.getItem('cubeVault_user_email');
     if (savedEmail) document.getElementById('feedback-email').value = savedEmail;
 
     document.getElementById('feedback-spinner').classList.add('hidden');
@@ -476,7 +476,7 @@ export async function handleFeedbackSubmit() {
                 document.getElementById(id).parentElement.classList.add('hidden');
             });
 
-            if (email) localStorage.setItem('cubeapp_user_email', email);
+            if (email) localStorage.setItem('cubeVault_user_email', email);
         } else {
             alert("Failed to send feedback. Please try again.");
         }
