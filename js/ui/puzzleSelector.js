@@ -22,6 +22,7 @@ import { puzzleCache } from '../utils/puzzleCache.js';
 import { assetManager } from '../game/AssetManager.js';
 import { showLoading, hideLoading } from './ui.js';
 import { Analytics } from '../services/analytics.js';
+import { storeService, PRODUCT_IDS } from '../services/store.js';
 
 import { puzzleCategories } from '../shared/puzzleData.js';
 export { puzzleCategories }; // Re-export for compatibility if needed, though direct import is better.
@@ -40,6 +41,16 @@ export function setupPuzzleSelector() {
 
     // Category switching and Carousel listeners are now attached lazily in openPuzzleSelector
     // when the modal is created.
+
+
+    // Initialize Store
+    storeService.init();
+
+    // Listen for purchases to update UI
+    window.addEventListener('purchase-updated', (e) => {
+        console.log("Puzzle Selector: Purchase detected, refreshing options...", e.detail.id);
+        renderPuzzleOptions();
+    });
 
     // Start fetching registry immediately (for correct titles on load)
     fetchRegistry();
@@ -249,6 +260,10 @@ export function openPuzzleSelector(callback = null) {
         }
     });
 
+    // Refresh store to ensure we have latest prices/ownership
+    // (Optional, maybe too heavy to do every open? Local cache is fine)
+    // storeService.store.refresh();
+
     // Select default category or current puzzle's category
     showCategory(state.lastLibraryCategory || 'standard');
 }
@@ -429,14 +444,112 @@ function createPuzzleButton(label, value) {
     // Dynamic Icon
     const icon = createPuzzleIcon(value);
 
+    // DEBUG LOG
+    // console.log("Creating Button:", label, value);
+    if (!PRODUCT_IDS) console.error("CRITICAL: PRODUCT_IDS is undefined!");
+
     const text = document.createElement('span');
+    // DEBUG: Append status to label for Megaminx
+    if (value === 'megaminx') {
+        // We calculate status later, so we might need to update this text node or delay setting it.
+        // Let's just mark it and update it at the end of the function if possible, or move calculation up.
+        // Actually, calculation is below. Let's just init it here.
+        text.id = `debug-label-${value}`;
+    }
     text.textContent = label;
     text.className = "text-xs tracking-wide opacity-80 group-hover:opacity-100 transition-opacity text-center";
 
     btn.appendChild(icon);
     btn.appendChild(text);
 
-    btn.addEventListener('click', () => {
+    // Check Access/Lock Status
+    let productId = null;
+    let isLocked = false;
+
+    // Rules for Locking
+    // 1. WCA: 4,5,6,7, megaminx, pyraminx, skewb
+    // 2. Big: 8+
+    // 3. Cuboids: Any 'x' string that is not N=N=N
+    // 4. Mods: molecube, voidcube, acorns, mirror...
+
+    const vStr = String(value);
+
+    // Mods & Mirror & STL
+    if (puzzleCategories.mods.includes(vStr) || vStr.startsWith('mirror') || puzzleCategories.mirror.includes(vStr) || vStr.startsWith('stl:')) {
+        productId = PRODUCT_IDS.MODS;
+    }
+    // Cuboids (explicit list or pattern)
+    else if (puzzleCategories.cuboids.includes(vStr)) {
+        productId = PRODUCT_IDS.CUBOIDS;
+    }
+    // Megaminx, Pyraminx, Skewb (WCA)
+    else if (vStr === 'megaminx' || vStr === 'pyraminx' || vStr === 'skewb') {
+        productId = PRODUCT_IDS.WCA;
+    }
+    else {
+        // Number check
+        let size = null;
+        if (vStr.match(/^\d+$/)) size = parseInt(vStr);
+        else if (vStr.includes('x')) {
+            const parts = vStr.split('x');
+            if (parts.length === 3 && parts[0] === parts[1] && parts[1] === parts[2]) size = parseInt(parts[0]);
+        }
+
+        if (size !== null) {
+            if (size >= 4 && size <= 7) productId = PRODUCT_IDS.WCA;
+            else if (size >= 8) productId = PRODUCT_IDS.BIG;
+            // 2 and 3 are FREE (productId = null)
+        }
+    }
+
+    if (productId && !storeService.isOwned(productId)) {
+        isLocked = true;
+    }
+
+    if (isLocked) {
+        // Visuals for Locked State
+        btn.classList.add('opacity-75', 'grayscale');
+
+        const lockIcon = document.createElement('div');
+        lockIcon.className = "absolute top-2 right-2 bg-black/60 text-yellow-400 p-1 rounded-full shadow-md backdrop-blur-sm z-10";
+        lockIcon.innerHTML = `<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>`;
+        btn.appendChild(lockIcon);
+        btn.classList.add('relative');
+        // Add Price Label? (Only if we knew it easily, for now just Lock)
+    }
+
+    // DEBUG
+    if (productId && value === 'megaminx') {
+        console.error(`DEBUG Megaminx: Product=${productId}, Owned=${storeService.isOwned(productId)}, Locked=${isLocked}`);
+        const debugLabel = btn.querySelector(`#debug-label-${value}`);
+        if (debugLabel) {
+            debugLabel.textContent = `${label}\nO:${storeService.isOwned(productId)}\nL:${isLocked}`;
+            debugLabel.style.color = isLocked ? 'red' : 'green';
+        }
+    }
+
+    btn.addEventListener('click', (e) => {
+        if (isLocked) {
+            e.stopPropagation();
+            e.preventDefault();
+
+            // Trigger Purchase Flow
+            storeService.purchase(productId).then(success => {
+                if (success) {
+                    // Update UI immediately (remove lock)
+                    btn.classList.remove('opacity-75', 'grayscale');
+                    const lock = btn.querySelector('.absolute.top-2.right-2');
+                    if (lock) lock.remove();
+                    isLocked = false;
+
+                    // Auto-select after purchase?
+                    // selectPuzzle(value); 
+                    // Better to let them click again or just unlock for now.
+                }
+            });
+            return;
+        }
+
         // If it's an STL puzzle, check cache first
         const isDownloadable = typeof value === 'string' && value.startsWith('stl:');
 
@@ -482,6 +595,7 @@ function createPuzzleButton(label, value) {
     }
 
     return btn;
+
 }
 
 function selectPuzzle(value) {
@@ -939,6 +1053,15 @@ function setupCustomPuzzleListeners() {
         const dims = [d1, d2, d3].sort((a, b) => b - a);
         const newDims = { x: dims[1], y: dims[0], z: dims[2] };
 
+        // SANDBOX RULE VALIDATION
+        const validation = validateCustomPuzzlePermissions(newDims, isMirror);
+        if (!validation.allowed) {
+            alert(validation.message);
+            // Optionally try to prompt purchase here, but simple alert is safer for now.
+            // storeService.purchase(validation.requiredProduct); 
+            return;
+        }
+
         // Defer change
         pendingPuzzleChange = { val: null, isCustom: true, customDims: newDims, isMirrorCustom: isMirror };
         closePuzzleSelector();
@@ -992,6 +1115,50 @@ function setupCustomPuzzleListeners() {
             updatePreview(newDims, isMirror);
         });
     }
+}
+
+function validateCustomPuzzlePermissions(dims, isMirror) {
+    // 1. Mirror Check
+    if (isMirror) {
+        if (!storeService.isOwned(PRODUCT_IDS.MODS)) {
+            return { allowed: false, message: "You need the 'Mods & Mirror' Pack to create custom Mirror Cubes!", requiredProduct: PRODUCT_IDS.MODS };
+        }
+    }
+
+    // 2. Cuboid Check (Non-Cubic)
+    // Check if dimensions are not all equal
+    if (dims.x !== dims.y || dims.y !== dims.z) {
+        if (!storeService.isOwned(PRODUCT_IDS.CUBOIDS)) {
+            return { allowed: false, message: "You need the 'Cuboids' Pack to create non-cubic puzzles!", requiredProduct: PRODUCT_IDS.CUBOIDS };
+        }
+    }
+
+    // 3. Size Check (Max Dimension)
+    const maxDim = Math.max(dims.x, dims.y, dims.z);
+
+    // Free: 2 and 3
+    if (maxDim <= 3) {
+        return { allowed: true };
+    }
+
+    // WCA Range: 4, 5, 6, 7
+    if (maxDim >= 4 && maxDim <= 7) {
+        // Allow if WCA OR BIG is owned (Big implies power user)
+        if (storeService.isOwned(PRODUCT_IDS.WCA) || storeService.isOwned(PRODUCT_IDS.BIG)) {
+            return { allowed: true };
+        }
+        return { allowed: false, message: "You need the 'WCA Expansion' (or 'Big Cubes') Pack to create puzzles of this size!", requiredProduct: PRODUCT_IDS.WCA };
+    }
+
+    // Big Range: 8+
+    if (maxDim >= 8) {
+        if (storeService.isOwned(PRODUCT_IDS.BIG)) {
+            return { allowed: true };
+        }
+        return { allowed: false, message: "You need the 'Big Cubes' Pack to create puzzles larger than 7x7!", requiredProduct: PRODUCT_IDS.BIG };
+    }
+
+    return { allowed: true };
 }
 
 function getPuzzleName(val) {

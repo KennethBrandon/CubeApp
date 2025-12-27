@@ -28,7 +28,8 @@
     "@capacitor/cli": "^7.4.4",
     "@capacitor/core": "^7.4.4",
     "@capacitor/filesystem": "^7.1.6",
-    "@capacitor/network": "^7.0.2"
+    "@capacitor/network": "^7.0.2",
+    "cordova-plugin-purchase": "^13.12.1"
   },
   "devDependencies": {
     "@capacitor/assets": "^3.0.5"

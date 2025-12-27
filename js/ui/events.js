@@ -62,6 +62,18 @@ export function setupUIEventListeners() {
         });
     }
 
+    // Restore Purchases
+    document.getElementById('btn-drawer-restore')?.addEventListener('click', () => {
+        // Dynamically import store to avoid circular dependency issues if any,
+        // though we can probably import at top. But store is single instance.
+        // Actually, let's import `storeService` at the top of this file next time.
+        // For now, dynamic is safe and consistent with localized usage.
+        import('../services/store.js').then(({ storeService }) => {
+            storeService.restorePurchases();
+        });
+        gtag('event', 'restore_purchases_click');
+    });
+
     // Initialize audio context on first interaction
     const initAudio = () => {
         soundManager.init();
