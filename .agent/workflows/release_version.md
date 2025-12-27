@@ -31,10 +31,9 @@ This workflow describes how to release a new version of the app and publish it t
    - Click "Generate release notes" to automatically fill in changes.
    - Click "Publish release".
 
-4. **Build and Release App**
-   Now you can proceed with building the app binary for stores.
-   ```bash
-   npm run build:android
-   npx cap open android
-   # Then generate Signed Bundle in Android Studio
-   ```
+4. **Download & Publish**
+   - Wait for the "Build Android App" action to finish on GitHub.
+   - Go to the **Releases** page on GitHub.
+   - Download the `app-release.aab` asset.
+   - Upload this file manually to the **Google Play Console** (Internal Testing or Closed Testing track).
+   - *Note: In the future, we can automate this upload step too, but the first upload must always be manual.*
