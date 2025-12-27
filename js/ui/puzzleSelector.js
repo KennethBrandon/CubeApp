@@ -709,6 +709,7 @@ export function changePuzzle(val, isCustom = false, customDims = null, isMirrorC
     }
 
     const performUpdate = async () => {
+        const startTime = performance.now();
         state.cubeSize = newSize;
         state.cubeDimensions = newDims;
 
@@ -743,6 +744,7 @@ export function changePuzzle(val, isCustom = false, customDims = null, isMirrorC
                 // Clear home rotation for standard puzzles (use identity)
                 state.cubeWrapper.userData.homeRotation = null;
             }
+            state.activePuzzle = null; // Clear reference strictly
             state.cubeWrapper.updateMatrixWorld(true);
         }
 
@@ -782,6 +784,16 @@ export function changePuzzle(val, isCustom = false, customDims = null, isMirrorC
 
         // Update Leaderboard Selection
         state.selectedLeaderboardPuzzle = null; // Reset so it auto-detects next time
+
+        const endTime = performance.now();
+        const duration = Math.round(endTime - startTime);
+
+        Analytics.logEvent('puzzle_load_time', {
+            puzzle_id: val,
+            duration_ms: duration,
+            is_custom: isCustom,
+            dimensions: `${newDims.x}x${newDims.y}x${newDims.z}`
+        });
     };
 
     // Always reset leaderboard selection when changing puzzle
