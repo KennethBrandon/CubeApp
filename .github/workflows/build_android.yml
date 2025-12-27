@@ -4,6 +4,9 @@ on:
       - 'v*'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     name: Build Android APK & Bundle
@@ -63,6 +66,5 @@ jobs:
         with:
           files: |
             android/app/build/outputs/bundle/release/app-release.aab
-            android/app/build/outputs/apk/debug/app-debug.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
