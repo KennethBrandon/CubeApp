@@ -234,7 +234,10 @@ export class Skewb extends Puzzle {
 
                     // Surface constraints
                     faceNormals.forEach(n => {
-                        baseConstraints.push({ normal: n, constant: this.radius });
+                        // Optimize: Only add faces that this corner touches
+                        if (pos.dot(n) > 0.5) {
+                            baseConstraints.push({ normal: n, constant: this.radius });
+                        }
                     });
 
                     // Cut constraints
@@ -266,9 +269,8 @@ export class Skewb extends Puzzle {
             const baseConstraints = [];
 
             // Surface
-            faceNormals.forEach(n => {
-                baseConstraints.push({ normal: n, constant: this.radius });
-            });
+            // Optimize: Only add the face this center belongs to
+            baseConstraints.push({ normal: fn, constant: this.radius });
 
             // Cut Constraints
             cutNormals.forEach(n => {
