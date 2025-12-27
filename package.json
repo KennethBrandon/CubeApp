@@ -1,6 +1,6 @@
 {
   "name": "cube-vault",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "description": "Cube Vault - A 3D Puzzle App, interactive 3D Cube puzzle game built with Three.js and Firebase. Features multiple cube sizes, live leaderboards, and smooth animations.",
   "main": "index.js",
   "scripts": {
