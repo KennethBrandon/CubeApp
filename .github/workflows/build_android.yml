@@ -39,13 +39,14 @@ jobs:
       - name: Decode Keystore
         if: env.ANDROID_KEYSTORE_BASE64 != ''
         run: |
-          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/app/release-key.keystore
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/release-key.keystore
 
       - name: Build Signed Release Bundle
         if: env.ANDROID_KEYSTORE_BASE64 != ''
         working-directory: android
         run: |
           ./gradlew bundleRelease \
+            -Dorg.gradle.java.home=$JAVA_HOME \
             -Pandroid.injected.signing.store.file=$(pwd)/release-key.keystore \
             -Pandroid.injected.signing.store.password=$KEYSTORE_PASSWORD \
             -Pandroid.injected.signing.key.alias=$KEY_ALIAS \
